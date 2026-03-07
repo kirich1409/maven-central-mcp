@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
@@ -5,6 +6,7 @@ import { MavenCentralClient } from "./maven/client.js";
 import { getLatestVersionHandler } from "./tools/get-latest-version.js";
 import { checkVersionExistsHandler } from "./tools/check-version-exists.js";
 import { checkMultipleDependenciesHandler } from "./tools/check-multiple-dependencies.js";
+import { compareDependencyVersionsHandler } from "./tools/compare-dependency-versions.js";
 
 const server = new McpServer({
   name: "maven-central-mcp",
@@ -55,6 +57,22 @@ server.tool(
   },
   async (params) => {
     const result = await checkMultipleDependenciesHandler(client, params);
+    return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  "compare_dependency_versions",
+  "Compare current dependency versions against latest available, showing upgrade type (major/minor/patch)",
+  {
+    dependencies: z.array(z.object({
+      groupId: z.string().describe("Maven group ID"),
+      artifactId: z.string().describe("Maven artifact ID"),
+      currentVersion: z.string().describe("Currently used version"),
+    })).describe("Dependencies with current versions to compare"),
+  },
+  async (params) => {
+    const result = await compareDependencyVersionsHandler(client, params);
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
   },
 );

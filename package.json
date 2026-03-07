@@ -1,7 +1,7 @@
 {
   "name": "maven-central-mcp",
   "version": "0.1.0",
-  "description": "",
+  "description": "MCP server for Maven Central dependency intelligence",
   "main": "index.js",
   "type": "module",
   "bin": {
@@ -12,9 +12,17 @@
     "test": "vitest run",
     "dev": "tsc --watch"
   },
-  "keywords": [],
+  "keywords": ["mcp", "maven", "maven-central", "dependencies", "jvm"],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirich1409/maven-central-mcp"
+  },
+  "files": ["dist"],
+  "engines": {
+    "node": ">=18"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "zod": "^4.3.6"
