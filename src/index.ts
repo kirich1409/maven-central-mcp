@@ -3,6 +3,7 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { MavenCentralClient } from "./maven/client.js";
 import { getLatestVersionHandler } from "./tools/get-latest-version.js";
+import { checkVersionExistsHandler } from "./tools/check-version-exists.js";
 
 const server = new McpServer({
   name: "maven-central-mcp",
@@ -24,6 +25,20 @@ server.tool(
   },
   async (params) => {
     const result = await getLatestVersionHandler(client, params);
+    return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  "check_version_exists",
+  "Verify a specific version exists and classify its stability",
+  {
+    groupId: z.string().describe("Maven group ID"),
+    artifactId: z.string().describe("Maven artifact ID"),
+    version: z.string().describe("Version to check"),
+  },
+  async (params) => {
+    const result = await checkVersionExistsHandler(client, params);
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
   },
 );
