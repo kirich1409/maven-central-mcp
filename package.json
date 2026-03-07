@@ -27,7 +27,8 @@
     "url": "https://github.com/kirich1409/maven-central-mcp"
   },
   "files": [
-    "dist"
+    "dist",
+    ".claude-plugin"
   ],
   "engines": {
     "node": ">=18"
