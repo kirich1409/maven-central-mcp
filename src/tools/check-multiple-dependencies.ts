@@ -1,4 +1,4 @@
-import { classifyVersion } from "../version/classify.js";
+import { classifyVersion, findLatestVersion } from "../version/classify.js";
 import type { MavenRepository } from "../maven/repository.js";
 import { resolveAll } from "../maven/resolver.js";
 
@@ -31,8 +31,7 @@ export async function checkMultipleDependenciesHandler(
     input.dependencies.map(async (dep) => {
       try {
         const metadata = await resolveAll(repos, dep.groupId, dep.artifactId);
-        const versions = [...metadata.versions].reverse();
-        const latest = versions.find((v) => classifyVersion(v) === "stable") ?? versions[0];
+        const latest = findLatestVersion(metadata.versions)!;
         return {
           groupId: dep.groupId,
           artifactId: dep.artifactId,

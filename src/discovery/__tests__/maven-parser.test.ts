@@ -50,7 +50,7 @@ describe("parseMavenRepositories", () => {
     ]);
   });
 
-  it("deduplicates by URL", () => {
+  it("returns all entries including duplicates (dedup is caller's responsibility)", () => {
     const content = `<?xml version="1.0" encoding="UTF-8"?>
 <project>
   <repositories>
@@ -66,6 +66,6 @@ describe("parseMavenRepositories", () => {
 </project>`;
 
     const repos = parseMavenRepositories(content);
-    expect(repos).toHaveLength(1);
+    expect(repos).toHaveLength(2);
   });
 });

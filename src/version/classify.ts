@@ -1,4 +1,4 @@
-import type { StabilityType } from "./types.js";
+import type { StabilityFilter, StabilityType } from "./types.js";
 
 const STABILITY_PATTERNS: [RegExp, StabilityType][] = [
   [/[-.]?SNAPSHOT$/i, "snapshot"],
@@ -15,4 +15,15 @@ export function classifyVersion(version: string): StabilityType {
     }
   }
   return "stable";
+}
+
+export function findLatestVersion(
+  versions: string[],
+  filter: StabilityFilter = "PREFER_STABLE",
+): string | undefined {
+  const reversed = [...versions].reverse();
+  if (filter === "ALL") return reversed[0];
+  const stable = reversed.find((v) => classifyVersion(v) === "stable");
+  if (filter === "STABLE_ONLY") return stable;
+  return stable ?? reversed[0];
 }
