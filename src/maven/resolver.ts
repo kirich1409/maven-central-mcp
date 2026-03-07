@@ -46,6 +46,11 @@ export async function resolveAll(
   // Custom repos often proxy Maven Central; using their metadata avoids
   // duplicates and stale version mismatches from proxy caching delays.
   // Falls back to well-known results only if no custom repo has the artifact.
+  //
+  // Tradeoff: if multiple custom repos exist and only some have the artifact,
+  // well-known results are still excluded. This may miss versions when a
+  // non-proxy custom repo (e.g. internal-only) is mixed with Maven Central.
+  // In practice this is rare — custom repos are typically proxies.
   const primary = results.filter(
     (r, i): r is MavenMetadata => r !== null && !WELL_KNOWN_URLS.has(repos[i].url),
   );

@@ -115,6 +115,15 @@ describe("resolveAll", () => {
     expect(result.versions).toEqual(["1.0.0", "2.0.0"]);
   });
 
+  it("uses only custom repo results even when some custom repos fail", async () => {
+    const internal = mockRepo("internal", ["1.0.0"]);
+    const nexusFail = mockRepo("nexus", null);
+    const central = mockRepo("central", ["1.0.0", "2.0.0", "3.0.0"], MAVEN_CENTRAL.url);
+    const result = await resolveAll([internal, nexusFail, central], "io.ktor", "ktor-core");
+    // internal succeeded (custom) — Central results excluded despite nexus failing
+    expect(result.versions).toEqual(["1.0.0"]);
+  });
+
   it("merges all well-known repos when no custom repos are present", async () => {
     const central = mockRepo("central", ["1.0.0"], MAVEN_CENTRAL.url);
     const google = mockRepo("google", ["1.0.0", "2.0.0"], GOOGLE_MAVEN.url);
