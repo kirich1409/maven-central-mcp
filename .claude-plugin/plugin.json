@@ -5,7 +5,7 @@
   "mcpServers": {
     "maven-mcp": {
       "command": "node",
-      "args": ["${CLAUDE_PLUGIN_ROOT}/../dist/index.js"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/dist/index.js"]
     }
   },
   "skills": "skills",
