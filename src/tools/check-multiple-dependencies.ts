@@ -1,5 +1,6 @@
 import { classifyVersion } from "../version/classify.js";
-import type { MavenCentralClient } from "../maven/client.js";
+import type { MavenRepository } from "../maven/repository.js";
+import { resolveAll } from "../maven/resolver.js";
 
 interface Dependency {
   groupId: string;
@@ -23,13 +24,13 @@ export interface CheckMultipleDependenciesResult {
 }
 
 export async function checkMultipleDependenciesHandler(
-  client: MavenCentralClient,
+  repos: MavenRepository[],
   input: CheckMultipleDependenciesInput,
 ): Promise<CheckMultipleDependenciesResult> {
   const results = await Promise.all(
     input.dependencies.map(async (dep) => {
       try {
-        const metadata = await client.fetchMetadata(dep.groupId, dep.artifactId);
+        const metadata = await resolveAll(repos, dep.groupId, dep.artifactId);
         const versions = [...metadata.versions].reverse();
         const latest = versions.find((v) => classifyVersion(v) === "stable") ?? versions[0];
         return {

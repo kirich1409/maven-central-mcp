@@ -1,6 +1,7 @@
 import { classifyVersion } from "../version/classify.js";
 import { getUpgradeType } from "../version/compare.js";
-import type { MavenCentralClient } from "../maven/client.js";
+import type { MavenRepository } from "../maven/repository.js";
+import { resolveAll } from "../maven/resolver.js";
 
 interface DependencyWithVersion {
   groupId: string;
@@ -29,13 +30,13 @@ export interface CompareDependencyVersionsResult {
 }
 
 export async function compareDependencyVersionsHandler(
-  client: MavenCentralClient,
+  repos: MavenRepository[],
   input: CompareDependencyVersionsInput,
 ): Promise<CompareDependencyVersionsResult> {
   const results = await Promise.all(
     input.dependencies.map(async (dep) => {
       try {
-        const metadata = await client.fetchMetadata(dep.groupId, dep.artifactId);
+        const metadata = await resolveAll(repos, dep.groupId, dep.artifactId);
         const versions = [...metadata.versions].reverse();
         const latest = versions.find((v) => classifyVersion(v) === "stable") ?? versions[0];
         const upgradeType = getUpgradeType(dep.currentVersion, latest);

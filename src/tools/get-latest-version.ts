@@ -1,6 +1,7 @@
 import { classifyVersion } from "../version/classify.js";
 import type { StabilityFilter } from "../version/types.js";
-import type { MavenCentralClient } from "../maven/client.js";
+import type { MavenRepository } from "../maven/repository.js";
+import { resolveAll } from "../maven/resolver.js";
 
 export interface GetLatestVersionInput {
   groupId: string;
@@ -17,10 +18,10 @@ export interface GetLatestVersionResult {
 }
 
 export async function getLatestVersionHandler(
-  client: MavenCentralClient,
+  repos: MavenRepository[],
   input: GetLatestVersionInput,
 ): Promise<GetLatestVersionResult> {
-  const metadata = await client.fetchMetadata(input.groupId, input.artifactId);
+  const metadata = await resolveAll(repos, input.groupId, input.artifactId);
   const filter = input.stabilityFilter ?? "PREFER_STABLE";
   const versions = [...metadata.versions].reverse();
 
@@ -36,7 +37,6 @@ export async function getLatestVersionHandler(
       );
     }
   } else {
-    // PREFER_STABLE
     selected = versions.find((v) => classifyVersion(v) === "stable") ?? versions[0];
   }
 

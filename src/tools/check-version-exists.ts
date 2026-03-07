@@ -1,5 +1,6 @@
 import { classifyVersion } from "../version/classify.js";
-import type { MavenCentralClient } from "../maven/client.js";
+import type { MavenRepository } from "../maven/repository.js";
+import { resolveFirst } from "../maven/resolver.js";
 
 export interface CheckVersionExistsInput {
   groupId: string;
@@ -13,14 +14,25 @@ export interface CheckVersionExistsResult {
   version: string;
   exists: boolean;
   stability?: string;
+  repository?: string;
 }
 
 export async function checkVersionExistsHandler(
-  client: MavenCentralClient,
+  repos: MavenRepository[],
   input: CheckVersionExistsInput,
 ): Promise<CheckVersionExistsResult> {
-  const metadata = await client.fetchMetadata(input.groupId, input.artifactId);
-  const exists = metadata.versions.includes(input.version);
+  const resolved = await resolveFirst(repos, input.groupId, input.artifactId);
+
+  if (!resolved) {
+    return {
+      groupId: input.groupId,
+      artifactId: input.artifactId,
+      version: input.version,
+      exists: false,
+    };
+  }
+
+  const exists = resolved.metadata.versions.includes(input.version);
 
   return {
     groupId: input.groupId,
@@ -28,5 +40,6 @@ export async function checkVersionExistsHandler(
     version: input.version,
     exists,
     stability: exists ? classifyVersion(input.version) : undefined,
+    repository: exists ? resolved.repository.name : undefined,
   };
 }
