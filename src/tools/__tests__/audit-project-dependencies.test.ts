@@ -145,4 +145,43 @@ dependencies {
     expect(result.dependencies[0].currentVersion).toBe("3.0.0");
     expect(result.dependencies[1].currentVersion).toBe("3.1.0");
   });
+
+  it("deduplicates OSV queries for same GAV and maps vulns to all entries", async () => {
+    mockGradleProject(`
+dependencies {
+    implementation("io.ktor:ktor-client-core:3.0.0")
+    testImplementation("io.ktor:ktor-client-core:3.0.0")
+}`);
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () => Promise.resolve({
+        results: [{
+          vulns: [{
+            id: "GHSA-5678",
+            summary: "test vuln",
+            database_specific: { severity: "MEDIUM" },
+            affected: [],
+            references: [],
+          }],
+        }],
+      }),
+    });
+
+    const repos = [mockRepo(["3.0.0", "3.1.1"])];
+    const result = await auditProjectDependenciesHandler(repos, {
+      projectPath: "/project",
+      includeVulnerabilities: true,
+    });
+
+    // Only one OSV query should be made (deduplicated)
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    // Both entries should have the same vulnerability
+    expect(result.dependencies).toHaveLength(2);
+    expect(result.dependencies[0].vulnerabilities).toHaveLength(1);
+    expect(result.dependencies[0].vulnerabilities![0].id).toBe("GHSA-5678");
+    expect(result.dependencies[1].vulnerabilities).toHaveLength(1);
+    expect(result.dependencies[1].vulnerabilities![0].id).toBe("GHSA-5678");
+    expect(result.summary.vulnerable).toBe(2);
+  });
 });
