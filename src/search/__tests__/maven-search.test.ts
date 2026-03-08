@@ -42,4 +42,10 @@ describe("searchMavenCentral", () => {
     const result = await searchMavenCentral("fail");
     expect(result).toEqual([]);
   });
+
+  it("returns empty array when fetch rejects", async () => {
+    mockFetch.mockRejectedValueOnce(new Error("network error"));
+    const result = await searchMavenCentral("network-fail");
+    expect(result).toEqual([]);
+  });
 });

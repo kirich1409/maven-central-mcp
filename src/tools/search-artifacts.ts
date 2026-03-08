@@ -1,4 +1,4 @@
-import { searchMavenCentral } from "../search/maven-search.js";
+import { searchMavenCentral, type SearchArtifact } from "../search/maven-search.js";
 
 export interface SearchArtifactsInput {
   query: string;
@@ -6,12 +6,7 @@ export interface SearchArtifactsInput {
 }
 
 export interface SearchArtifactsResult {
-  results: {
-    groupId: string;
-    artifactId: string;
-    latestVersion: string;
-    versionCount: number;
-  }[];
+  results: SearchArtifact[];
 }
 
 export async function searchArtifactsHandler(
