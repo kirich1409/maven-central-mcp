@@ -47,11 +47,17 @@ export async function auditProjectDependenciesHandler(
   const depsWithVersion = scan.dependencies.filter((d) => d.version !== null);
   const depsWithoutVersion = scan.dependencies.filter((d) => d.version === null);
 
-  // Fetch latest versions in parallel
+  // Memoize resolveAll per GA to avoid redundant metadata fetches for duplicate deps
+  const metadataCache = new Map<string, ReturnType<typeof resolveAll>>();
+
   const versionResults = await Promise.all(
     depsWithVersion.map(async (dep) => {
       try {
-        const metadata = await resolveAll(repos, dep.groupId, dep.artifactId);
+        const gaKey = `${dep.groupId}:${dep.artifactId}`;
+        if (!metadataCache.has(gaKey)) {
+          metadataCache.set(gaKey, resolveAll(repos, dep.groupId, dep.artifactId));
+        }
+        const metadata = await metadataCache.get(gaKey)!;
         const latest = findLatestVersionForCurrent(metadata.versions, dep.version!);
         const upgradeType = latest ? getUpgradeType(dep.version!, latest) : "none" as const;
         return { dep, latest, upgradeType };
