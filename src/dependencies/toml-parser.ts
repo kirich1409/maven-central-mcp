@@ -46,7 +46,7 @@ export function parseVersionCatalog(content: string): Map<string, CatalogEntry> 
       version = versions.get(versionRef[1]) ?? null;
     }
 
-    const versionInline = props.match(/(?<!\.ref\s*=\s*)version\s*=\s*"([^"]+)"/);
+    const versionInline = props.match(/\bversion\s*=\s*"([^"]+)"/);
     if (versionInline && !versionRef) {
       version = versionInline[1];
     }

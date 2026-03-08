@@ -15,7 +15,7 @@ const CONFIGURATIONS = [
 
 const CONFIG_PATTERN = CONFIGURATIONS.join("|");
 
-export function parseGradleDependencies(content: string): GradleDependency[] {
+export function parseGradleDependencies(content: string, source: string = "build.gradle.kts"): GradleDependency[] {
   const deps: GradleDependency[] = [];
 
   const stringRegex = new RegExp(
@@ -29,7 +29,7 @@ export function parseGradleDependencies(content: string): GradleDependency[] {
       artifactId: match[3],
       version: match[4] ?? null,
       configuration: match[1],
-      source: "build.gradle.kts",
+      source,
     });
   }
 
@@ -43,7 +43,7 @@ export function parseGradleDependencies(content: string): GradleDependency[] {
       artifactId: null,
       version: null,
       configuration: match[1],
-      source: "build.gradle.kts",
+      source,
       catalogRef: match[2],
     });
   }

@@ -34,7 +34,7 @@ export function scanDependencies(projectRoot: string): ScanResult {
     buildSystem = "gradle";
 
     const content = readFileSync(path, "utf-8");
-    const gradleDeps = parseGradleDependencies(content);
+    const gradleDeps = parseGradleDependencies(content, file);
 
     const catalogPath = join(projectRoot, "gradle", "libs.versions.toml");
     let catalog = new Map<string, CatalogEntry>();

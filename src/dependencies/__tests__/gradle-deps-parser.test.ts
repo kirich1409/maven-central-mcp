@@ -27,9 +27,10 @@ dependencies {
 
   it("parses Groovy single-quote notation", () => {
     const content = `implementation 'io.ktor:ktor-client-core:3.1.1'`;
-    const deps = parseGradleDependencies(content);
+    const deps = parseGradleDependencies(content, "build.gradle");
     expect(deps[0].groupId).toBe("io.ktor");
     expect(deps[0].version).toBe("3.1.1");
+    expect(deps[0].source).toBe("build.gradle");
   });
 
   it("parses version catalog references", () => {
