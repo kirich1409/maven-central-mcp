@@ -7,12 +7,12 @@ const mockedFs = vi.mocked(fs);
 
 describe("scanDependencies", () => {
   it("scans Gradle project with version catalog", () => {
-    mockedFs.existsSync.mockImplementation((p: any) => {
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
       if (p.toString().endsWith("build.gradle.kts")) return true;
       if (p.toString().endsWith("libs.versions.toml")) return true;
       return false;
     });
-    mockedFs.readFileSync.mockImplementation((p: any) => {
+    mockedFs.readFileSync.mockImplementation((p: fs.PathLike) => {
       if (p.toString().endsWith("build.gradle.kts")) {
         return `
 dependencies {
@@ -43,7 +43,7 @@ ktor-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
   });
 
   it("scans Maven project", () => {
-    mockedFs.existsSync.mockImplementation((p: any) => {
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
       if (p.toString().endsWith("pom.xml")) return true;
       return false;
     });

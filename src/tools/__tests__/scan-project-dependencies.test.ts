@@ -7,7 +7,7 @@ const mockedFs = vi.mocked(fs);
 
 describe("scanProjectDependenciesHandler", () => {
   it("scans project and returns dependencies", () => {
-    mockedFs.existsSync.mockImplementation((p: any) => {
+    mockedFs.existsSync.mockImplementation((p: fs.PathLike) => {
       if (p.toString().endsWith("build.gradle.kts")) return true;
       return false;
     });
