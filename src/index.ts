@@ -129,7 +129,7 @@ server.tool(
     projectPath: z.string().optional().describe("Path to project root (default: auto-detect from cwd)"),
   },
   async (params) => {
-    const result = scanProjectDependenciesHandler(params);
+    const result = await scanProjectDependenciesHandler(params);
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
   },
 );
