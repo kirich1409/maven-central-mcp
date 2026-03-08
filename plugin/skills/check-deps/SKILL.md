@@ -51,11 +51,25 @@ Do NOT pass dependencies as a string. Do NOT add extra parameters like `stabilit
 ## After updating versions
 
 When the user confirms they want to update versions:
-1. Edit the build files with new versions
-2. Run the project build command to verify everything compiles:
-   - Gradle: `./gradlew assembleDebug` or `./gradlew build`
+
+1. Edit the build files with new versions.
+
+2. **MANDATORY: Run the project build to verify compatibility.** Do NOT skip this step.
+   - Gradle: `./gradlew build` (or `./gradlew assembleDebug` for Android)
    - Maven: `mvn compile`
-3. Report build result. If it fails, investigate and fix or revert.
+   - Wait for the build to complete fully.
+
+3. **If the build succeeds:** Report success and list the updated dependencies.
+
+4. **If the build fails:**
+   - Read the build error output carefully.
+   - Identify which updated dependency caused the incompatibility.
+   - Try to fix the incompatibility (API changes, import updates, deprecation replacements).
+   - If the fix is non-trivial, revert that specific dependency to its previous version.
+   - Re-run the build to confirm it passes.
+   - Report which dependencies were updated and which were reverted with reasons.
+
+5. **Never report "versions updated" without a passing build.** The update is not complete until the project compiles successfully.
 
 ## Important
 
