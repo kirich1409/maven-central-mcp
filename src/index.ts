@@ -157,7 +157,7 @@ server.tool(
   "Search Maven Central for artifacts by keyword. Use when looking for libraries by name or functionality.",
   {
     query: z.string().describe("Search query (library name, keyword)"),
-    limit: z.number().optional().describe("Max results (default: 10)"),
+    limit: z.number().int().min(1).max(100).optional().describe("Max results (default: 10, max: 100)"),
   },
   async (params) => {
     const result = await searchArtifactsHandler(params);
