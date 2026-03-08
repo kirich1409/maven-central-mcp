@@ -1,5 +1,19 @@
 const SEARCH_API = "https://search.maven.org/solrsearch/select";
 
+interface SolrDoc {
+  g: string;
+  a: string;
+  latestVersion: string;
+  versionCount: number;
+}
+
+interface SolrResponse {
+  response: {
+    numFound: number;
+    docs: SolrDoc[];
+  };
+}
+
 export interface SearchArtifact {
   groupId: string;
   artifactId: string;
@@ -15,8 +29,8 @@ export async function searchMavenCentral(
     const url = `${SEARCH_API}?q=${encodeURIComponent(query)}&rows=${limit}&wt=json`;
     const response = await fetch(url, { signal: AbortSignal.timeout(10_000) });
     if (!response.ok) return [];
-    const data = await response.json();
-    return data.response.docs.map((doc: any) => ({
+    const data = (await response.json()) as SolrResponse;
+    return data.response.docs.map((doc) => ({
       groupId: doc.g,
       artifactId: doc.a,
       latestVersion: doc.latestVersion,
