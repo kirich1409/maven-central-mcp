@@ -1,4 +1,4 @@
-import { classifyVersion, findLatestVersion } from "../version/classify.js";
+import { classifyVersion, findLatestVersionForCurrent } from "../version/classify.js";
 import { getUpgradeType } from "../version/compare.js";
 import type { MavenRepository } from "../maven/repository.js";
 import { resolveAll } from "../maven/resolver.js";
@@ -37,7 +37,7 @@ export async function compareDependencyVersionsHandler(
     input.dependencies.map(async (dep) => {
       try {
         const metadata = await resolveAll(repos, dep.groupId, dep.artifactId);
-        const latest = findLatestVersion(metadata.versions)!;
+        const latest = findLatestVersionForCurrent(metadata.versions, dep.currentVersion)!;
         const upgradeType = getUpgradeType(dep.currentVersion, latest);
 
         return {
