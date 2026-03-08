@@ -22,7 +22,7 @@ export interface AuditDependency {
 }
 
 export interface AuditResult {
-  buildSystem: string;
+  buildSystem: ReturnType<typeof scanDependencies>["buildSystem"];
   dependencies: AuditDependency[];
   summary: {
     total: number;
@@ -81,13 +81,8 @@ export async function auditProjectDependenciesHandler(
     auditDeps.push({ groupId: dep.groupId, artifactId: dep.artifactId });
   }
 
-  // Vulnerability check — correlate by groupId:artifactId:version key
+  // Vulnerability check — deduplicate OSV queries by GAV, then map results back
   if (includeVulns && depsWithVersion.length > 0) {
-    const vulnResults = await queryOsvBatch(
-      depsWithVersion.map((d) => ({
-        groupId: d.groupId, artifactId: d.artifactId, version: d.version!,
-      })),
-    );
     const auditDepMap = new Map<string, AuditDependency[]>();
     for (const a of auditDeps) {
       if (!a.currentVersion) continue;
@@ -99,10 +94,20 @@ export async function auditProjectDependenciesHandler(
         auditDepMap.set(key, [a]);
       }
     }
-    for (let i = 0; i < depsWithVersion.length; i++) {
-      const dep = depsWithVersion[i];
-      const key = `${dep.groupId}:${dep.artifactId}:${dep.version!}`;
-      const targets = auditDepMap.get(key);
+
+    const uniqueGavs = [...auditDepMap.entries()].map(([key, deps]) => {
+      const d = deps[0];
+      return { key, groupId: d.groupId, artifactId: d.artifactId, version: d.currentVersion! };
+    });
+
+    const vulnResults = await queryOsvBatch(
+      uniqueGavs.map((d) => ({
+        groupId: d.groupId, artifactId: d.artifactId, version: d.version,
+      })),
+    );
+
+    for (let i = 0; i < uniqueGavs.length; i++) {
+      const targets = auditDepMap.get(uniqueGavs[i].key);
       if (targets) {
         const mappedVulns = vulnResults[i].vulnerabilities.map((v) => ({
           id: v.id, severity: v.severity, fixedVersion: v.fixedVersion,
