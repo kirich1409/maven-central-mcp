@@ -31,7 +31,7 @@ export async function checkMultipleDependenciesHandler(
     input.dependencies.map(async (dep) => {
       try {
         const metadata = await resolveAll(repos, dep.groupId, dep.artifactId);
-        const latest = findLatestVersion(metadata.versions)!;
+        const latest = findLatestVersion(metadata.versions, "PREFER_STABLE")!;
         return {
           groupId: dep.groupId,
           artifactId: dep.artifactId,

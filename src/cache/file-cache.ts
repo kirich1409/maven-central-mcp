@@ -35,6 +35,10 @@ export class FileCache {
     await writeFile(filePath, JSON.stringify(entry));
   }
 
+  /**
+   * Returns cached value if present, otherwise calls fetchFn and caches the result.
+   * Results that are null or undefined are NOT cached, so subsequent calls will retry.
+   */
   async getOrFetch<T>(
     key: string,
     ttlMs: number | undefined,
