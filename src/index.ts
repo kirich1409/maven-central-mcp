@@ -11,6 +11,7 @@ import { checkVersionExistsHandler } from "./tools/check-version-exists.js";
 import { checkMultipleDependenciesHandler } from "./tools/check-multiple-dependencies.js";
 import { compareDependencyVersionsHandler } from "./tools/compare-dependency-versions.js";
 import { getDependencyChangesHandler } from "./tools/get-dependency-changes.js";
+import { scanProjectDependenciesHandler } from "./tools/scan-project-dependencies.js";
 
 const server = new McpServer({
   name: "maven-central-mcp",
@@ -117,6 +118,18 @@ server.tool(
   },
   async (params) => {
     const result = await getDependencyChangesHandler(getRepositories(), params);
+    return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+  },
+);
+
+server.tool(
+  "scan_project_dependencies",
+  "Scan project build files (Gradle, Maven, version catalogs) and extract all declared dependencies with versions.",
+  {
+    projectPath: z.string().optional().describe("Path to project root (default: auto-detect from cwd)"),
+  },
+  async (params) => {
+    const result = await scanProjectDependenciesHandler(params);
     return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
   },
 );
