@@ -127,4 +127,22 @@ dependencies {
     expect(result.dependencies[0].vulnerabilities).toHaveLength(1);
     expect(result.dependencies[0].vulnerabilities![0].id).toBe("GHSA-1234");
   });
+
+  it("handles duplicate dependencies with same GA but different versions", async () => {
+    mockGradleProject(`
+dependencies {
+    implementation("io.ktor:ktor-client-core:3.0.0")
+    testImplementation("io.ktor:ktor-client-core:3.1.0")
+}`);
+
+    const repos = [mockRepo(["3.0.0", "3.1.0", "3.1.1"])];
+    const result = await auditProjectDependenciesHandler(repos, {
+      projectPath: "/project",
+      includeVulnerabilities: false,
+    });
+
+    expect(result.dependencies).toHaveLength(2);
+    expect(result.dependencies[0].currentVersion).toBe("3.0.0");
+    expect(result.dependencies[1].currentVersion).toBe("3.1.0");
+  });
 });

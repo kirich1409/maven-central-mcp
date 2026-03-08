@@ -75,22 +75,35 @@ export async function auditProjectDependenciesHandler(
     auditDeps.push({ groupId: dep.groupId, artifactId: dep.artifactId });
   }
 
-  // Vulnerability check — correlate by groupId:artifactId key, not positional index
+  // Vulnerability check — correlate by groupId:artifactId:version key
   if (includeVulns && depsWithVersion.length > 0) {
     const vulnResults = await queryOsvBatch(
       depsWithVersion.map((d) => ({
         groupId: d.groupId, artifactId: d.artifactId, version: d.version!,
       })),
     );
+    const auditDepMap = new Map<string, AuditDependency[]>();
+    for (const a of auditDeps) {
+      if (!a.currentVersion) continue;
+      const key = `${a.groupId}:${a.artifactId}:${a.currentVersion}`;
+      const existing = auditDepMap.get(key);
+      if (existing) {
+        existing.push(a);
+      } else {
+        auditDepMap.set(key, [a]);
+      }
+    }
     for (let i = 0; i < depsWithVersion.length; i++) {
       const dep = depsWithVersion[i];
-      const target = auditDeps.find(
-        (a) => a.groupId === dep.groupId && a.artifactId === dep.artifactId,
-      );
-      if (target) {
-        target.vulnerabilities = vulnResults[i].vulnerabilities.map((v) => ({
+      const key = `${dep.groupId}:${dep.artifactId}:${dep.version!}`;
+      const targets = auditDepMap.get(key);
+      if (targets) {
+        const mappedVulns = vulnResults[i].vulnerabilities.map((v) => ({
           id: v.id, severity: v.severity, fixedVersion: v.fixedVersion,
         }));
+        for (const target of targets) {
+          target.vulnerabilities = mappedVulns;
+        }
       }
     }
   }
