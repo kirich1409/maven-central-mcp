@@ -79,12 +79,25 @@ describe("FileCache", () => {
 
       await cache.set("my-key", { name: "test" });
 
-      expect(mockedFs.mkdirSync).toHaveBeenCalledWith(baseDir, {
+      expect(mockedFs.mkdirSync).toHaveBeenCalledWith("/tmp/test-cache", {
         recursive: true,
       });
       expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
         "/tmp/test-cache/my-key.json",
         JSON.stringify({ data: { name: "test" }, timestamp: 1700000000000 })
+      );
+    });
+    it("creates nested directories for keys with path separators", async () => {
+      vi.spyOn(Date, "now").mockReturnValue(1700000000000);
+
+      await cache.set("scm/io.ktor/ktor-core", { owner: "ktorio", repo: "ktor" });
+
+      expect(mockedFs.mkdirSync).toHaveBeenCalledWith("/tmp/test-cache/scm/io.ktor", {
+        recursive: true,
+      });
+      expect(mockedFs.writeFileSync).toHaveBeenCalledWith(
+        "/tmp/test-cache/scm/io.ktor/ktor-core.json",
+        expect.any(String),
       );
     });
   });

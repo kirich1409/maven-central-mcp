@@ -1,5 +1,8 @@
 import * as fs from "node:fs";
+import * as os from "node:os";
 import * as path from "node:path";
+
+const DEFAULT_CACHE_DIR = path.join(os.homedir(), ".cache", "maven-central-mcp");
 
 interface CacheEntry<T> {
   data: T;
@@ -7,7 +10,7 @@ interface CacheEntry<T> {
 }
 
 export class FileCache {
-  constructor(private readonly baseDir: string) {}
+  constructor(private readonly baseDir: string = DEFAULT_CACHE_DIR) {}
 
   async get<T>(key: string, ttlMs?: number): Promise<T | undefined> {
     const filePath = this.filePath(key);
@@ -31,10 +34,11 @@ export class FileCache {
   }
 
   async set<T>(key: string, data: T): Promise<void> {
-    fs.mkdirSync(this.baseDir, { recursive: true });
+    const filePath = this.filePath(key);
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
 
     const entry: CacheEntry<T> = { data, timestamp: Date.now() };
-    fs.writeFileSync(this.filePath(key), JSON.stringify(entry));
+    fs.writeFileSync(filePath, JSON.stringify(entry));
   }
 
   private filePath(key: string): string {

@@ -36,7 +36,7 @@ export interface DependencyChangesResult {
 
 const TTL_24H = 24 * 60 * 60 * 1000;
 
-const cache = new FileCache(".cache/mcp-maven-central");
+const cache = new FileCache();
 const githubClient = new GitHubClient(process.env.GITHUB_TOKEN);
 
 export async function getDependencyChangesHandler(

@@ -58,7 +58,7 @@ export class GitHubClient {
         const data = (await response.json()) as { content: string };
         return Buffer.from(data.content, "base64").toString("utf-8");
       } catch {
-        return null;
+        continue;
       }
     }
     return null;

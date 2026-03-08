@@ -147,13 +147,14 @@ describe("GitHubClient", () => {
       expect(fetch).toHaveBeenCalledTimes(3);
     });
 
-    it("returns null on fetch error", async () => {
+    it("returns null on fetch error and tries all filenames", async () => {
       mockFetch(async () => { throw new Error("Network error"); });
 
       const client = new GitHubClient();
       const result = await client.fetchChangelog("owner", "repo");
 
       expect(result).toBeNull();
+      expect(fetch).toHaveBeenCalledTimes(3);
     });
   });
 
