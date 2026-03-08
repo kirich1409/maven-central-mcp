@@ -8,6 +8,5 @@
       "args": ["-y", "maven-central-mcp"]
     }
   },
-  "skills": "skills",
-  "hooks": "hooks"
+  "skills": "./skills"
 }
