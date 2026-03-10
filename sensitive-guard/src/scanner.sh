@@ -85,17 +85,27 @@ sg_scan_and_prompt() {
     return 0
   fi
 
-  # Scan each file
-  local all_findings="[]"
+  # Scan each file, collect results, merge once at end
+  local findings_parts=()
   while IFS= read -r file_path; do
     [[ -z "$file_path" ]] && continue
     file_path=$(sg_resolve_path "$file_path")
     if [[ -f "$file_path" ]]; then
       local file_findings
       file_findings=$(sg_scan_file "$file_path" "$config" "$plugin_root")
-      all_findings=$(echo "$all_findings" "$file_findings" | jq -s '.[0] + .[1]')
+      findings_parts+=("$file_findings")
     fi
   done <<< "$files"
+
+  # Merge all file findings in one jq call (avoids O(N²) re-parsing)
+  local all_findings
+  if [[ ${#findings_parts[@]} -eq 0 ]]; then
+    all_findings="[]"
+  elif [[ ${#findings_parts[@]} -eq 1 ]]; then
+    all_findings="${findings_parts[0]}"
+  else
+    all_findings=$(printf '%s\n' "${findings_parts[@]}" | jq -s 'add')
+  fi
 
   # Filter against allowlists
   local filtered
