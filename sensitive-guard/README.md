@@ -11,6 +11,21 @@ A PreToolUse hook intercepts `Read`, `Grep`, and `Bash` tool calls. Before the t
 
 If sensitive data is found, you choose per item: pass once, add to allowlist, or block the tool call entirely. If blocked, the data never enters the conversation and never reaches the API.
 
+### Built-in PII patterns
+
+| Pattern | Default |
+|---------|---------|
+| Email addresses | enabled |
+| US SSN | enabled |
+| Credit card numbers | enabled |
+| IBAN | enabled |
+| Phone numbers (international) | disabled — high false positive rate |
+| IPv4 addresses | disabled — high false positive rate with version strings |
+
+### Bash tool support
+
+For `Bash` commands, the plugin does best-effort file path extraction from commands like `cat`, `head`, `tail`, `less`, `source`, `grep <file>`, and input redirection (`< file`). Dynamic paths (`$VAR`), piped output, and subshell results are not resolved.
+
 ## Prerequisites
 
 - **jq** (required) — JSON processing
@@ -76,6 +91,18 @@ When prompted about a finding, choose:
 - `b` — block the tool call
 
 Allowlists store SHA-256 hashes of values, never plaintext.
+
+### Pattern-based allowlisting
+
+You can also add regex patterns to allowlists to match groups of values (e.g., all work emails):
+
+```json
+{
+  "patterns": [
+    { "regex": ".*@mycompany\\.com", "type": "email", "note": "work emails ok" }
+  ]
+}
+```
 
 ## Non-interactive mode
 
