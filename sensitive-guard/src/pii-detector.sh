@@ -16,7 +16,11 @@ sg_detect_pii() {
     return
   fi
 
-  local findings="[]"
+  # Collect all findings as newline-delimited JSON objects, then wrap in array at end
+  local findings_file
+  findings_file=$(mktemp)
+  trap "rm -f '$findings_file'" RETURN
+
   local line_num=0
   local start_time=$SECONDS
 
@@ -35,22 +39,42 @@ sg_detect_pii() {
       pid=$(echo "$pattern_entry" | jq -r '.id')
       pregex=$(echo "$pattern_entry" | jq -r '.regex')
 
-      # Use perl for PCRE matching (portable: macOS grep lacks -P)
+      # Use perl -sne with variable passing to prevent regex injection (no (?{...}) code execution)
       local matches
-      if matches=$(echo "$line" | perl -nle "print \$& while /$pregex/g" 2>/dev/null) && [[ -n "$matches" ]]; then
+      if matches=$(echo "$line" | perl -sne 'print "$&\n" while /$regex/g' -- -regex="$pregex" 2>/dev/null) && [[ -n "$matches" ]]; then
         while IFS= read -r match; do
           [[ -z "$match" ]] && continue
-          findings=$(echo "$findings" | jq \
-            --arg type "$pid" \
-            --arg value "$match" \
-            --arg file "$file_path" \
-            --argjson line "$line_num" \
-            --arg engine "pii" \
-            '. + [{type: $type, value: $value, file: $file, line: $line, engine: $engine}]')
+          # Write finding as JSON line to temp file (batched, no per-match jq)
+          printf '%s\n' "$match" >> "$findings_file.vals"
+          printf '%s\t%s\t%d\n' "$pid" "$match" "$line_num" >> "$findings_file"
         done <<< "$matches"
       fi
     done < <(echo "$patterns_json" | jq -c '.[]')
   done < "$file_path"
 
-  echo "$findings"
+  # Build JSON array from collected findings in one jq call
+  if [[ ! -s "$findings_file" ]]; then
+    rm -f "$findings_file.vals"
+    echo "[]"
+    return
+  fi
+
+  local result="["
+  local first=true
+  while IFS=$'\t' read -r f_type f_value f_line; do
+    if [[ "$first" == "true" ]]; then
+      first=false
+    else
+      result+=","
+    fi
+    # Use jq for safe JSON encoding of the value
+    local encoded
+    encoded=$(jq -n --arg t "$f_type" --arg v "$f_value" --arg f "$file_path" --argjson l "$f_line" \
+      '{type:$t, value:$v, file:$f, line:$l, engine:"pii"}')
+    result+="$encoded"
+  done < "$findings_file"
+  result+="]"
+
+  rm -f "$findings_file.vals"
+  echo "$result"
 }

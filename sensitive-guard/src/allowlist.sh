@@ -85,7 +85,9 @@ sg_filter_findings() {
   project_al=$(sg_load_allowlist "$project_allowlist_path")
   global_al=$(sg_load_allowlist "$global_allowlist_path")
 
-  local filtered="[]"
+  # Collect indices of non-allowed findings, then extract in one jq call
+  local keep_indices=""
+  local idx=0
 
   while IFS= read -r finding; do
     local value type
@@ -99,9 +101,14 @@ sg_filter_findings() {
     fi
 
     if [[ "$allowed" != "true" ]]; then
-      filtered=$(echo "$filtered" | jq --argjson f "$finding" '. + [$f]')
+      keep_indices+="${keep_indices:+,}$idx"
     fi
+    idx=$((idx + 1))
   done < <(echo "$findings_json" | jq -c '.[]')
 
-  echo "$filtered"
+  if [[ -z "$keep_indices" ]]; then
+    echo "[]"
+  else
+    echo "$findings_json" | jq "[.[$keep_indices]]"
+  fi
 }
