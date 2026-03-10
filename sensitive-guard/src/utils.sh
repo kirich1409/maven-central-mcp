@@ -1,17 +1,27 @@
 #!/bin/bash
 # Shared utilities for sensitive-guard
 
+# Cache tool detection at source time (avoid repeated command -v in loops)
+if command -v shasum &>/dev/null; then
+  _SG_SHA_CMD="shasum -a 256"
+else
+  _SG_SHA_CMD="sha256sum"
+fi
+
+if command -v realpath &>/dev/null; then
+  _SG_REALPATH_CMD="realpath"
+elif command -v readlink &>/dev/null; then
+  _SG_REALPATH_CMD="readlink"
+else
+  _SG_REALPATH_CMD=""
+fi
+
 sg_sha256() {
   local value="$1"
   # Trim leading/trailing whitespace using bash parameter expansion (safe, no subprocess, no escape interpretation)
   value="${value#"${value%%[![:space:]]*}"}"
   value="${value%"${value##*[![:space:]]}"}"
-  # Use shasum (macOS) or sha256sum (Linux)
-  if command -v shasum &>/dev/null; then
-    printf '%s' "$value" | shasum -a 256 | cut -d' ' -f1
-  else
-    printf '%s' "$value" | sha256sum | cut -d' ' -f1
-  fi
+  printf '%s' "$value" | $_SG_SHA_CMD | cut -d' ' -f1
 }
 
 sg_truncate_value() {
@@ -44,10 +54,10 @@ sg_resolve_path() {
   path="${path//\$HOME/$HOME}"
   path="${path//\$PWD/$PWD}"
   # Resolve symlinks if file exists
-  if [[ -e "$path" ]]; then
-    if command -v realpath &>/dev/null; then
+  if [[ -e "$path" && -n "$_SG_REALPATH_CMD" ]]; then
+    if [[ "$_SG_REALPATH_CMD" == "realpath" ]]; then
       path=$(realpath "$path")
-    elif command -v readlink &>/dev/null; then
+    else
       path=$(readlink -f "$path" 2>/dev/null || echo "$path")
     fi
   fi

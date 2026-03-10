@@ -16,7 +16,21 @@ sg_detect_pii() {
     return
   fi
 
-  # Collect all findings as newline-delimited JSON objects, then wrap in array at end
+  # Pre-extract pattern IDs and regexes into arrays (one jq call, not per-line)
+  # Use null-byte delimiter to avoid @tsv backslash escaping
+  local pattern_ids=() pattern_regexes=()
+  while IFS= read -r pid && IFS= read -r pregex; do
+    pattern_ids+=("$pid")
+    pattern_regexes+=("$pregex")
+  done < <(echo "$patterns_json" | jq -r '.[] | .id, .regex')
+
+  local pattern_count=${#pattern_ids[@]}
+  if [[ "$pattern_count" -eq 0 ]]; then
+    echo "[]"
+    return
+  fi
+
+  # Collect findings as TSV lines in temp file, then build JSON in one pass
   local findings_file
   findings_file=$(mktemp)
   trap "rm -f '$findings_file'" RETURN
@@ -33,48 +47,31 @@ sg_detect_pii() {
 
     line_num=$((line_num + 1))
 
-    # Test each pattern against this line
-    while IFS= read -r pattern_entry; do
-      local pid pregex
-      pid=$(echo "$pattern_entry" | jq -r '.id')
-      pregex=$(echo "$pattern_entry" | jq -r '.regex')
+    # Test each pattern against this line (no subprocess for pattern extraction)
+    for ((p=0; p<pattern_count; p++)); do
+      local pid="${pattern_ids[$p]}"
+      local pregex="${pattern_regexes[$p]}"
 
-      # Use perl -sne with variable passing to prevent regex injection (no (?{...}) code execution)
+      # Use perl -sne with variable passing to prevent regex injection
       local matches
       if matches=$(echo "$line" | perl -sne 'print "$&\n" while /$regex/g' -- -regex="$pregex" 2>/dev/null) && [[ -n "$matches" ]]; then
         while IFS= read -r match; do
           [[ -z "$match" ]] && continue
-          # Write finding as JSON line to temp file (batched, no per-match jq)
-          printf '%s\n' "$match" >> "$findings_file.vals"
-          printf '%s\t%s\t%d\n' "$pid" "$match" "$line_num" >> "$findings_file"
+          # Write as newline-triplet: type, value, line (one per line)
+          printf '%s\n%s\n%d\n' "$pid" "$match" "$line_num" >> "$findings_file"
         done <<< "$matches"
       fi
-    done < <(echo "$patterns_json" | jq -c '.[]')
+    done
   done < "$file_path"
 
   # Build JSON array from collected findings in one jq call
   if [[ ! -s "$findings_file" ]]; then
-    rm -f "$findings_file.vals"
     echo "[]"
     return
   fi
 
-  local result="["
-  local first=true
-  while IFS=$'\t' read -r f_type f_value f_line; do
-    if [[ "$first" == "true" ]]; then
-      first=false
-    else
-      result+=","
-    fi
-    # Use jq for safe JSON encoding of the value
-    local encoded
-    encoded=$(jq -n --arg t "$f_type" --arg v "$f_value" --arg f "$file_path" --argjson l "$f_line" \
-      '{type:$t, value:$v, file:$f, line:$l, engine:"pii"}')
-    result+="$encoded"
-  done < "$findings_file"
-  result+="]"
-
-  rm -f "$findings_file.vals"
-  echo "$result"
+  # Convert newline-triplet findings (type\nvalue\nline) to JSON array
+  jq -Rn --arg file "$file_path" '[
+    [inputs] | _nwise(3) | {type: .[0], value: .[1], file: $file, line: (.[2] | tonumber), engine: "pii"}
+  ]' < "$findings_file"
 }

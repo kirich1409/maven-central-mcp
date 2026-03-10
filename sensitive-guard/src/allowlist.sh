@@ -91,8 +91,8 @@ sg_filter_findings() {
 
   while IFS= read -r finding; do
     local value type
-    value=$(echo "$finding" | jq -r '.value')
-    type=$(echo "$finding" | jq -r '.type')
+    # Extract both fields in one jq call
+    eval "$(echo "$finding" | jq -r '@sh "value=\(.value) type=\(.type)"')"
 
     local allowed
     allowed=$(sg_is_allowed "$project_al" "$value" "$type")

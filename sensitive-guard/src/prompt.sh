@@ -16,19 +16,14 @@ sg_format_findings_display() {
   local output=""
   output+="$(printf '\n  \033[1;33m⚠ sensitive-guard: %d finding(s) in %s\033[0m\n\n' "$count" "$files")"
 
+  # Extract all fields in one jq call
   local i=0
-  while IFS= read -r finding; do
+  while IFS=$'\t' read -r type value line_no; do
     i=$((i + 1))
-    local type value line
-    type=$(echo "$finding" | jq -r '.type')
-    value=$(echo "$finding" | jq -r '.value')
-    line=$(echo "$finding" | jq -r '.line')
-
     local preview
     preview=$(sg_truncate_value "$value" "$max_preview")
-
-    output+="$(printf '  %d. [%s] %s  (line %s)\n' "$i" "$type" "$preview" "$line")"
-  done < <(echo "$findings_json" | jq -c '.[]')
+    output+="$(printf '  %d. [%s] %s  (line %s)\n' "$i" "$type" "$preview" "$line_no")"
+  done < <(echo "$findings_json" | jq -r '.[] | [.type, .value, (.line | tostring)] | @tsv')
 
   echo "$output"
 }
@@ -40,13 +35,9 @@ sg_collect_actions() {
   local count
   count=$(echo "$findings_json" | jq 'length')
 
-  # Non-interactive (stdin not a TTY): block all
+  # Non-interactive (stdin not a TTY): block all in one jq call
   if [[ ! -t 0 ]]; then
-    local actions="[]"
-    for ((i=0; i<count; i++)); do
-      actions=$(echo "$actions" | jq --argjson idx "$i" '. + [{"index": $idx, "action": "block"}]')
-    done
-    echo "$actions"
+    echo "$findings_json" | jq '[range(length) | {index: ., action: "block"}]'
     return
   fi
 
@@ -56,7 +47,8 @@ sg_collect_actions() {
   echo "" >&2
   echo "  Action per item: [p]ass once  [a]llow project  [g]lobal allow  [b]lock" >&2
 
-  local actions="[]"
+  # Collect actions as TSV, build JSON at end
+  local actions_tsv=""
   for ((i=0; i<count; i++)); do
     local idx=$((i + 1))
     local action=""
@@ -71,9 +63,9 @@ sg_collect_actions() {
         *) echo "  Invalid choice. Use p/a/g/b" >&2 ;;
       esac
     done
-    actions=$(echo "$actions" | jq --argjson idx "$i" --arg act "$action" \
-      '. + [{"index": $idx, "action": $act}]')
+    actions_tsv+="${i}\t${action}\n"
   done
 
-  echo "$actions"
+  # Build JSON array in one jq call
+  printf "$actions_tsv" | jq -R '[split("\t") | select(length == 2) | {index: (.[0] | tonumber), action: .[1]}]'
 }

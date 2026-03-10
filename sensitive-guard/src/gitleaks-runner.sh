@@ -1,8 +1,14 @@
 #!/bin/bash
 # Gitleaks wrapper — runs gitleaks and normalizes output to standard finding format
 
+# Cache gitleaks availability at source time
+_SG_HAS_GITLEAKS=""
+if command -v gitleaks &>/dev/null; then
+  _SG_HAS_GITLEAKS=1
+fi
+
 sg_check_gitleaks() {
-  if command -v gitleaks &>/dev/null; then
+  if [[ -n "$_SG_HAS_GITLEAKS" ]]; then
     return 0
   fi
   # Show warning once per session via temp marker file
