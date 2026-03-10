@@ -1,0 +1,6 @@
+{
+  "tools": ["Edit"],
+  "pii": {
+    "disabled": ["email"]
+  }
+}
