@@ -25,7 +25,7 @@ function htmlToText(html: string): string {
     .replace(/<\/li>/gi, "\n")
     .replace(/<br\s*\/?>/gi, "\n")
     .replace(/<\/p>/gi, "\n\n");
-  return unescapeEntities(stripTags(unescapeEntities(formatted)))
+  return unescapeEntities(stripTags(formatted))
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }

@@ -11,8 +11,12 @@ export async function resolveChangelog(
   for (const provider of providers) {
     if (!provider.canHandle(groupId, artifactId)) continue;
 
-    const result = await provider.fetchChangelog(groupId, artifactId, version, repos);
-    if (result) return result;
+    try {
+      const result = await provider.fetchChangelog(groupId, artifactId, version, repos);
+      if (result) return result;
+    } catch {
+      continue;
+    }
   }
   return null;
 }

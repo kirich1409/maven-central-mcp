@@ -46,11 +46,13 @@ export class AndroidXChangelogProvider implements ChangelogProvider {
       const response = await fetch(url, {
         signal: AbortSignal.timeout(15_000),
       });
-      if (!response.ok) return null;
+      if (!response.ok) {
+        return response.status === 404 ? [] : null;
+      }
 
       const html = await response.text();
       const entries = parseAndroidXReleaseNotes(html);
-      if (entries.size === 0) return null;
+      if (entries.size === 0) return [];
 
       return [...entries.entries()];
     } catch {
