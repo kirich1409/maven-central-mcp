@@ -55,11 +55,11 @@ sg_collect_actions() {
     while [[ -z "$action" ]]; do
       printf '  (%d): ' "$idx" >&2
       read -r input
-      case "${input,,}" in
-        p) action="pass" ;;
-        a) action="allow_project" ;;
-        g) action="allow_global" ;;
-        b) action="block" ;;
+      case "$input" in
+        p|P) action="pass" ;;
+        a|A) action="allow_project" ;;
+        g|G) action="allow_global" ;;
+        b|B) action="block" ;;
         *) echo "  Invalid choice. Use p/a/g/b" >&2 ;;
       esac
     done

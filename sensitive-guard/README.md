@@ -29,6 +29,7 @@ For `Bash` commands, the plugin does best-effort file path extraction from comma
 ## Prerequisites
 
 - **jq** (required) — JSON processing
+- **perl** (required) — PII regex matching, binary detection (pre-installed on macOS/most Linux)
 - **gitleaks** (recommended) — secret detection. Install:
   - macOS: `brew install gitleaks`
   - Linux: [github.com/gitleaks/gitleaks/releases](https://github.com/gitleaks/gitleaks/releases)

@@ -30,6 +30,11 @@ if [[ -z "$TOOL_NAME" ]]; then
   exit 0  # No tool name, allow
 fi
 
+# Change to project directory so relative paths resolve correctly
+if [[ -n "$CWD" && -d "$CWD" ]]; then
+  cd "$CWD"
+fi
+
 # Resolve config paths
 GLOBAL_CONFIG="${HOME}/.claude/sensitive-guard.json"
 PROJECT_CONFIG="${CWD:-.}/.claude/sensitive-guard.json"
@@ -42,7 +47,12 @@ GLOBAL_ALLOWLIST=$(echo "$CONFIG" | jq -r '.allowlist.global // empty')
 GLOBAL_ALLOWLIST=$(sg_resolve_path "${GLOBAL_ALLOWLIST:-$HOME/.claude/sensitive-guard-allowlist.json}")
 
 PROJECT_ALLOWLIST=$(echo "$CONFIG" | jq -r '.allowlist.project // empty')
-PROJECT_ALLOWLIST="${CWD:-.}/${PROJECT_ALLOWLIST:-.claude/sensitive-guard-allowlist.json}"
+if [[ -z "$PROJECT_ALLOWLIST" ]]; then
+  PROJECT_ALLOWLIST="${CWD:-.}/.claude/sensitive-guard-allowlist.json"
+elif [[ "$PROJECT_ALLOWLIST" != /* && "$PROJECT_ALLOWLIST" != ~* ]]; then
+  PROJECT_ALLOWLIST="${CWD:-.}/$PROJECT_ALLOWLIST"
+fi
+PROJECT_ALLOWLIST=$(sg_resolve_path "$PROJECT_ALLOWLIST")
 
 # Run scan and prompt
 sg_scan_and_prompt "$TOOL_NAME" "$TOOL_INPUT" "$CONFIG" "$PLUGIN_ROOT" "$PROJECT_ALLOWLIST" "$GLOBAL_ALLOWLIST"
