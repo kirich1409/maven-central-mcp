@@ -1,13 +1,10 @@
 import type { MavenRepository } from "../maven/repository.js";
 import { resolveAll } from "../maven/resolver.js";
 import { filterVersionRange } from "../version/range.js";
-import { discoverGitHubRepo } from "../github/discover-repo.js";
-import { GitHubClient } from "../github/github-client.js";
-import type { GitHubRelease } from "../github/github-client.js";
-import { matchReleaseToVersion } from "../github/tag-matcher.js";
-import { parseChangelogSections } from "../github/changelog-parser.js";
-import { FileCache } from "../cache/file-cache.js";
-import type { GitHubRepo } from "../github/pom-scm.js";
+import { resolveChangelog } from "../changelog/resolver.js";
+import type { ChangelogProvider } from "../changelog/types.js";
+import { AndroidXChangelogProvider } from "../changelog/androidx-provider.js";
+import { GitHubChangelogProvider } from "../changelog/github-provider.js";
 
 export interface DependencyChangesInput {
   groupId: string;
@@ -34,14 +31,15 @@ export interface DependencyChangesResult {
   error?: string;
 }
 
-const TTL_24H = 24 * 60 * 60 * 1000;
-
-const cache = new FileCache();
-const githubClient = new GitHubClient(process.env.GITHUB_TOKEN);
+const defaultProviders: ChangelogProvider[] = [
+  new AndroidXChangelogProvider(),
+  new GitHubChangelogProvider(),
+];
 
 export async function getDependencyChangesHandler(
   repos: MavenRepository[],
   input: DependencyChangesInput,
+  providers: ChangelogProvider[] = defaultProviders,
 ): Promise<DependencyChangesResult> {
   const { groupId, artifactId, fromVersion, toVersion } = input;
 
@@ -71,79 +69,28 @@ export async function getDependencyChangesHandler(
     };
   }
 
-  // Step 3: Discover GitHub repo
-  const scmCacheKey = `scm/${groupId}/${artifactId}`;
-  const ghRepo = await cache.getOrFetch<GitHubRepo | null>(scmCacheKey, undefined, () =>
-    discoverGitHubRepo(repos, groupId, artifactId, toVersion, githubClient),
-  );
+  // Step 3: Resolve changelog from providers
+  const changelog = await resolveChangelog(providers, repos, groupId, artifactId, toVersion);
 
-  if (!ghRepo) {
+  if (!changelog) {
     return { ...baseResult, repositoryNotFound: true };
   }
 
-  const { owner, repo } = ghRepo;
-  const repositoryUrl = `https://github.com/${owner}/${repo}`;
-
-  // Step 4: Fetch GitHub releases (with cache)
-  const releases = await cache.getOrFetch<GitHubRelease[]>(
-    `releases/${owner}/${repo}`,
-    TTL_24H,
-    () => githubClient.fetchReleases(owner, repo),
-  );
-
-  // Step 5: Match releases to versions
-  const changes: VersionChange[] = [];
-  const unmatchedVersions: string[] = [];
-
-  for (const version of intermediateVersions) {
-    const release = matchReleaseToVersion(releases, version);
-    if (release) {
-      changes.push({
-        version,
-        releaseUrl: release.html_url,
-        body: release.body,
-      });
-    } else {
-      unmatchedVersions.push(version);
-    }
-  }
-
-  // Step 6: For unmatched versions, try CHANGELOG.md
-  let changelogUrl: string | undefined;
-  if (unmatchedVersions.length > 0) {
-    const changelogContent = await cache.getOrFetch<string | null>(
-      `changelog/${owner}/${repo}`,
-      TTL_24H,
-      () => githubClient.fetchChangelog(owner, repo),
-    );
-
-    if (changelogContent) {
-      changelogUrl = `https://github.com/${owner}/${repo}/blob/main/CHANGELOG.md`;
-      const sections = parseChangelogSections(changelogContent);
-
-      for (const version of unmatchedVersions) {
-        const body = sections.get(version);
-        if (body) {
-          changes.push({ version, body });
-        } else {
-          changes.push({ version });
-        }
-      }
-    } else {
-      for (const version of unmatchedVersions) {
-        changes.push({ version });
-      }
-    }
-  }
-
-  // Step 7: Sort changes by version order (same order as intermediateVersions)
-  const versionOrder = new Map(intermediateVersions.map((v, i) => [v, i]));
-  changes.sort((a, b) => (versionOrder.get(a.version) ?? 0) - (versionOrder.get(b.version) ?? 0));
+  // Step 4: Build changes from changelog entries
+  const changes: VersionChange[] = intermediateVersions.map((version) => {
+    const entry = changelog.entries.get(version);
+    if (!entry) return { version };
+    return {
+      version,
+      ...(entry.releaseUrl && { releaseUrl: entry.releaseUrl }),
+      ...(entry.body && { body: entry.body }),
+    };
+  });
 
   return {
     ...baseResult,
-    repositoryUrl,
+    repositoryUrl: changelog.repositoryUrl,
     changes,
-    changelogUrl,
+    changelogUrl: changelog.changelogUrl,
   };
 }

@@ -1,5 +1,4 @@
 import type { ChangelogProvider, ChangelogResult, ChangelogEntry } from "./types.js";
-import type { MavenRepository } from "../maven/repository.js";
 import { isAndroidXArtifact, getAndroidXReleasesUrl, getAndroidXSlug, getAndroidXVersionUrl } from "../androidx/url.js";
 import { parseAndroidXReleaseNotes } from "../androidx/release-notes-parser.js";
 import { FileCache } from "../cache/file-cache.js";
@@ -9,15 +8,12 @@ const TTL_7_DAYS = 7 * 24 * 60 * 60 * 1000;
 export class AndroidXChangelogProvider implements ChangelogProvider {
   private readonly cache = new FileCache();
 
-  canHandle(groupId: string, _artifactId: string): boolean {
+  canHandle(groupId: string): boolean {
     return isAndroidXArtifact(groupId);
   }
 
   async fetchChangelog(
     groupId: string,
-    _artifactId: string,
-    _version: string,
-    _repos: MavenRepository[],
   ): Promise<ChangelogResult | null> {
     const slug = getAndroidXSlug(groupId);
     const cacheKey = `androidx/${slug}`;

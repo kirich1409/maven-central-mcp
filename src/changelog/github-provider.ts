@@ -13,7 +13,7 @@ export class GitHubChangelogProvider implements ChangelogProvider {
   private readonly cache = new FileCache();
   private readonly githubClient = new GitHubClient(process.env.GITHUB_TOKEN);
 
-  canHandle(_groupId: string, _artifactId: string): boolean {
+  canHandle(): boolean {
     return true;
   }
 

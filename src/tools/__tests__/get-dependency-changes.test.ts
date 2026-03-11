@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { getDependencyChangesHandler } from "../get-dependency-changes.js";
 import type { MavenRepository } from "../../maven/repository.js";
 
-// Mock node:fs/promises to prevent FileCache from writing to disk
 vi.mock("node:fs/promises", () => ({
   readFile: vi.fn().mockRejectedValue(new Error("ENOENT")),
   writeFile: vi.fn().mockResolvedValue(undefined),
@@ -61,10 +60,14 @@ describe("getDependencyChangesHandler", () => {
     ];
 
     globalThis.fetch = vi.fn()
-      // First call: POM fetch (from discoverGitHubRepo)
+      // POM fetch (from discoverGitHubRepo)
       .mockResolvedValueOnce(new Response(POM_WITH_SCM, { status: 200 }))
-      // Second call: GitHub releases
-      .mockResolvedValueOnce(new Response(JSON.stringify(releases), { status: 200 })) as typeof fetch;
+      // GitHub releases
+      .mockResolvedValueOnce(new Response(JSON.stringify(releases), { status: 200 }))
+      // CHANGELOG.md fetch (404 - not found) — tries 3 filenames
+      .mockResolvedValueOnce(new Response("Not Found", { status: 404 }))
+      .mockResolvedValueOnce(new Response("Not Found", { status: 404 }))
+      .mockResolvedValueOnce(new Response("Not Found", { status: 404 })) as typeof fetch;
 
     const result = await getDependencyChangesHandler([repo], {
       groupId: "io.ktor",
@@ -98,7 +101,7 @@ describe("getDependencyChangesHandler", () => {
     globalThis.fetch = vi.fn()
       // POM fetch returns no SCM info
       .mockResolvedValueOnce(new Response(POM_WITHOUT_SCM, { status: 200 }))
-      // repoExists check for guessed repo fails
+      // repoExists check for guessed repo fails (may or may not be called)
       .mockResolvedValueOnce(new Response("", { status: 404 })) as typeof fetch;
 
     const result = await getDependencyChangesHandler([repo], {
@@ -157,5 +160,37 @@ describe("getDependencyChangesHandler", () => {
 
     expect(result.error).toContain("No versions found between");
     expect(result.changes).toEqual([]);
+  });
+
+  it("returns changes from AndroidX release notes", async () => {
+    const repo = mockRepo(["1.15.0", "1.16.0", "1.17.0"]);
+
+    const html = `
+      <h3 id="1.17.0">Version 1.17.0</h3>
+      <p>New features in core 1.17.0.</p>
+      <h3 id="1.16.0">Version 1.16.0</h3>
+      <p>Bug fixes in core 1.16.0.</p>
+    `;
+    globalThis.fetch = vi.fn().mockResolvedValueOnce(
+      new Response(html, { status: 200 }),
+    ) as typeof fetch;
+
+    const result = await getDependencyChangesHandler([repo], {
+      groupId: "androidx.core",
+      artifactId: "core",
+      fromVersion: "1.15.0",
+      toVersion: "1.17.0",
+    });
+
+    expect(result.repositoryNotFound).toBeUndefined();
+    expect(result.repositoryUrl).toBe(
+      "https://developer.android.com/jetpack/androidx/releases/core",
+    );
+    expect(result.changes).toHaveLength(2);
+    expect(result.changes[0].version).toBe("1.16.0");
+    expect(result.changes[0].body).toContain("Bug fixes in core 1.16.0");
+    expect(result.changes[0].releaseUrl).toContain("#1.16.0");
+    expect(result.changes[1].version).toBe("1.17.0");
+    expect(result.changes[1].body).toContain("New features in core 1.17.0");
   });
 });
