@@ -1,15 +1,15 @@
 import { htmlToText } from "../html/to-text.js";
 
-const VERSION_HEADING_RE = /<h[23][^>]*>\s*Version\s+([\d][^\s<]*)\s*<\/h[23]>/gi;
+const AGP_HEADING_RE = /<h3[^>]*\s+data-text="Android Gradle plugin ([\d][^\s"]*)"[^>]*>/gi;
 
-export function parseAndroidXReleaseNotes(html: string): Map<string, string> {
+export function parseAgpReleaseNotes(html: string): Map<string, string> {
   const sections = new Map<string, string>();
   const headings: { version: string; startIndex: number; endIndex: number }[] = [];
   let match: RegExpExecArray | null;
 
-  VERSION_HEADING_RE.lastIndex = 0;
+  AGP_HEADING_RE.lastIndex = 0;
 
-  while ((match = VERSION_HEADING_RE.exec(html)) !== null) {
+  while ((match = AGP_HEADING_RE.exec(html)) !== null) {
     headings.push({
       version: match[1],
       startIndex: match.index,
