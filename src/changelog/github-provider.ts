@@ -9,6 +9,27 @@ import { FileCache } from "../cache/file-cache.js";
 
 const TTL_24H = 24 * 60 * 60 * 1000;
 
+/**
+ * Extract version from a Git tag using the same strategies as matchReleaseToVersion:
+ * 1. Exact (no prefix) — return as-is
+ * 2. v-prefix — strip leading "v"
+ * 3. Suffix after `-` or `/` — extract the trailing version part
+ */
+function normalizeTag(tag: string): string {
+  if (tag.startsWith("v")) {
+    return tag.slice(1);
+  }
+  const dashIdx = tag.lastIndexOf("-");
+  if (dashIdx !== -1) {
+    return tag.slice(dashIdx + 1);
+  }
+  const slashIdx = tag.lastIndexOf("/");
+  if (slashIdx !== -1) {
+    return tag.slice(slashIdx + 1);
+  }
+  return tag;
+}
+
 export class GitHubChangelogProvider implements ChangelogProvider {
   private readonly cache = new FileCache();
   private readonly githubClient = new GitHubClient(process.env.GITHUB_TOKEN);
@@ -45,8 +66,7 @@ export class GitHubChangelogProvider implements ChangelogProvider {
 
     for (const release of releases) {
       if (!release.body) continue;
-      const tag = release.tag_name;
-      const ver = tag.startsWith("v") ? tag.slice(1) : tag;
+      const ver = normalizeTag(release.tag_name);
       entries.set(ver, {
         body: release.body,
         releaseUrl: release.html_url,
