@@ -15,7 +15,7 @@ An MCP server registers tools that Claude can call during a conversation. The se
 | `check_multiple_dependencies` | Bulk lookup of latest versions for multiple dependencies |
 | `compare_dependency_versions` | Compare current versions against latest (major/minor/patch) |
 | `get_dependency_changes` | Show changes between versions from GitHub changelogs |
-| `scan_project_dependencies` | Scan build files (Gradle, Maven, TOML) for dependencies |
+| `scan_project_dependencies` | Scan Gradle/Maven build files and Gradle version catalogs (`gradle/libs.versions.toml`) for dependencies |
 | `get_dependency_vulnerabilities` | Check for known CVEs via OSV.dev |
 | `search_artifacts` | Search Maven Central |
 | `audit_project_dependencies` | Full audit: scan + version compare + vulnerability check |
@@ -33,7 +33,7 @@ An MCP server registers tools that Claude can call during a conversation. The se
 - **Maven** — `pom.xml`
 - **Version catalogs** — `gradle/libs.versions.toml`
 
-Custom repositories declared in these build files are auto-discovered so the server queries them alongside Maven Central.
+Custom repositories are auto-discovered from Gradle `settings.gradle(.kts)`/`build.gradle(.kts)` and Maven `pom.xml`, and the server queries these alongside Maven Central. Dependency scanning additionally reads `gradle/libs.versions.toml` for declared dependencies, but version catalogs are not used for repository discovery.
 
 ## Prerequisites
 
