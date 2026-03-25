@@ -14,7 +14,7 @@ Runs a quality loop over branch changes before creating a PR:
 
 Use after implementation is complete, before creating the PR.
 
-### `pr-lifecycle`
+### `pr-drive-to-merge`
 
 Drives an existing PR/MR to merge:
 - Monitors CI/CD checks; fixes failures caused by current changes

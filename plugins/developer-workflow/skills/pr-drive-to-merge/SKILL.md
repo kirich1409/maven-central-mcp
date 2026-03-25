@@ -1,5 +1,5 @@
 ---
-name: pr-lifecycle
+name: pr-drive-to-merge
 description: Use when a PR/MR already exists and needs to be driven to merge — monitors CI/CD, handles multi-round code review, responds to and resolves reviewer comments, and loops until all merge requirements are met.
 ---
 
