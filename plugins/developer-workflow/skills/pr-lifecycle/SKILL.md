@@ -51,7 +51,7 @@ digraph review {
     wait [label="Wait for review", shape=box];
     comments [label="Comments received?", shape=diamond];
     categorize [label="Categorize all comments\n+ show table to user", shape=box];
-    out_of_scope [label="OUT_OF_SCOPE\ncomments?", shape=diamond];
+    out_of_scope [label="OUT OF SCOPE\ncomments?", shape=diamond];
     ask_user [label="Ask user\nfor each OOS", shape=box];
     fix_blocking [label="Fix BLOCKING +\nIMPORTANT", shape=box];
     respond_all [label="Respond to every\ncomment individually\n(in PR language)", shape=box];
@@ -87,7 +87,7 @@ digraph review {
 
 ## Comment Categories
 
-Assign ONE category per comment. Show the full table to user before acting — then proceed without waiting for approval, except for OUT_OF_SCOPE.
+Assign ONE category per comment. Show the full table to user before acting — then proceed without waiting for approval, except for OUT OF SCOPE.
 
 | Category | When to use | Action |
 |----------|-------------|--------|
@@ -95,7 +95,7 @@ Assign ONE category per comment. Show the full table to user before acting — t
 | **IMPORTANT** | Bugs, missing error handling, missing tests | Fix → respond with explanation → Resolve |
 | **OPTIONAL** | Style, naming preference, refactor suggestions, nitpicks | Respond acknowledging → Resolve without fixing |
 | **INVALID** | Already fixed, no longer applies, praise | Respond acknowledging → Resolve |
-| **OUT_OF_SCOPE** | Requires changes outside this PR's scope | Ask user before acting |
+| **OUT OF SCOPE** | Requires changes outside this PR's scope | Ask user before acting |
 
 **Show before acting:**
 
@@ -108,9 +108,9 @@ Assign ONE category per comment. Show the full table to user before acting — t
 | 2 | @dev | auth.ts:12 | "Rename doAuth" | OPTIONAL | Will acknowledge |
 | 3 | @qa | auth.ts:45 | "Missing error handling" | IMPORTANT | Will fix |
 | 4 | @dev | auth.ts:67 | "Nice work!" | INVALID | Will acknowledge |
-| 5 | @dev | utils.ts:10 | "This whole file needs refactor" | OUT_OF_SCOPE | Need your input |
+| 5 | @dev | utils.ts:10 | "This whole file needs refactor" | OUT OF SCOPE | Need your input |
 
-Proceeding with BLOCKING + IMPORTANT fixes. OUT_OF_SCOPE items need your decision first.
+Proceeding with BLOCKING + IMPORTANT fixes. OUT OF SCOPE items need your decision first.
 ```
 
 ## Responding to Comments
@@ -125,7 +125,7 @@ Respond to **every** comment individually — never a single summary.
 | OPTIONAL (deferred) | `Good suggestion. Deferring to keep this PR focused — created [issue] to track.` |
 | INVALID (outdated) | `This was addressed in [commit]. [File/code] now [does X].` |
 | INVALID (praise) | `Thank you!` |
-| OUT_OF_SCOPE (after user decision) | Per user's instruction |
+| OUT OF SCOPE (after user decision) | Per user's instruction |
 
 ## Resolving Threads
 
