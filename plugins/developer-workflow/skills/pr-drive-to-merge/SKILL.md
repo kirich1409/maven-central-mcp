@@ -3,7 +3,7 @@ name: pr-drive-to-merge
 description: Use when a PR/MR already exists and needs to be driven to merge — monitors CI/CD, handles multi-round code review, responds to and resolves reviewer comments, and loops until all merge requirements are met.
 ---
 
-# PR Lifecycle
+# PR Drive to Merge
 
 ## Overview
 
@@ -16,20 +16,20 @@ Takes an existing PR/MR and drives it to merge autonomously. Loops through CI/CD
 Before starting, detect the PR and platform:
 
 ```bash
-# GitHub — detect PR number from current branch
+# GitHub — detect PR number and base branch
 PR_NUMBER=$(gh pr view --json number -q .number)
 BASE=$(gh pr view --json baseRefName -q .baseRefName)
+IS_DRAFT=$(gh pr view --json isDraft -q .isDraft)
 
-# GitLab — detect MR number from current branch
+# GitLab — detect MR number and base branch
 MR_NUMBER=$(glab mr view --output json | jq .iid)
 BASE=$(glab mr view --output json | jq -r .target_branch)
-
-# Check if PR is still in draft — undraft before proceeding if CI/CD passed
-# GitHub: gh pr ready <PR_NUMBER>
-# GitLab: glab mr update <MR_NUMBER> --draft=false
+IS_DRAFT=$(glab mr view --output json | jq .draft)
 ```
 
-Detect platform from remote URL (`github.com` → `gh`, `gitlab` → `glab`).
+**Platform detection:** check `git remote get-url origin`.
+- Contains `github.com` (HTTPS: `https://github.com/...` or SSH: `git@github.com:...`) → use `gh`
+- Contains `gitlab` → use `glab`
 
 ## Phase 1: CI/CD Monitoring
 
@@ -38,35 +38,36 @@ digraph cicd {
     rankdir=TB;
 
     start [label="PR/MR exists", shape=doublecircle];
+    fetch_status [label="Fetch current CI/CD status\n+ check if draft", shape=box];
     has_ci [label="CI/CD configured?", shape=diamond];
-    draft [label="PR in draft?", shape=diamond];
-    undraft [label="Undraft PR", shape=box];
+    ci_state [label="Current state?", shape=diamond];
     wait [label="Poll checks every ~2 min\nuntil complete", shape=box];
     passing [label="All required checks passing?", shape=diamond];
     investigate [label="Investigate failure logs", shape=box];
     our_fault [label="Caused by current changes?", shape=diamond];
-    fix [label="Fix → invoke prepare-for-pr\n→ commit → push", shape=box];
+    fix [label="Fix → invoke prepare-for-pr\n→ push", shape=box];
     ask [label="Ask user", shape=box];
+    undraft [label="Undraft PR/MR\nif still draft", shape=box];
     review [label="Proceed to Code Review", shape=box];
 
-    start -> has_ci;
-    has_ci -> draft [label="yes, all passing"];
-    has_ci -> wait [label="yes, pending"];
-    has_ci -> review [label="no CI"];
-    draft -> undraft [label="yes"];
-    draft -> review [label="no"];
-    undraft -> review;
+    start -> fetch_status;
+    fetch_status -> has_ci;
+    has_ci -> ci_state [label="yes"];
+    has_ci -> undraft [label="no CI"];
+    ci_state -> wait [label="pending/running"];
+    ci_state -> passing [label="complete"];
     wait -> passing;
-    passing -> draft [label="yes"];
+    passing -> undraft [label="yes"];
     passing -> investigate [label="no"];
     investigate -> our_fault;
     our_fault -> fix [label="yes"];
     our_fault -> ask [label="no — stop"];
     fix -> wait;
+    undraft -> review;
 }
 ```
 
-**Invoking prepare-for-pr for fixes:** run the `prepare-for-pr` skill as a sub-skill. It runs its own loop and commits fixes. If it pauses for user input, this skill also pauses. After it exits, push the branch (`git push`).
+**Invoking `prepare-for-pr` for fixes:** invoke it as a sub-skill. It runs its own quality loop, commits fixes, and exits when clean. If it pauses for user input, this skill also pauses. After it exits, push: `git push`.
 
 ## Phase 2: Code Review Cycle
 
@@ -76,17 +77,20 @@ digraph review {
 
     start [label="CI/CD passing", shape=doublecircle];
     reviewers [label="Reviewers assigned?", shape=diamond];
-    approvals_required [label="Approvals required\nby repo rules?", shape=diamond];
-    notify_user [label="Notify user:\nno reviewers but\napprovals required", shape=box];
-    wait [label="Poll for new reviews\nevery ~5 min", shape=box];
-    read_all [label="Read ALL comments\n(incl. on approved reviews)", shape=box];
-    any_comments [label="Unaddressed\ncomments?", shape=diamond];
+    approvals_req [label="Approvals required\nby repo rules?", shape=diamond];
+    ask_assign [label="Notify user: approvals required\nbut no reviewers assigned.\nPause until user assigns.", shape=box];
+    wait [label="Poll for new reviews/comments\nevery ~5 min", shape=box];
+    stale_check [label="No activity for\n>4 hours?", shape=diamond];
+    notify_stale [label="Notify user, ask\nhow to proceed.\nPause.", shape=box];
+    read_all [label="Read ALL comments\n(reviews + inline review comments)", shape=box];
+    any_comments [label="Unaddressed comments?", shape=diamond];
     categorize [label="Categorize + show table\n(BLOCKING/IMPORTANT/OPTIONAL\n/INVALID/OUT OF SCOPE)", shape=box];
     oos [label="OUT OF SCOPE\ncomments?", shape=diamond];
-    ask_oos [label="Ask user for each\nOUT OF SCOPE", shape=box];
-    fix [label="Fix BLOCKING + IMPORTANT\n→ prepare-for-pr → push", shape=box];
-    respond [label="Respond to every comment\nindividually (in PR language)\nReference push commit hash", shape=box];
-    resolve [label="Resolve threads\n(see Resolving Threads)", shape=box];
+    ask_oos [label="Ask user for each\nOUT OF SCOPE comment.\nPause until resolved.", shape=box];
+    any_fix [label="Any BLOCKING or\nIMPORTANT comments?", shape=diamond];
+    fix [label="Fix → prepare-for-pr → push", shape=box];
+    respond [label="Respond to every comment\nindividually (in PR language)\nReference pushed commit hash", shape=box];
+    resolve [label="Resolve threads", shape=box];
     fixes_made [label="Fixes were made?", shape=diamond];
     rereview [label="Request re-review", shape=box];
     ci_loop [label="Back to CI/CD monitoring", shape=box];
@@ -94,19 +98,23 @@ digraph review {
     done [label="MERGE", shape=doublecircle];
 
     start -> reviewers;
-    reviewers -> approvals_required [label="no"];
-    approvals_required -> notify_user [label="yes"];
-    approvals_required -> merge_check [label="no"];
-    notify_user -> merge_check;
+    reviewers -> approvals_req [label="no"];
+    approvals_req -> ask_assign [label="yes — stop"];
+    approvals_req -> merge_check [label="no"];
+    ask_assign -> wait [label="user assigns reviewers"];
     reviewers -> wait [label="yes"];
-    wait -> read_all;
+    wait -> stale_check;
+    stale_check -> notify_stale [label="yes"];
+    stale_check -> read_all [label="no"];
     read_all -> any_comments;
     any_comments -> categorize [label="yes"];
     any_comments -> merge_check [label="no, approved"];
     categorize -> oos;
     oos -> ask_oos [label="yes — pause\nuntil resolved"];
-    oos -> fix [label="no"];
-    ask_oos -> fix [label="user decided"];
+    oos -> any_fix [label="no"];
+    ask_oos -> any_fix [label="user decided"];
+    any_fix -> fix [label="yes"];
+    any_fix -> respond [label="no — skip fix"];
     fix -> respond;
     respond -> resolve;
     resolve -> fixes_made;
@@ -114,17 +122,17 @@ digraph review {
     fixes_made -> merge_check [label="no"];
     rereview -> ci_loop -> wait;
     merge_check -> done [label="yes"];
-    merge_check -> wait [label="no — poll"];
+    merge_check -> wait [label="no — keep polling"];
 }
 ```
 
-**Reading comments:** always read ALL comments including inline on approved reviews — `gh pr view <N> --comments` does not return inline review comments. Use:
+**Reading comments:** `gh pr view <N> --comments` does not return inline review comments. Fetch them separately:
 
 ```bash
-# GitHub — get all review comments (inline)
+# GitHub — inline review comments
 gh api repos/{owner}/{repo}/pulls/{number}/comments
 
-# GitLab — get all discussions
+# GitLab — all discussions (includes inline)
 glab api /projects/:fullpath/merge_requests/:iid/discussions
 ```
 
@@ -164,8 +172,8 @@ Proceeding with BLOCKING + IMPORTANT fixes. Waiting on your input for OUT OF SCO
 
 | Category | Response template |
 |----------|------------------|
-| BLOCKING/IMPORTANT (fixed) | `✅ Fixed in [commit hash]. [What changed and why.]` |
-| OPTIONAL | `Good suggestion. Acknowledging — keeping this PR focused on [goal].` |
+| BLOCKING/IMPORTANT (fixed) | `Fixed in [commit hash]. [What changed and why.]` |
+| OPTIONAL | `Good point. Not addressing in this PR to keep it focused on [goal].` *(If genuinely useful: "Logged as [issue link] for follow-up.")* |
 | INVALID (outdated) | `This was addressed in [commit]. [File/code] now [does X].` |
 | INVALID (praise) | `Thank you!` |
 | OUT OF SCOPE | Per user's instruction |
@@ -176,7 +184,7 @@ After responding, resolve threads where the issue is closed. Do NOT resolve if d
 
 ```bash
 # GitHub — resolve review thread via GraphQL
-# 1. Get thread IDs:
+# 1. Get thread node IDs:
 gh api graphql -f query='
   query($owner:String!,$repo:String!,$number:Int!) {
     repository(owner:$owner,name:$repo) {
@@ -202,7 +210,7 @@ glab api /projects/:fullpath/merge_requests/:iid/discussions/:discussion_id \
 Request re-review only from reviewers whose BLOCKING or IMPORTANT comments were fixed:
 
 ```bash
-# GitHub — re-request review (NOT --add-reviewer, which only adds new reviewers)
+# GitHub — re-request review (use API, not --add-reviewer which only adds new reviewers)
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 gh api --method POST /repos/$REPO/pulls/$PR_NUMBER/requested_reviewers \
   -f "reviewers[]=username1" -f "reviewers[]=username2"
@@ -210,8 +218,6 @@ gh api --method POST /repos/$REPO/pulls/$PR_NUMBER/requested_reviewers \
 # GitLab
 glab mr update <MR_NUMBER> --reviewer @username1,@username2
 ```
-
-Do not request re-review for OPTIONAL or INVALID comments.
 
 ## Merge Requirements Checklist
 
@@ -221,21 +227,26 @@ Before merging, verify all of:
 - [ ] No unresolved blocking threads
 - [ ] Branch up to date with base branch
 
-**Branch behind base:**
+**Branch behind base — update and handle conflicts:**
 ```bash
 # GitHub
 gh pr update-branch <PR_NUMBER>
-# or: git fetch origin <base> && git rebase origin/<base> && git push --force-with-lease
+# or: git fetch origin $BASE && git rebase origin/$BASE
+# If rebase produces conflicts:
+#   resolve manually → git add <resolved files> → git rebase --continue
+#   if conflicts touch files outside this PR scope → ask user before proceeding
+git push --force-with-lease
 
 # GitLab
 glab mr rebase <MR_NUMBER>
+# If conflict: resolve manually, then git push --force-with-lease
 ```
 
 ## Tools Priority
 
 **GitHub/GitLab CLI → REST API → MCP**
 
-| Platform | Detect from remote | CLI |
+| Platform | Remote URL pattern | CLI |
 |----------|-------------------|-----|
-| GitHub | `github.com` in remote URL | `gh` |
-| GitLab | `gitlab` in remote URL | `glab` |
+| GitHub | `github.com` (HTTPS or SSH `git@github.com:...`) | `gh` |
+| GitLab | `gitlab` in URL | `glab` |

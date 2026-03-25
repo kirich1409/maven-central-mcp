@@ -17,29 +17,32 @@ Before the loop, establish the diff base and build tooling:
 
 ```bash
 # Determine base branch
-git remote show origin | grep "HEAD branch" | awk '{print $NF}'
+BASE=$(git remote show origin 2>/dev/null | grep "HEAD branch" | awk '{print $NF}')
 # Fallback: try main → master → develop
 
 # Current changes boundary (use throughout for scope decisions)
-git diff <base>...HEAD
+git diff $BASE...HEAD
 ```
 
-**Build system detection:**
+**Build system detection — use highest-priority match when multiple files present:**
 
-| File present | Build | Lint | Test |
-|---|---|---|---|
-| `package.json` | `npm run build` | `npm run lint` | `npm test` |
-| `Cargo.toml` | `cargo build` | `cargo clippy` | `cargo test` |
-| `build.gradle(.kts)` | `./gradlew build` | `./gradlew lint` | `./gradlew test` |
-| `pom.xml` | `mvn package -q` | `mvn checkstyle:check` | `mvn test` |
-| `go.mod` | `go build ./...` | `golangci-lint run` | `go test ./...` |
-| `Makefile` | `make build` | `make lint` | `make test` |
+| Priority | File present | Build | Lint | Test |
+|----------|---|---|---|---|
+| 1 | `Makefile` (with build/lint/test targets) | `make build` | `make lint` | `make test` |
+| 2 | `package.json` | `npm run build` | `npm run lint` | `npm test` |
+| 3 | `Cargo.toml` | `cargo build` | `cargo clippy` | `cargo test` |
+| 4 | `build.gradle(.kts)` | `./gradlew build` | `./gradlew lint` | `./gradlew test` |
+| 5 | `pom.xml` | `mvn package -q` | `mvn checkstyle:check` | `mvn test` |
+| 6 | `go.mod` | `go build ./...` | `golangci-lint run` | `go test ./...` |
+| 7 | `pyproject.toml` / `setup.py` | `pip install -e .` | `ruff check .` | `pytest` |
 
 ## Quality Loop
 
-**Track all issues found across iterations.** On re-entry to any step, only report and fix issues not seen in a previous iteration. Mark issues as resolved when fixed — never re-report them.
+**Track all issues found and their status (open / fixed / deferred) across iterations.** On re-entry, only report NEW issues. Deferred issues are removed from the fix queue — never re-prompted.
 
-**Simplify runs only on the first iteration** (or after a significant rewrite). Self-review and lint/tests run every iteration.
+**Stage and commit fixes as you make them** during the loop, grouping related changes together (use specific file paths, not `git add .`). This allows logical commit grouping without having to reconstruct it at the end.
+
+**Simplify runs only on the first iteration.** Self-review and lint/tests run every iteration.
 
 ```dot
 digraph prepare_for_pr {
@@ -50,15 +53,15 @@ digraph prepare_for_pr {
     build [label="Build", shape=box];
     build_pass [label="Passes?", shape=diamond];
     scope_build [label="Scope decision\n(see below)", shape=box];
-    simplify [label="Simplify\n(skill: simplify)\n[1st iteration only]", shape=box];
-    selfrev [label="Self-review\ngit diff <base>...HEAD", shape=box];
+    simplify [label="Simplify (skill: simplify)\n[1st iteration only — skip if unavailable]", shape=box];
+    selfrev [label="Self-review: git diff $BASE...HEAD\nCheck logic, security, edge cases", shape=box];
     lint [label="Lint + Tests", shape=box];
     new_issues [label="New non-minor issues?", shape=diamond];
     scope_issues [label="Scope decision\n(see below)", shape=box];
-    assess [label="Only minor\nor no issues?", shape=diamond];
-    fix [label="Fix", shape=box];
-    commit [label="Commit fixes\n(logical groups)", shape=box];
-    done [label="Code ready for PR", shape=doublecircle];
+    assess [label="Any non-deferred\nnon-minor issues?", shape=diamond];
+    fix [label="Fix + stage changes", shape=box];
+    commit [label="Commit staged fixes\n(logical groups)", shape=box];
+    done [label="Quality loop complete", shape=doublecircle];
 
     start -> setup -> build;
     build -> build_pass;
@@ -72,9 +75,9 @@ digraph prepare_for_pr {
     new_issues -> scope_issues [label="yes"];
     new_issues -> assess [label="no"];
     scope_issues -> fix [label="fix decided"];
-    scope_issues -> assess [label="user defers"];
-    assess -> fix [label="non-minor remain"];
-    assess -> commit [label="only minor or none"];
+    scope_issues -> assess [label="user defers\n(mark deferred, continue)"];
+    assess -> fix [label="yes — non-deferred\nnon-minor remain"];
+    assess -> commit [label="no"];
     commit -> done;
 }
 ```
@@ -85,29 +88,31 @@ digraph prepare_for_pr {
 digraph scope {
     rankdir=LR;
 
-    check [label="In current changes\n(git diff <base>...HEAD)?", shape=diamond];
+    check [label="In current changes\n(git diff $BASE...HEAD)?", shape=diamond];
     obvious [label="Fix is obvious?", shape=diamond];
     auto [label="Fix autonomously", shape=box];
-    ask [label="Ask user", shape=box];
+    ask [label="Ask user\n(issue + reason + options)", shape=box];
+    user_fix [label="User: fix here", shape=box];
+    user_defer [label="User: defer/skip\n(mark deferred)", shape=box];
 
     check -> auto [label="yes"];
     check -> obvious [label="no"];
     obvious -> auto [label="yes"];
     obvious -> ask [label="no"];
+    ask -> user_fix -> auto;
+    ask -> user_defer;
 }
 ```
 
-**In scope — fix autonomously:** bugs introduced by current changes, tests broken by current changes, lint errors in files touched by this branch, logic/security errors in current implementation.
+**In scope — fix autonomously:** bugs introduced by current changes, tests broken by current changes, lint errors in changed files, logic/security errors in current implementation.
 
 **Out of scope, obvious fix:** missing import clearly needed by new code, typo in a newly added string, test fixture update required by a changed function signature.
 
-**Out of scope, ask user:** pre-existing failures in untouched files, build errors from unrelated dependency changes, architectural issues not caused by this branch.
-
-When asking, include: what the issue is, why it appears unrelated, and options (fix here / skip / open separate issue). Pause until user responds.
+**Out of scope, ask user:** pre-existing failures in untouched files, build errors from unrelated dependency changes, failures in files not touched by this branch. When asking, include: what the issue is, why it appears unrelated, and options (fix here / skip / open separate issue). Pause until user responds.
 
 ## Self-Review Criteria
 
-Run `git diff <base>...HEAD` and check for:
+Run `git diff $BASE...HEAD` and check for:
 - Logic errors or off-by-one mistakes
 - Missing error handling for new code paths
 - Security issues (exposed secrets, injection risks, missing validation)
@@ -120,24 +125,17 @@ Run `git diff <base>...HEAD` and check for:
 
 **Non-minor (keep looping):** bugs, broken tests, lint errors, security issues, incorrect logic, missing required tests.
 
-## Committing Fixes
-
-After the loop exits, commit all fixes made during the loop:
-- Group related fixes into logical commits
-- Message format: `fix: <what was fixed>`
-- Do not mix unrelated fixes into a single commit
-
 ## Output
 
 ```markdown
-## Prepare for PR — Result
+## Quality Loop Result
 
-| Step | Issues found | Fixed | Deferred to user |
-|------|-------------|-------|-----------------|
+| Step | Issues found | Fixed | Deferred |
+|------|-------------|-------|---------|
 | Build | ... | ... | ... |
 | Simplify | ... | ... | — |
 | Self-review | ... | ... | ... |
 | Lint + Tests | ... | ... | ... |
 
-**Code is ready for PR.**
+**Quality loop complete.** [If deferred items exist: X items deferred — see above.]
 ```
