@@ -4,19 +4,21 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Monorepo for Claude Code plugins by krozov. Contains two plugins:
+Monorepo for Claude Code plugins by krozov. Contains three plugins:
 
 | Plugin | Directory | Description |
 |--------|-----------|-------------|
 | maven-mcp | `plugins/maven-mcp/` | MCP server for Maven dependency intelligence |
 | sensitive-guard | `plugins/sensitive-guard/` | Scans files for secrets and PII before they reach AI servers |
+| developer-workflow | `plugins/developer-workflow/` | Skills for developer workflow — PR preparation and lifecycle |
 
 ## Structure
 
 ```
 plugins/
-  maven-mcp/        # TypeScript, npm package @krozov/maven-central-mcp
-  sensitive-guard/   # Shell-based Claude Code plugin
+  maven-mcp/           # TypeScript, npm package @krozov/maven-central-mcp
+  sensitive-guard/      # Shell-based Claude Code plugin
+  developer-workflow/   # Skills-only plugin for developer workflow habits
 ```
 
 See each plugin's own `CLAUDE.md` for plugin-specific instructions.
