@@ -9,22 +9,24 @@ description: Use when a PR/MR already exists and needs to be driven to merge —
 
 Takes an existing PR/MR and drives it to merge autonomously. Loops through CI/CD monitoring and code review cycles until all requirements are satisfied.
 
-**Core principle:** Fix only what belongs to the current PR. Verify suggestions before implementing. Ask the user only when a problem is outside the current PR scope and the fix isn't obvious.
+**Core principle:** Fix only what belongs to the current PR. Ask the user only when a problem is outside the current PR scope and the fix isn't obvious.
 
 ## Setup
 
 Before starting, detect the PR and platform:
 
 ```bash
-# GitHub — detect PR number and base branch
-PR_NUMBER=$(gh pr view --json number -q .number)
-BASE=$(gh pr view --json baseRefName -q .baseRefName)
-IS_DRAFT=$(gh pr view --json isDraft -q .isDraft)
+# GitHub — fetch all needed fields in one call
+PR_INFO=$(gh pr view --json number,baseRefName,isDraft)
+PR_NUMBER=$(echo $PR_INFO | jq -r .number)
+BASE=$(echo $PR_INFO | jq -r .baseRefName)
+IS_DRAFT=$(echo $PR_INFO | jq -r .isDraft)
 
 # GitLab — detect MR number and base branch
-MR_NUMBER=$(glab mr view --output json | jq .iid)
-BASE=$(glab mr view --output json | jq -r .target_branch)
-IS_DRAFT=$(glab mr view --output json | jq .draft)
+MR_INFO=$(glab mr view --output json)
+MR_NUMBER=$(echo $MR_INFO | jq .iid)
+BASE=$(echo $MR_INFO | jq -r .target_branch)
+IS_DRAFT=$(echo $MR_INFO | jq .draft)
 ```
 
 **Platform detection:** check `git remote get-url origin`.
@@ -69,6 +71,12 @@ digraph cicd {
 ```
 
 **Invoking `prepare-for-pr` for fixes:** invoke it as a sub-skill. It runs its own quality loop, commits fixes, and exits when clean. If it pauses for user input, this skill also pauses. After it exits, push: `git push`.
+
+**After every push — check branch is up to date with base:**
+```bash
+git fetch origin $BASE && git status  # look for "behind"
+```
+If behind: rebase immediately (`git rebase origin/$BASE && git push --force-with-lease`) rather than deferring to merge time. Resolve any conflicts that touch files within this PR's scope; for conflicts outside scope, ask the user.
 
 ## Phase 2: Code Review Cycle
 
@@ -128,6 +136,8 @@ gh api repos/{owner}/{repo}/pulls/{number}/comments
 glab api /projects/:fullpath/merge_requests/:iid/discussions
 ```
 
+**Stale detection:** while waiting for re-review, if no new review activity appears after 4 hours, notify the user with the PR link and ask how to proceed (ping the reviewer, wait longer, or merge without the re-review). Pause until the user responds.
+
 ## Handling Unclear Feedback
 
 Ask for clarification on ALL unclear items at once — not one at a time. **Example:**
@@ -139,9 +149,9 @@ Wrong: Implement 1,2,3,6 now, ask about 4,5 later
 Right: "I understand items 1,2,3,6. Need clarification on 4 and 5 before proceeding."
 ```
 
-## Verifying Suggestions Before Implementing
+## Verifying Suggestions and Pushing Back
 
-Before implementing any BLOCKING or IMPORTANT suggestion from an external reviewer:
+Before implementing any BLOCKING or IMPORTANT suggestion, verify it first:
 
 ```
 1. Check: Technically correct for THIS codebase?
@@ -149,25 +159,19 @@ Before implementing any BLOCKING or IMPORTANT suggestion from an external review
 3. Check: Is there a reason the current code is written this way?
 4. Check: Works on all platforms/versions targeted by this PR?
 5. Check: Does the reviewer have full context?
-
-IF suggestion seems wrong:
-  Push back with technical reasoning (see Push Back section below)
-
-IF can't easily verify:
-  Say so: "I can't verify this without [X]. Should I [investigate/ask/proceed]?"
-
-IF conflicts with prior decisions made for this PR:
-  Discuss with user first
 ```
 
-**YAGNI check** — if a reviewer suggests "implementing it properly" or adding infrastructure:
+**If any check fails — push back:**
+- Use technical reasoning, not defensiveness
+- Ask specific questions; reference working tests or existing code as evidence
+- Involve the user if the disagreement is architectural
+- State it factually in the response thread — no apology, no over-explaining
 
-```
-Search codebase for actual usage.
+**If you can't easily verify:** say so — "I can't verify this without [X]. Should I [investigate/ask/proceed]?"
 
-IF unused: push back — "This isn't called anywhere. Remove it?"
-IF used:   implement properly
-```
+**If it conflicts with prior decisions for this PR:** discuss with user first.
+
+**YAGNI check** — if a reviewer suggests "implementing it properly" or adding infrastructure: search codebase for actual usage. If unused: push back. If used: implement properly.
 
 ## Comment Categories
 
@@ -218,18 +222,6 @@ gh api repos/{owner}/{repo}/pulls/{number}/comments/{comment_id}/replies \
 | INVALID (outdated) | `This was addressed in [commit]. [File/code] now [does X].` |
 | INVALID (praise) | *(no response needed — just resolve)* |
 | OUT OF SCOPE | Per user's instruction |
-
-## When to Push Back
-
-Trigger conditions are the same as the verification checklist above — push back when any check fails. See "Verifying Suggestions Before Implementing".
-
-**How to push back:**
-- Use technical reasoning, not defensiveness
-- Ask specific questions
-- Reference working tests or existing code as evidence
-- Involve the user if the disagreement is architectural
-
-Use the response table template for the correction — state it factually, no apology, no over-explaining.
 
 ## Resolving Threads
 
@@ -305,9 +297,4 @@ glab mr rebase <MR_NUMBER>
 
 ## Tools Priority
 
-**GitHub/GitLab CLI → REST API → MCP**
-
-| Platform | Remote URL pattern | CLI |
-|----------|-------------------|-----|
-| GitHub | `github.com` (HTTPS or SSH `git@github.com:...`) | `gh` |
-| GitLab | `gitlab` in URL | `glab` |
+Prefer **CLI → REST API → MCP** in that order. Platform detection is covered in Setup.
