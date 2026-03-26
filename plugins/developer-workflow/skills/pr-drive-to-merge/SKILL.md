@@ -9,7 +9,7 @@ description: Use when a PR/MR already exists and needs to be driven to merge —
 
 Takes an existing PR/MR and drives it to merge autonomously. Loops through CI/CD monitoring and code review cycles until all requirements are satisfied.
 
-**Core principle:** Fix only what belongs to the current PR. Ask the user only when a problem is outside the current PR scope and the fix isn't obvious.
+**Core principle:** Fix only what belongs to the current PR. Verify suggestions before implementing. Ask the user only when a problem is outside the current PR scope and the fix isn't obvious.
 
 ## Setup
 
@@ -84,12 +84,14 @@ digraph review {
     notify_stale [label="Notify user, ask\nhow to proceed.\nPause.", shape=box];
     read_all [label="Read ALL comments\n(reviews + inline review comments)", shape=box];
     any_comments [label="Unaddressed comments?", shape=diamond];
+    clarify [label="Any comment unclear?\nStop — clarify ALL unclear\nitems before proceeding.", shape=diamond];
     categorize [label="Categorize + show table\n(BLOCKING/IMPORTANT/OPTIONAL\n/INVALID/OUT OF SCOPE)", shape=box];
     oos [label="OUT OF SCOPE\ncomments?", shape=diamond];
     ask_oos [label="Ask user for each\nOUT OF SCOPE comment.\nPause until resolved.", shape=box];
     any_fix [label="Any BLOCKING or\nIMPORTANT comments?", shape=diamond];
+    verify [label="Verify each suggestion\nagainst codebase reality\n(see Verification section)", shape=box];
     fix [label="Fix → prepare-for-pr → push", shape=box];
-    respond [label="Respond to every comment\nindividually (in PR language)\nReference pushed commit hash", shape=box];
+    respond [label="Respond to every comment\nindividually in thread\n(in PR language)\nReference pushed commit hash", shape=box];
     resolve [label="Resolve threads", shape=box];
     fixes_made [label="Fixes were made?", shape=diamond];
     rereview [label="Request re-review", shape=box];
@@ -107,14 +109,18 @@ digraph review {
     stale_check -> notify_stale [label="yes"];
     stale_check -> read_all [label="no"];
     read_all -> any_comments;
-    any_comments -> categorize [label="yes"];
+    any_comments -> clarify [label="yes"];
     any_comments -> merge_check [label="no, approved"];
+    clarify -> categorize [label="all clear"];
+    clarify -> wait [label="unclear — pause\nuntil resolved"];
     categorize -> oos;
     oos -> ask_oos [label="yes — pause\nuntil resolved"];
     oos -> any_fix [label="no"];
     ask_oos -> any_fix [label="user decided"];
-    any_fix -> fix [label="yes"];
+    any_fix -> verify [label="yes"];
     any_fix -> respond [label="no — skip fix"];
+    verify -> fix [label="technically correct"];
+    verify -> respond [label="push back — no fix"];
     fix -> respond;
     respond -> resolve;
     resolve -> fixes_made;
@@ -136,14 +142,63 @@ gh api repos/{owner}/{repo}/pulls/{number}/comments
 glab api /projects/:fullpath/merge_requests/:iid/discussions
 ```
 
+## Handling Unclear Feedback
+
+```
+IF any comment is unclear:
+  STOP — do not implement anything yet
+  Ask for clarification on ALL unclear items at once
+
+WHY: Items may be related. Partial understanding = wrong implementation.
+```
+
+**Example:**
+```
+Reviewer: "Fix 1-6"
+You understand 1,2,3,6. Unclear on 4,5.
+
+Wrong: Implement 1,2,3,6 now, ask about 4,5 later
+Right: "I understand items 1,2,3,6. Need clarification on 4 and 5 before proceeding."
+```
+
+## Verifying Suggestions Before Implementing
+
+Before implementing any BLOCKING or IMPORTANT suggestion from an external reviewer:
+
+```
+1. Check: Technically correct for THIS codebase?
+2. Check: Would it break existing functionality?
+3. Check: Is there a reason the current code is written this way?
+4. Check: Works on all platforms/versions targeted by this PR?
+5. Check: Does the reviewer have full context?
+
+IF suggestion seems wrong:
+  Push back with technical reasoning (see Push Back section below)
+
+IF can't easily verify:
+  Say so: "I can't verify this without [X]. Should I [investigate/ask/proceed]?"
+
+IF conflicts with prior decisions made for this PR:
+  Discuss with user first
+```
+
+**YAGNI check** — if a reviewer suggests "implementing it properly" or adding infrastructure:
+
+```
+Search codebase for actual usage.
+
+IF unused: push back — "This isn't called anywhere. Remove it?"
+IF used:   implement properly
+```
+
 ## Comment Categories
 
 Assign ONE category per comment. Show full table before acting. Proceed without waiting for approval except for OUT OF SCOPE.
 
 | Category | When to use | Action |
 |----------|-------------|--------|
-| **BLOCKING** | Security issues, critical bugs, compliance violations | Fix → respond → Resolve |
-| **IMPORTANT** | Bugs, missing error handling, missing tests | Fix → respond → Resolve |
+| **BLOCKING** | Security issues, critical bugs, compliance violations | Verify → Fix → respond → Resolve |
+| **IMPORTANT** | Bugs, missing error handling, missing tests | Verify → Fix → respond → Resolve |
 | **OPTIONAL** | Style, naming preference, refactoring suggestion, nitpick | Respond acknowledging → Resolve without fixing |
 | **INVALID** | Already fixed, no longer applies, praise | Respond acknowledging → Resolve |
 | **OUT OF SCOPE** | Requires changes outside this PR | Ask user before acting |
@@ -169,14 +224,46 @@ Proceeding with BLOCKING + IMPORTANT fixes. Waiting on your input for OUT OF SCO
 **Always respond in the same language as the PR and review comments.**
 **Respond after pushing fixes** — reference the actual commit hash.
 **Respond to every comment individually — never a single summary.**
+**Reply in the comment thread, not as a top-level PR comment.**
+
+```bash
+# GitHub — reply in an inline review comment thread
+gh api repos/{owner}/{repo}/pulls/{number}/comments/{comment_id}/replies \
+  --method POST -f body="Your reply here"
+```
+
+**No performative agreement.** Never write "You're absolutely right!", "Great point!", "Excellent feedback!", or thank the reviewer. Actions speak — just fix it and show what changed.
 
 | Category | Response template |
 |----------|------------------|
 | BLOCKING/IMPORTANT (fixed) | `Fixed in [commit hash]. [What changed and why.]` |
-| OPTIONAL | `Good point. Not addressing in this PR to keep it focused on [goal].` *(If genuinely useful: "Logged as [issue link] for follow-up.")* |
+| BLOCKING/IMPORTANT (pushed back, then verified correct) | `You were right — checked [X] and it does [Y]. Fixed in [commit hash].` |
+| BLOCKING/IMPORTANT (pushing back) | `[Technical reasoning]. [Evidence from codebase.] Leaving as-is.` |
+| OPTIONAL | `Not addressing in this PR to keep it focused on [goal].` *(If genuinely useful: "Logged as [issue link] for follow-up.")* |
 | INVALID (outdated) | `This was addressed in [commit]. [File/code] now [does X].` |
-| INVALID (praise) | `Thank you!` |
+| INVALID (praise) | *(no response needed — just resolve)* |
 | OUT OF SCOPE | Per user's instruction |
+
+## When to Push Back
+
+Push back when:
+- Suggestion breaks existing functionality
+- Reviewer lacks full context (e.g., missed why the code is the way it is)
+- Violates YAGNI (unused feature)
+- Technically incorrect for this stack or platform
+- Conflicts with architectural decisions made for this PR
+
+**How to push back:**
+- Use technical reasoning, not defensiveness
+- Ask specific questions
+- Reference working tests or existing code as evidence
+- Involve the user if the disagreement is architectural
+
+**If you pushed back and were wrong:**
+```
+"You were right — checked [X] and it does [Y]. Fixed in [commit hash]."
+```
+State the correction factually. No apology, no over-explaining.
 
 ## Resolving Threads
 
