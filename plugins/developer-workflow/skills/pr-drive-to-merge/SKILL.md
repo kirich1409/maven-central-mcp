@@ -77,81 +77,46 @@ digraph review {
     rankdir=TB;
 
     start [label="CI/CD passing", shape=doublecircle];
-    reviewers [label="Reviewers assigned?", shape=diamond];
-    approvals_req [label="Approvals required\nby repo rules?", shape=diamond];
-    ask_assign [label="Notify user: approvals required\nbut no reviewers assigned.\nPause until user assigns.", shape=box];
-    wait [label="Poll for new reviews/comments\nevery ~5 min", shape=box];
-    stale_check [label="No activity for\n>4 hours?", shape=diamond];
-    notify_stale [label="Notify user, ask\nhow to proceed.\nPause.", shape=box];
     read_all [label="Read ALL comments\n(reviews + inline review comments)", shape=box];
-    any_comments [label="Unaddressed comments?", shape=diamond];
-    clarify [label="Any comment unclear?", shape=diamond];
-    ask_clarify [label="Ask user, await\nclarification", shape=box];
+    any_comments [label="Any unaddressed\ncomments?", shape=diamond];
     categorize [label="Categorize + show table\n(BLOCKING/IMPORTANT/OPTIONAL\n/INVALID/OUT OF SCOPE)", shape=box];
-    oos [label="OUT OF SCOPE\ncomments?", shape=diamond];
-    ask_oos [label="Ask user for each\nOUT OF SCOPE comment.\nPause until resolved.", shape=box];
+    ask_oos [label="Ask user for each OUT OF SCOPE\ncomment. Pause until resolved.", shape=box];
+    respond_optional [label="Respond to OPTIONAL/INVALID\ncomments immediately", shape=box];
     any_fix [label="Any BLOCKING or\nIMPORTANT comments?", shape=diamond];
-    verify [label="Verify ALL BLOCKING/IMPORTANT\nsuggestions before fixing any\n(see Verification section)", shape=box];
-    fix [label="Fix → prepare-for-pr → push", shape=box];
-    respond [label="Respond to every comment\nindividually in thread\n(in PR language)\nReference pushed commit hash", shape=box];
-    resolve [label="Resolve threads", shape=box];
-    fixes_made [label="Fixes were made?", shape=diamond];
-    rereview [label="Request re-review", shape=box];
-    ci_loop [label="Back to CI/CD monitoring", shape=box];
-    pending_rereview [label="Pending re-review\nrequests?", shape=diamond];
-    merge_check [label="Merge requirements met?", shape=diamond];
+    push [label="Fix → prepare-for-pr → push", shape=box];
+    respond_fixed [label="Respond to BLOCKING/IMPORTANT\nwith commit hash", shape=box];
+    resolve [label="Resolve all threads", shape=box];
+    rereview [label="Request re-review from reviewers\nwhose comments led to changes", shape=box];
+    wait [label="Wait for re-review\n(poll every ~5 min)", shape=box];
+    stale_check [label="No activity for\n>4 hours?", shape=diamond];
+    notify_stale [label="Notify user, ask\nhow to proceed. Pause.", shape=box];
+    new_comments [label="New unaddressed\ncomments?", shape=diamond];
     confirm_merge [label="Ask user:\n'All requirements met — ready to merge.\nShould I go ahead?'", shape=box];
     done [label="MERGE", shape=doublecircle];
 
-    start -> reviewers;
-    reviewers -> approvals_req [label="no"];
-    approvals_req -> ask_assign [label="yes — stop"];
-    approvals_req -> merge_check [label="no"];
-    ask_assign -> wait [label="user assigns reviewers"];
-    reviewers -> wait [label="yes"];
+    start -> read_all;
+    read_all -> any_comments;
+    any_comments -> categorize [label="yes"];
+    any_comments -> wait [label="no — wait for\nfirst review"];
+    categorize -> ask_oos [label="OUT OF SCOPE present\n— pause until resolved"];
+    ask_oos -> respond_optional [label="user decided"];
+    categorize -> respond_optional [label="no OUT OF SCOPE"];
+    respond_optional -> any_fix;
+    any_fix -> push [label="yes"];
+    any_fix -> resolve [label="no"];
+    push -> respond_fixed;
+    respond_fixed -> resolve;
+    resolve -> rereview;
+    rereview -> wait;
     wait -> stale_check;
     stale_check -> notify_stale [label="yes"];
     notify_stale -> wait [label="user responds"];
-    stale_check -> read_all [label="no"];
-    read_all -> any_comments;
-    any_comments -> clarify [label="yes"];
-    any_comments -> pending_rereview [label="no"];
-    clarify -> categorize [label="no"];
-    clarify -> ask_clarify [label="yes"];
-    ask_clarify -> categorize;
-    categorize -> oos;
-    oos -> ask_oos [label="yes — pause\nuntil resolved"];
-    oos -> any_fix [label="no"];
-    ask_oos -> any_fix [label="user decided"];
-    any_fix -> verify [label="yes"];
-    any_fix -> respond [label="no — skip fix"];
-    verify -> fix [label="technically correct"];
-    verify -> respond [label="push back — no fix"];
-    fix -> respond;
-    respond -> resolve;
-    resolve -> fixes_made;
-    fixes_made -> rereview [label="yes"];
-    fixes_made -> merge_check [label="no"];
-    rereview -> ci_loop -> wait;
-    pending_rereview -> wait [label="yes — keep waiting"];
-    pending_rereview -> merge_check [label="no"];
-    merge_check -> confirm_merge [label="yes"];
-    merge_check -> wait [label="no — keep polling"];
+    stale_check -> new_comments [label="no"];
+    new_comments -> read_all [label="yes — repeat"];
+    new_comments -> confirm_merge [label="no"];
     confirm_merge -> done [label="user confirms"];
 }
 ```
-
-**Checking for pending re-review requests:** before proceeding to merge check, verify no reviewer is still waiting to re-review:
-
-```bash
-# GitHub — non-zero means reviewers were re-requested and haven't responded yet
-gh pr view <N> --json reviewRequests --jq '.reviewRequests | length'
-
-# GitLab — check for reviewers who haven't submitted a review since last push
-glab mr view <N> --output json | jq '.reviewers | map(select(.state == "requested")) | length'
-```
-
-If the count is > 0, stay in the wait loop — do not proceed to merge check.
 
 **Reading comments:** `gh pr view <N> --comments` does not return inline review comments. Fetch them separately:
 
@@ -295,7 +260,7 @@ glab api /projects/:fullpath/merge_requests/:iid/discussions/:discussion_id \
 
 ## Re-Review
 
-Request re-review only from reviewers whose BLOCKING or IMPORTANT comments were fixed:
+Request re-review only from reviewers whose BLOCKING or IMPORTANT comments led to actual changes. Do not re-request from reviewers who only left OPTIONAL or INVALID comments.
 
 ```bash
 # GitHub — re-request review (use API, not --add-reviewer which only adds new reviewers)
