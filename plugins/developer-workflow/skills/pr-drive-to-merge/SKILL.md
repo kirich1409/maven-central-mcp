@@ -99,6 +99,7 @@ digraph review {
     rereview [label="Request re-review", shape=box];
     ci_loop [label="Back to CI/CD monitoring", shape=box];
     merge_check [label="Merge requirements met?", shape=diamond];
+    confirm_merge [label="Ask user:\n'All requirements met — ready to merge.\nShould I go ahead?'", shape=box];
     done [label="MERGE", shape=doublecircle];
 
     start -> reviewers;
@@ -131,8 +132,9 @@ digraph review {
     fixes_made -> rereview [label="yes"];
     fixes_made -> merge_check [label="no"];
     rereview -> ci_loop -> wait;
-    merge_check -> done [label="yes"];
+    merge_check -> confirm_merge [label="yes"];
     merge_check -> wait [label="no — keep polling"];
+    confirm_merge -> done [label="user confirms"];
 }
 ```
 
@@ -298,6 +300,13 @@ Before merging, verify all of:
 - [ ] Required approvals received
 - [ ] No unresolved blocking threads
 - [ ] Branch up to date with base branch
+
+When all boxes are checked, **stop and ask the user for confirmation**:
+
+> All merge requirements are met — CI passing, approvals received, all threads resolved, branch up to date.
+> Should I go ahead and merge?
+
+Only merge after explicit confirmation. Exception: if the user already pre-approved the merge earlier in the conversation (e.g. "merge it when it's ready"), proceed without asking again.
 
 **Branch behind base — update and handle conflicts:**
 ```bash
