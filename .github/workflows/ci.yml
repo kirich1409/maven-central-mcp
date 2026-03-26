@@ -13,16 +13,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check all plugins are registered in marketplace.json
         run: |
+          set -euo pipefail
+          MARKETPLACE=".claude-plugin/marketplace.json"
+          REGISTERED=$(jq -r '.plugins[].name' "$MARKETPLACE")
           MISSING=0
           for dir in plugins/*/; do
-            plugin="${dir%/}"
-            name=$(basename "$plugin")
-            if ! jq -e --arg name "$name" '.plugins[] | select(.name == $name)' .claude-plugin/marketplace.json > /dev/null 2>&1; then
-              echo "ERROR: '$name' is in plugins/ but missing from .claude-plugin/marketplace.json"
+            name=$(basename "$dir")
+            if ! echo "$REGISTERED" | grep -Fxq "$name"; then
+              echo "ERROR: '$name' is in plugins/ but missing from $MARKETPLACE"
               MISSING=1
             fi
           done
-          exit $MISSING
+          exit "$MISSING"
 
   build:
     runs-on: ubuntu-latest
