@@ -216,6 +216,8 @@ If the module is mixed into a larger module:
 In `build.gradle.kts`, replace `id("com.android.library")` + `id("org.jetbrains.kotlin.android")` with the multiplatform plugin:
 
 ```kotlin
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.android.library)  // keep this for Android target
@@ -320,6 +322,8 @@ expect fun currentTimeMillis(): Long
 actual fun currentTimeMillis(): Long = System.currentTimeMillis()
 
 // iosMain
+import platform.Foundation.NSDate
+
 actual fun currentTimeMillis(): Long = (NSDate().timeIntervalSince1970 * 1000.0).toLong()
 ```
 
