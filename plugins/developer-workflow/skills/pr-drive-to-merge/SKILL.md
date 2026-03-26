@@ -98,6 +98,7 @@ digraph review {
     fixes_made [label="Fixes were made?", shape=diamond];
     rereview [label="Request re-review", shape=box];
     ci_loop [label="Back to CI/CD monitoring", shape=box];
+    pending_rereview [label="Pending re-review\nrequests?", shape=diamond];
     merge_check [label="Merge requirements met?", shape=diamond];
     confirm_merge [label="Ask user:\n'All requirements met — ready to merge.\nShould I go ahead?'", shape=box];
     done [label="MERGE", shape=doublecircle];
@@ -114,7 +115,7 @@ digraph review {
     stale_check -> read_all [label="no"];
     read_all -> any_comments;
     any_comments -> clarify [label="yes"];
-    any_comments -> merge_check [label="no, approved"];
+    any_comments -> pending_rereview [label="no"];
     clarify -> categorize [label="no"];
     clarify -> ask_clarify [label="yes"];
     ask_clarify -> categorize;
@@ -132,11 +133,25 @@ digraph review {
     fixes_made -> rereview [label="yes"];
     fixes_made -> merge_check [label="no"];
     rereview -> ci_loop -> wait;
+    pending_rereview -> wait [label="yes — keep waiting"];
+    pending_rereview -> merge_check [label="no"];
     merge_check -> confirm_merge [label="yes"];
     merge_check -> wait [label="no — keep polling"];
     confirm_merge -> done [label="user confirms"];
 }
 ```
+
+**Checking for pending re-review requests:** before proceeding to merge check, verify no reviewer is still waiting to re-review:
+
+```bash
+# GitHub — non-zero means reviewers were re-requested and haven't responded yet
+gh pr view <N> --json reviewRequests --jq '.reviewRequests | length'
+
+# GitLab — check for reviewers who haven't submitted a review since last push
+glab mr view <N> --output json | jq '.reviewers | map(select(.state == "requested")) | length'
+```
+
+If the count is > 0, stay in the wait loop — do not proceed to merge check.
 
 **Reading comments:** `gh pr view <N> --comments` does not return inline review comments. Fetch them separately:
 
