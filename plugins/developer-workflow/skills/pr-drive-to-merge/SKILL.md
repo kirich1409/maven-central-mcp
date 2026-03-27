@@ -88,6 +88,7 @@ digraph review {
     push [label="Fix → prepare-for-pr → push", shape=box];
     respond_fixed [label="Respond to BLOCKING/IMPORTANT\nwith commit hash", shape=box];
     resolve [label="Resolve all threads", shape=box];
+    fixes_made [label="Push was made\n(BLOCKING/IMPORTANT fixed)?", shape=diamond];
     rereview [label="Request re-review from reviewers\nwhose comments led to changes", shape=box];
     wait [label="Wait for re-review\n(poll every ~5 min)", shape=box];
     stale_check [label="No activity for\n>4 hours?", shape=diamond];
@@ -99,7 +100,7 @@ digraph review {
     start -> read_all;
     read_all -> any_comments;
     any_comments -> categorize [label="yes"];
-    any_comments -> wait [label="no — wait for\nfirst review"];
+    any_comments -> confirm_merge [label="no"];
     categorize -> ask_oos [label="OUT OF SCOPE present\n— pause until resolved"];
     ask_oos -> respond_optional [label="user decided"];
     categorize -> respond_optional [label="no OUT OF SCOPE"];
@@ -108,7 +109,9 @@ digraph review {
     any_fix -> resolve [label="no"];
     push -> respond_fixed;
     respond_fixed -> resolve;
-    resolve -> rereview;
+    resolve -> fixes_made;
+    fixes_made -> rereview [label="yes — push\nwas made"];
+    fixes_made -> confirm_merge [label="no — only optional/\ninvalid addressed"];
     rereview -> wait;
     wait -> stale_check;
     stale_check -> notify_stale [label="yes"];
@@ -174,7 +177,8 @@ Assign ONE category per comment. Show full table before acting. Proceed without 
 | **BLOCKING** | Security issues, critical bugs, compliance violations | Verify → Fix → respond → Resolve |
 | **IMPORTANT** | Bugs, missing error handling, missing tests | Verify → Fix → respond → Resolve |
 | **OPTIONAL** | Style, naming preference, refactoring suggestion, nitpick | Respond acknowledging → Resolve without fixing |
-| **INVALID** | Already fixed, no longer applies, praise | Respond acknowledging → Resolve |
+| **INVALID** | Already fixed, no longer applies | Respond acknowledging → Resolve |
+| **INVALID (praise)** | Compliments, thanks | Resolve without responding |
 | **OUT OF SCOPE** | Requires changes outside this PR | Ask user before acting |
 
 **Show table format:**
@@ -195,12 +199,15 @@ Proceeding with BLOCKING + IMPORTANT fixes. Waiting on your input for OUT OF SCO
 
 ## Responding to Comments
 
-**Reply in the comment thread, not as a top-level PR comment.** For fixed comments: respond after pushing, referencing the commit hash. For all others: respond inline immediately.
+**Reply in the comment thread when possible.** For fixed comments: respond after pushing, referencing the commit hash. For all others: respond immediately.
 
 ```bash
-# GitHub — reply in an inline review comment thread
-gh api repos/{owner}/{repo}/pulls/{number}/comments/{comment_id}/replies \
+# GitHub — reply to an inline review comment (omit pull number — it's not part of this endpoint)
+gh api repos/{owner}/{repo}/pulls/comments/{comment_id}/replies \
   --method POST -f body="Your reply here"
+
+# GitHub — reply to a review summary or top-level PR comment (not an inline thread)
+gh pr comment $PR_NUMBER --body "Your reply here"
 ```
 
 **No performative agreement.** Never write "You're absolutely right!", "Great point!", "Excellent feedback!", or thank the reviewer. Actions speak — just fix it and show what changed.
@@ -254,9 +261,13 @@ gh api --method POST /repos/$REPO/pulls/$PR_NUMBER/requested_reviewers \
 
 # GitLab — re-request review via API (glab mr update has no --reviewer flag)
 FULLPATH=$(glab repo view --output json | jq -r '.nameWithNamespace | gsub(" "; "") | gsub("/"; "%2F")')
-REVIEWER_IDS=$(glab api /users?username=username1 --jq '.[0].id')
-glab api /projects/$FULLPATH/merge_requests/$MR_NUMBER --method PUT \
-  -f "reviewer_ids[]=$REVIEWER_IDS"
+# Build reviewer_ids[] args for each username
+REVIEWER_ARGS=()
+for username in username1 username2; do
+  id=$(glab api "/users?username=${username}" --jq '.[0].id')
+  REVIEWER_ARGS+=(-f "reviewer_ids[]=${id}")
+done
+glab api /projects/$FULLPATH/merge_requests/$MR_NUMBER --method PUT "${REVIEWER_ARGS[@]}"
 ```
 
 ## Merge Requirements Checklist
