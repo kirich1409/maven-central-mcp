@@ -26,6 +26,28 @@ jobs:
           done
           exit "$MISSING"
 
+      - name: Check marketplace.json versions match plugin.json versions
+        run: |
+          set -euo pipefail
+          MARKETPLACE=".claude-plugin/marketplace.json"
+          MISMATCH=0
+          while IFS=$'\t' read -r name version source; do
+            plugin_json="${source}/.claude-plugin/plugin.json"
+            if [ ! -f "$plugin_json" ]; then
+              echo "ERROR: '$name' plugin.json not found at $plugin_json"
+              MISMATCH=1
+              continue
+            fi
+            plugin_version=$(jq -r '.version' "$plugin_json")
+            if [ "$version" != "$plugin_version" ]; then
+              echo "ERROR: '$name' version mismatch: marketplace.json=$version, plugin.json=$plugin_version"
+              MISMATCH=1
+            else
+              echo "OK: '$name' version $version"
+            fi
+          done < <(jq -r '.plugins[] | [.name, .version, .source] | @tsv' "$MARKETPLACE")
+          exit "$MISMATCH"
+
   build:
     runs-on: ubuntu-latest
     defaults:
