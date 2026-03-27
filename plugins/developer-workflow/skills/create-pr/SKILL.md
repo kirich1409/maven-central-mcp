@@ -116,7 +116,7 @@ Find the people most familiar with the changed code by looking at who has touche
 
 ```bash
 # For each changed file, collect recent commit authors (last 20 commits per file)
-git diff --name-only $BASE...HEAD | while read file; do
+git diff --name-only -z "$BASE"...HEAD | while IFS= read -r -d '' file; do
   git log --follow -n 20 --format="%ae %an" -- "$file" 2>/dev/null
 done | sort | uniq -c | sort -rn
 ```
