@@ -125,7 +125,7 @@ Look for:
 - How is the Screen composable structured? (`FooScreen(state, onAction)` pattern? ViewModel passed down?)
 - How is state modeled? (`data class FooState`? Sealed class? `UiState<T>` wrapper?)
 - How are actions modeled? (`sealed interface FooAction`? Lambda callbacks?)
-- How are **parameterless actions** represented? (`object Refresh`, `data object Refresh`, or `class Refresh`?) This matters: `data object` is a singleton — two consecutive firings of the same action are the same object instance, which can cause deduplication issues in `Channel`/`SharedFlow`. The safest pattern for parameterless actions is a plain `class` or `data class` with no fields (new instance per invocation). Discover what convention the project uses and follow it.
+- How are **parameterless actions** represented? (`object Refresh`, `data object Refresh`, or `class Refresh`?) This matters: one-off events can be lost if they're routed through `StateFlow`/`LiveData` or passed through `distinctUntilChanged`/other equality-based filtering, since singleton objects are always equal to themselves. `Channel` and `SharedFlow` emit every event regardless of instance identity, so singletons are safe there. Discover what convention the project uses and follow it, making sure the event transport matches the action model.
 - How are **user-visible strings** passed through state? (`String` literals, `@StringRes Int`, a `UiText` sealed class, etc.) This is important — the type used in existing state classes determines what type new state classes must use. If it can't be determined from context, ask the user before writing state.
 - Where is `viewModel()` called? (Navigation entry point only? Directly in the screen?)
 
@@ -328,7 +328,7 @@ Go through the confirmed `behavior-scenarios.md` from Phase 1 and the original X
 
 **Behavioral details that are easy to miss**
 - Any `Fragment`-level setup in `onViewCreated` (toolbar attachment, menu inflation, shared element transitions) — each must have a Compose equivalent or a documented deferral
-- Any `Activity`-level setup in `onCreate` (window flags, `adjustResize`/`adjustPan`, result contracts, intent extras) — each must be accounted for. For Activity migrations specifically: `enableEdgeToEdge()` **must** be called before `setContent {}` in the updated Activity — if it isn't present in the original, add it and document it as a migration step
+- Any `Activity`-level setup in `onCreate` (window flags, `adjustResize`/`adjustPan`, result contracts, intent extras) — each must be accounted for. For Activity migrations: if the original already uses `enableEdgeToEdge()` or opts into edge-to-edge, preserve it and call `enableEdgeToEdge()` before `setContent {}`. If the original does not use edge-to-edge, do not add it — document it as an optional modernization step and let the user decide whether to adopt it
 - Any `tools:` attributes that hinted at runtime behavior (sample data, visibility overrides) — check whether they revealed actual runtime states that need handling
 - Any `<include>` or `<merge>` layouts — the included content must be fully represented
 - Accessibility: `contentDescription`, `importantForAccessibility`, `labelFor` — these must be preserved
@@ -339,7 +339,7 @@ Go through the confirmed `behavior-scenarios.md` from Phase 1 and the original X
 - Old Activity / Fragment / View is kept intact, not deleted
 
 **Window insets**
-- Activity migration: `enableEdgeToEdge()` is called in `onCreate()` before `setContent {}`
+- Activity migration: if the original used edge-to-edge, `enableEdgeToEdge()` is called in `onCreate()` before `setContent {}`
 - Any screen with text input fields has `Modifier.imePadding()` on its scrollable container
 - Any `android:fitsSystemWindows="true"` from the original XML has a Compose equivalent (`Scaffold` or explicit `systemBarsPadding()`)
 - Bottom navigation bars / gesture navigation area do not overlap interactive content
@@ -388,10 +388,10 @@ _Shared composables or UI kit components that didn't exist before and were creat
 ### New dependencies added
 _Only if approved by user in Phase 4._
 
-| Dependency | Version | Reason |
+| Dependency | Version management | Reason |
 |---|---|---|
-| `androidx.compose.material3:material3` | 1.3.0 | `PullToRefreshBox` |
-| ... | ... | |
+| `androidx.compose.material3:material3` | Compose BOM / version catalog | `PullToRefreshBox` |
+| ... | ... | ... |
 
 ### ViewModel changes
 _Should be minimal. List every change made outside the UI layer._
