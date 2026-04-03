@@ -150,6 +150,26 @@ jobs:
           done < <(jq -r '.plugins[] | [.name, .source] | @tsv' "$MARKETPLACE")
           exit "$MISSING"
 
+      - name: Check agents directories exist
+        run: |
+          set -euo pipefail
+          MARKETPLACE=".claude-plugin/marketplace.json"
+          MISSING=0
+          while IFS=$'\t' read -r name source; do
+            plugin_json="${source}/.claude-plugin/plugin.json"
+            [ -f "$plugin_json" ] || continue
+            agents_rel=$(jq -r '.agents // empty' "$plugin_json")
+            [ -n "$agents_rel" ] || continue
+            agents_path="${source}/${agents_rel#./}"
+            if [ ! -d "$agents_path" ]; then
+              echo "ERROR: '$name' agents path does not exist: $agents_path"
+              MISSING=1
+            else
+              echo "OK: '$name' agents at $agents_path"
+            fi
+          done < <(jq -r '.plugins[] | [.name, .source] | @tsv' "$MARKETPLACE")
+          exit "$MISSING"
+
       - name: Check hook scripts are executable
         run: |
           set -euo pipefail
