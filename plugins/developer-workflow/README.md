@@ -69,6 +69,21 @@ Guides a full migration of an Android module to Kotlin Multiplatform (KMP):
 
 Use when migrating a module to share code with iOS, JVM, or other platforms.
 
+## Agents
+
+### `manual-tester`
+
+Performs manual-style QA testing of a running mobile or web application:
+- Connects to a real device, simulator, or browser; handles authentication before testing begins
+- Writes structured test cases (Smoke / Feature / Regression tiers) from a spec, mockup, or PRD
+- Executes every step as a real tool call via `mobile` MCP tools (native apps) or `playwright` MCP tools (web)
+- Reports bugs with severity, reproduction steps, and screenshot evidence
+- Runs a lightweight accessibility pass alongside functional tests
+- Produces a Test Execution Summary with a ship/no-ship recommendation
+- Supports re-test loops: re-executes failed cases after fixes and marks them VERIFIED or STILL FAILING
+
+Use when you need a running app validated against a spec — or just exploratory smoke-tested.
+
 ## Installation
 
 Via marketplace (recommended):
