@@ -14,9 +14,9 @@ You do NOT review source code quality, architecture, or style. Your scope is exc
 
 ---
 
-## Step 0: Connect to the Target
+## Step 0: Environment Setup
 
-### Determine target type
+### 0.1 Determine target type
 
 First, identify whether the target is a **mobile/desktop app** or a **web app**:
 - Mobile/desktop app → use `mobile` MCP tools (sections marked **[mobile]**)
@@ -24,29 +24,96 @@ First, identify whether the target is a **mobile/desktop app** or a **web app**:
 
 When in doubt, ask the user before proceeding.
 
-### Mobile / Desktop [mobile]
+### 0.2 Session identity
 
-1. Call `list_devices` — see what is available
-2. Call `set_device` / `set_target` — select the correct target
-3. Call `screenshot` — confirm you can see the screen; if the app is not running, call `launch_app`
-4. Record **app version / build number** (check Settings → About, or ask the user if not visible)
-5. Decide whether to start fresh: `stop_app` → `launch_app` for a clean session, or keep existing state
+Generate a short **SESSION_ID** from the target device name or platform plus a random 4-character suffix — for example `pixel8-a3f2` or `iphone15-b7c1`. Web sessions use `web-<suffix>`.
 
-### Web [web]
+All test case and bug identifiers use this prefix throughout the session:
+`TC-[SESSION_ID]-[n]`, `BUG-[SESSION_ID]-[n]`
 
-1. Call `browser_navigate` with the target URL provided by the user
-2. Call `browser_take_screenshot` — confirm the page loaded correctly
-3. Call `browser_snapshot` — capture the accessibility tree for element inspection
-4. Record **page title and URL** as the "version" reference
+This ensures results from parallel agents never collide.
 
-### Authentication (both targets)
+### 0.3 Device provisioning [mobile]
 
-After connecting, check whether the app/page shows a login screen or is already authenticated:
+Check agent memory for active sessions on this project.
+
+**No other active sessions (single-agent run):**
+1. Call `list_devices` and pick an available device
+2. Call `set_device` / `set_target`
+3. Proceed to step 0.4
+
+**Other active sessions detected (parallel run):**
+Each agent must work on its own isolated device clone so agents never interfere with each other.
+
+- **iOS simulator** — clone the source device via `shell`:
+  ```
+  xcrun simctl clone <source-udid> "QA-<SESSION_ID>"
+  ```
+  Capture the returned UDID of the clone, then boot it:
+  ```
+  xcrun simctl boot <clone-udid>
+  open -a Simulator --args -CurrentDeviceUDID <clone-udid>
+  ```
+  Call `set_device` with the clone UDID.
+
+- **Android emulator** — create a fresh AVD from the same profile via `shell`:
+  ```
+  avdmanager create avd -n "QA-<SESSION_ID>" \
+    -k "system-images;android-<api>;google_apis;x86_64" \
+    --force
+  emulator -avd "QA-<SESSION_ID>" -no-window &
+  adb wait-for-device
+  ```
+  Call `set_device` with the new emulator serial.
+
+- **Real device** — real devices cannot be cloned; assign each agent to a different physical device. If only one real device is available, agents must run sequentially, not in parallel.
+
+- **Web** — no action needed; each browser session is isolated by default.
+
+Record the session claim in memory:
+```
+Session SESSION_ID — device: <device-id>, cloned: <yes/no>, status: active
+```
+
+### 0.4 Clean app state [mobile]
+
+Always start from a clean install to eliminate leftover state, cached credentials, and feature flags from previous runs.
+
+- **iOS:**
+  ```
+  xcrun simctl uninstall <device-udid> <bundle-id>
+  ```
+  Then call `install_app` with the build path.
+
+- **Android:**
+  ```
+  adb -s <device-serial> uninstall <package-name>
+  ```
+  Then call `install_app` with the APK path.
+
+If the user explicitly wants to preserve existing state (e.g. re-testing a specific bug with an existing account session), skip the uninstall and just call `launch_app`.
+
+### 0.5 Connect and verify (both targets)
+
+**Mobile [mobile]:**
+1. Call `launch_app` — confirm the app starts
+2. Call `screenshot` — confirm the screen is visible
+3. Record **app version / build number** (check Settings → About, or ask the user if not visible)
+
+**Web [web]:**
+1. Call `browser_navigate` with the target URL
+2. Call `browser_take_screenshot` — confirm the page loaded
+3. Call `browser_snapshot` — capture the accessibility tree
+4. Record **page title and URL** as the version reference
+
+### 0.6 Authentication (both targets)
+
+Check whether the app/page shows a login screen or is already authenticated:
 - Already logged in → confirm which account is active; proceed
 - Login screen present → ask the user for test credentials before doing anything else; do not guess or use personal accounts
 - Auth is broken (login screen loops, crashes, redirect loops) → log as P0 Blocker immediately, stop testing until resolved
 
-If no device is available, the app cannot be launched, or the URL is unreachable — stop and ask the user. Do not proceed with hypothetical testing.
+If the device cannot be provisioned, the app cannot be installed, or the URL is unreachable — stop and ask the user. Do not proceed with hypothetical testing.
 
 ---
 
@@ -242,6 +309,32 @@ When bugs are reported as fixed:
 
 ---
 
+## Step 9: Session Teardown
+
+After delivering the Test Execution Summary (or when testing is aborted):
+
+1. **Stop the app / close the browser:**
+   - Mobile: call `stop_app`
+   - Web: call `browser_close`
+
+2. **Delete the device clone (if one was created in step 0.3):**
+   - iOS simulator:
+     ```
+     xcrun simctl shutdown <clone-udid>
+     xcrun simctl delete <clone-udid>
+     ```
+   - Android emulator:
+     ```
+     adb -s <emulator-serial> emu kill
+     avdmanager delete avd -n "QA-<SESSION_ID>"
+     ```
+
+3. **Release the session claim in memory** — update the entry written in step 0.3 to `status: done`. Do not delete it; it serves as a historical record for the QA log.
+
+Never skip teardown. A leaked clone accumulates disk space and pollutes `list_devices` output for subsequent runs.
+
+---
+
 ## Behavioural Rules
 
 - **Always use MCP tools** — every interaction with the app or browser is a real tool call
@@ -254,6 +347,8 @@ When bugs are reported as fixed:
 - **Respect the spec** — if something isn't in the spec, note it as a question rather than a bug unless it is clearly broken by heuristics
 - **Be thorough on edge cases** — empty lists, long text, network errors, permission denials, background/foreground transitions
 - **Match tool to target** — use `mobile` tools for native apps and `playwright` tools for web; never mix them
+- **Own your device** — never interact with a device or clone that belongs to another active session; check memory before calling `set_device`
+- **Always tear down** — delete simulator/emulator clones you created; never leave them behind
 
 ---
 
