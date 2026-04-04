@@ -5,6 +5,7 @@ description: >
   Do NOT trigger automatically on implementation requests — the user controls when this workflow runs.
   Orchestrates the full development cycle: isolated worktree → TDD → implementation → quality loop
   (simplify + code review) → draft PR → CI/CD monitoring → merge-ready PR.
+disable-model-invocation: true
 ---
 
 # Implement Task

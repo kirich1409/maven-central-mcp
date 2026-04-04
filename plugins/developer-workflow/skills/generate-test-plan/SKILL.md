@@ -1,20 +1,13 @@
 ---
 name: generate-test-plan
 description: >-
-  IMPORTANT: You MUST use this skill whenever the user wants test cases, a test plan, QA scenarios,
-  or a testing checklist created from a spec, PRD, Figma mockup, requirements, or existing code.
-  This skill produces a structured, prioritized test plan document saved to docs/testplans/ — you
-  cannot produce the same quality of output (risk analysis, coverage matrix, automation candidates,
-  proper TC format) without it. Use this skill even for simple-sounding requests like "what should
-  I test?" or "what are the edge cases?" — the structured output is what makes it valuable.
-
-  Trigger on ANY of these patterns: the user asks to create a test plan, write test cases, generate
-  QA scenarios, prepare a testing checklist, identify what to test, find edge cases for a feature,
-  plan testing coverage, document test scenarios, or create a QA handoff document. Also trigger
-  when: the user describes requirements or acceptance criteria and asks how to verify them, the user
-  points at code and asks "how would you test this?", or the user wants to plan testing before
-  actually running tests.
-
+  This skill should be used when the user asks to "create a test plan", "write test cases",
+  "generate QA scenarios", "prepare a testing checklist", "identify what to test", "find edge cases",
+  "plan testing coverage", "document test scenarios", "create a QA handoff document", "what should
+  I test?", "what are the edge cases?", or "how would you test this?". Also use when the user
+  describes requirements or acceptance criteria and asks how to verify them, or wants to plan testing
+  before actually running tests. Produces a structured, prioritized test plan document saved to
+  docs/testplans/ with risk analysis, coverage matrix, automation candidates, and proper TC format.
   Do NOT trigger when: the user wants to execute tests on a running app (use test-feature or
   exploratory-test), the user wants automated unit/integration tests written in code (out of scope),
   or the user wants to run an existing test plan (use test-feature). This skill never launches an
