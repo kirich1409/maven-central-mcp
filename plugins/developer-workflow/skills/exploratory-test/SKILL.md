@@ -1,21 +1,14 @@
 ---
 name: exploratory-test
 description: >-
-  IMPORTANT: You MUST use this skill whenever the user asks you to test, check, explore, or QA a
-  running app WITHOUT providing a specification or formal test plan. This skill launches the
-  manual-tester agent which has access to device/browser MCP tools — you cannot replicate this
-  workflow yourself. Use this skill even if the request seems simple — "check if anything is broken",
-  "poke around the app", "find bugs" all require this skill because they need real device/browser
-  interaction via the manual-tester agent.
-
-  Trigger on ANY of these patterns: the user mentions a running app (emulator, simulator, device,
-  localhost URL, staging URL) and wants you to find bugs, check quality, explore screens, do a
-  sanity check, stress test, find edge cases, find UX issues, check for crashes, do pre-release QA,
-  or generally assess app quality — and they have NOT provided a spec/PRD/Figma/acceptance criteria
-  to verify against. Also trigger when: the user says the feature is built but has no spec yet and
-  wants feedback, the user wants to check if a refactor broke anything, the user reports vague bugs
-  and wants you to explore and reproduce, or the user wants a quick accessibility sweep.
-
+  This skill should be used when the user asks to "find bugs", "check if anything is broken",
+  "poke around the app", "explore the app", "do a sanity check", "QA the app", "stress test",
+  "find UX issues", "check for crashes", "do pre-release QA", or "check app quality" — without
+  providing a specification or formal test plan. Also use when the user mentions a running app
+  (emulator, simulator, device, localhost URL, staging URL) and wants undirected quality assessment,
+  when the feature is built but has no spec yet, when checking if a refactor broke anything, when
+  the user reports vague bugs and wants exploration, or for a quick accessibility sweep. Launches
+  the manual-tester agent with device/browser MCP tools for real interaction.
   Do NOT trigger when: the user provides a spec/mockup/PRD and wants verification against it (use
   test-feature), the user only wants test cases written without execution (use generate-test-plan),
   or the user asks about automated unit/integration tests (out of scope).

@@ -1,6 +1,10 @@
 ---
 name: prepare-for-pr
-description: Use when implementation is complete and the branch needs to be quality-checked before creating a PR — runs build, simplify, self-review, and lint/tests in a loop until only minor or no issues remain.
+description: >-
+  This skill should be used when the user asks to "prepare for PR", "clean up before review",
+  "quality check the branch", "run the quality loop", "check before PR", "make it PR-ready",
+  or when implementation is complete and the branch needs quality-checking before creating a PR.
+  Runs build, simplify, self-review, and lint/tests in a loop until only minor or no issues remain.
 ---
 
 # Prepare for PR
