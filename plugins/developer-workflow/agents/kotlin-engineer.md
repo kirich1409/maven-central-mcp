@@ -246,7 +246,13 @@ internal class CancelOrderUseCase(
     private val repository: OrderRepository,
 ) {
     suspend operator fun invoke(id: OrderId): Result<Unit> =
-        runCatching { repository.cancelOrder(id) }
+        try {
+            Result.success(repository.cancelOrder(id))
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
 }
 ```
 
@@ -412,16 +418,16 @@ For expected failures (network errors, validation, not found), use a result type
 Map errors as they cross layer boundaries — don't leak implementation details upward:
 
 ```kotlin
-// Data layer: catches network exceptions, returns domain errors
+// Data layer: catches network exceptions, maps to domain errors
 override suspend fun getOrder(id: OrderId): Result<Order> =
-    runCatching {
-        api.getOrder(id.value).toOrder()
-    }.recoverCatching { e ->
-        when (e) {
-            is HttpException -> throw OrderError.NotFound(id)
-            is IOException -> throw OrderError.NetworkError
-            else -> throw e
-        }
+    try {
+        Result.success(api.getOrder(id.value).toOrder())
+    } catch (e: CancellationException) {
+        throw e // never swallow cancellation
+    } catch (e: HttpException) {
+        Result.failure(OrderError.NotFound(id))
+    } catch (e: IOException) {
+        Result.failure(OrderError.NetworkError)
     }
 ```
 
@@ -460,7 +466,9 @@ presentation (ViewModel, State, Action)
 - Single responsibility: one public method
 - Prefer `operator fun invoke()` — allows calling the UseCase like a function (see Step 3.4 for example)
 - Return type depends on the operation: `suspend` for one-shot, `Flow` for streams
-- UseCases do NOT catch exceptions — let them propagate to the ViewModel, which decides how to handle them (unless the project convention is different)
+- Pick one error-handling convention per project and apply it consistently:
+  - **Default:** UseCases let exceptions propagate to the ViewModel, which decides how to handle them
+  - **If the project returns `Result` from UseCases:** do so consistently — but never use bare `runCatching` as it swallows `CancellationException`. Use explicit try/catch that re-throws `CancellationException` first (see Step 3.4 for example)
 
 ### Mappers
 
