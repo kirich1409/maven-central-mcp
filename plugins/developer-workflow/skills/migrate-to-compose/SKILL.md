@@ -26,7 +26,7 @@ Never write a single line of Compose until the pattern analysis and gap analysis
 ## Workflow
 
 ```
-DISCOVER → ANALYZE PATTERNS → GAP ANALYSIS → CONFIRM → IMPLEMENT GAPS → MIGRATE → STATIC VERIFY → [device: manual-tester agent (QA)]
+DISCOVER → ANALYZE PATTERNS → GAP ANALYSIS → CONFIRM → IMPLEMENT GAPS → MIGRATE → STATIC VERIFY → VIEW API AUDIT → [device: manual-tester agent (QA)]
 ```
 
 ---
@@ -51,7 +51,9 @@ Read every file that makes up the target: XML layout, host class, ViewModel, nes
 
 ## Phase 3: Gap Analysis
 
-For each UI element with no shared Compose equivalent, resolve using priority: existing UI Kit → already-imported libraries → suggest new library → write custom component. See `references/discovery-and-patterns.md` for the full priority order, custom View special case, and documentation format.
+For each UI element with no shared Compose equivalent, resolve using priority: existing UI Kit → already-imported libraries → suggest new library → write custom component. See `references/discovery-and-patterns.md` for the full priority order and documentation format.
+
+**Custom Views are mandatory migration scope** — they must be fully migrated to Compose composables, not wrapped in `AndroidView`. See `references/custom-view-migration.md` for the decision tree: classify → search for replacements → assess feasibility → choose strategy.
 
 **Present the gap list to the user and confirm before proceeding.**
 
@@ -107,7 +109,24 @@ See `references/migration-and-verify.md` for detailed fidelity review checklist 
 2. **Migration fidelity review** — walk through `behavior-scenarios.md` and XML element by element: layout structure, visual properties, behavioral details, architecture, window insets
 3. **Produce `migration-report.md`** — replacements, new components, ViewModel changes, behavior verification status, visual comparison table, deviations, issues found
 
-After static checks pass: invoke the `manual-tester` agent for device verification.
+After static checks pass: proceed to View API Audit.
+
+---
+
+## Phase 8: View API Audit
+
+**Mandatory.** Scan all migrated and touched files for remaining View-system API usage. Nothing from the old View world should survive in new Compose code unless explicitly allowed.
+
+See `references/migration-and-verify.md` for the full scan procedure, prohibited API list, and allowlist format.
+
+1. **Scan** — grep migrated files for prohibited View API patterns (imports, class references, method calls)
+2. **Classify each hit** — determine if it's: a leftover that must be replaced, an intentional interop usage (`AndroidView`, `ComposeView`), or a false positive
+3. **Check against allowlist** — if the project defines a View API allowlist in the migration plan or `behavior-scenarios.md`, skip approved usages
+4. **Fix** all remaining non-allowed usages — replace with Compose equivalents
+5. **Report** — any usage that cannot be replaced without breaking functionality: present to the user with reasoning and get explicit approval before proceeding
+6. **Block device testing** until every View API usage is either eliminated or user-approved
+
+The audit result is appended to `migration-report.md` as a "View API Audit" section.
 
 ---
 

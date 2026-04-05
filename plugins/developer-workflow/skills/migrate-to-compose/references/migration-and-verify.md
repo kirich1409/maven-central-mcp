@@ -174,6 +174,101 @@ _Populated by manual-tester agent._
 - [ ] Old files deleted
 ```
 
+## Phase 8: View API Audit
+
+**This phase is mandatory and blocks device testing.** Its purpose is to guarantee that no deprecated View-system API leaked into the new Compose code.
+
+### Scan procedure
+
+Search all newly migrated Compose files and files intended to be Compose-only (`.kt` files only) for the prohibited patterns below. Use both import scanning and in-body usage scanning — an API can be used via fully qualified name without an import.
+
+**Scope clarification:** target only files that were created as part of this migration or fully rewritten to Compose. Legacy host Fragment/Activity files that were only lightly touched during migration (e.g. a single line change to swap in a `ComposeView`) must be explicitly excluded from the audit scope — they will legitimately contain View API usages and including them will produce false positives.
+
+### Prohibited API patterns
+
+Scan for any of these in migrated files:
+
+**Imports**
+- `import android.view.*`
+- `import android.widget.*`
+- `import android.app.Activity` — heuristic: an import grep cannot distinguish base-class inheritance from legitimate usages (e.g. `ActivityResultLauncher`, casting, test helpers); treat every hit as a candidate requiring manual confirmation that the class is not used as a supertype in the migrated file
+- `import android.app.Fragment` / `import androidx.fragment.app.Fragment` — same heuristic: verify the hit is not a cast, type check, or test helper before flagging it as a violation
+- `import android.databinding.*` / `import androidx.databinding.*`
+- `import androidx.viewbinding.*`
+- `import kotlinx.android.synthetic.*`
+- `import android.animation.*` (unless wrapping in `AndroidView`)
+- `import android.view.animation.*`
+- `import android.graphics.drawable.AnimationDrawable`
+- `import android.transition.*`
+
+**Class references and method calls**
+- `View`, `ViewGroup`, `LayoutInflater`, `LayoutParams` — as types, parameters, or receivers
+- `findViewById`, `requireViewById`
+- `setContentView`, `inflate`
+- `RecyclerView`, `RecyclerView.Adapter`, `RecyclerView.ViewHolder`, `DiffUtil`
+- `DataBindingUtil`, `ViewBinding`, `binding.root`
+- `onCreateView`, `onViewCreated`, `onDestroyView` — in new code (OK in old kept-intact code)
+- `addView`, `removeView`, `removeAllViews`
+- `ViewCompat`, `ViewGroupCompat`
+- `ContextCompat.getDrawable` (use `painterResource` instead)
+- `resources.getDimension`, `resources.getColor` (use Compose theme tokens)
+- `TypedValue`, `TypedArray` — custom attribute resolution
+
+**XML references**
+- `R.layout.*` in new Compose code
+- `R.anim.*`, `R.animator.*` (use Compose animation APIs)
+- `R.style.*`, `R.attr.*` applied to Views
+
+### Allowed exceptions
+
+The following View API usages are legitimate in Compose code and should NOT be flagged:
+
+- `AndroidView { }` / `AndroidViewBinding { }` — **only for third-party Views** with no Compose equivalent (e.g. `MapView`, `WebView`, `PlayerView`, ExoPlayer). Wrapping a project-owned custom View in `AndroidView` is NOT allowed — it must be migrated to a Compose composable.
+- `ComposeView` / `AbstractComposeView` — embedding Compose in a host that's still View-based
+- `LocalContext.current` — accessing Android `Context` for non-View purposes (intents, resources)
+- `painterResource(R.drawable.*)` — loading drawable resources in Compose is normal
+- `stringResource(R.string.*)`, `dimensionResource(R.dimen.*)` — resource accessors
+- `R.id.*` references in test code (Espresso, UI Automator)
+- Code in files explicitly listed in the project's View API allowlist
+
+### Project allowlist
+
+If the migration plan (Phase 4) or `behavior-scenarios.md` includes a **View API allowlist** section, those usages are pre-approved. Format:
+
+```markdown
+## View API Allowlist
+- `AndroidView` wrapping `MapView` in `MapScreen.kt` — no Compose equivalent
+- `AndroidViewBinding` for `PlayerView` in `VideoPlayer.kt` — ExoPlayer requires View
+```
+
+Any usage matching an allowlist entry is skipped during the audit.
+
+### Handling remaining usages
+
+For each prohibited usage found:
+
+1. **Can be replaced** → replace with Compose equivalent immediately
+2. **Cannot be replaced** (no Compose equivalent exists, interop is the only option) → wrap in `AndroidView`/`AndroidViewBinding`, add to allowlist in migration report, continue
+3. **Unclear** → present to the user with the specific line, explain why it's there, and ask: replace, wrap in interop, or approve as-is
+
+**Do not proceed to device testing until every hit is resolved.**
+
+### Migration report section
+
+Append to `migration-report.md`:
+
+```markdown
+## View API Audit
+
+| # | File | Line | API | Resolution |
+|---|------|------|-----|------------|
+| 1 | OrderScreen.kt | 45 | `ContextCompat.getDrawable` | Replaced with `painterResource` |
+| 2 | MapSection.kt | 12 | `AndroidView { MapView }` | Allowed — no Compose equivalent |
+| 3 | ... | ... | ... | ... |
+
+**Result:** All View API usages eliminated or approved. ✓
+```
+
 ## Device Testing
 
 Brief the `manual-tester` agent with:
@@ -182,6 +277,8 @@ Brief the `manual-tester` agent with:
 - The list of interactions to verify
 
 The agent captures before/after screenshots, executes all test cases, compares layout/typography/colors/spacing, and populates the screenshot table in the report.
+
+---
 
 ## Post-migration Cleanup
 
