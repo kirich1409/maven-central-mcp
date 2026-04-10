@@ -10,7 +10,7 @@ Orchestrates the full development cycle for any implementation task:
 - Creates an isolated worktree, timeboxes exploration, selects the best-matching sub-skill
 - Brainstorms design for multi-file changes; follows TDD throughout
 - Creates a draft PR early, runs quality loop (`prepare-for-pr` + `code-review`), then marks the PR ready
-- Delegates CI/CD monitoring and review to `pr-drive-to-merge`
+- Delegates review comment handling to `address-review-feedback`
 
 Explicit-only — invoke directly with `/developer-workflow:implement-task`.
 
@@ -47,16 +47,15 @@ Runs a quality loop over branch changes before creating a PR:
 
 Use after implementation is complete, before creating the PR.
 
-### `pr-drive-to-merge`
+### `address-review-feedback`
 
-Drives an existing PR/MR to merge:
-- Monitors CI/CD checks; fixes failures caused by current changes
-- Triages reviewer comments autonomously (BLOCKING/IMPORTANT → fix, OPTIONAL → acknowledge, OUT OF SCOPE → ask user)
-- Responds to and resolves every comment thread
-- Requests re-review after fixes, loops until merge requirements are met
-- Asks the user only when a problem is outside the current PR scope
+Handles reviewer comments on an existing PR/MR:
+- Analyzes and categorizes all open review comments by priority (BLOCKING / IMPORTANT / OPTIONAL / OUT OF SCOPE)
+- Plans and applies fixes for actionable comments
+- Responds to reviewers and resolves comment threads
+- Asks the user only for out-of-scope or architectural concerns
 
-Use after the PR is created.
+Use after receiving reviewer feedback on a PR.
 
 ### `kmp-migration`
 
