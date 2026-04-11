@@ -292,20 +292,20 @@ glab mr update --remove-draft --title "<final title>" --description "<final desc
 
 ---
 
-## Phase 4: CI/CD and Review
+## Phase 4: Drive to Merge
 
-Wait for CI/CD checks to pass (monitor manually or via the platform UI). Once reviewer feedback arrives, invoke `developer-workflow:address-review-feedback` to handle review comments.
+Invoke `developer-workflow:pr-drive-to-merge` to take the PR from its current state
+to a successful merge. This skill handles:
+- CI/CD monitoring with automatic failure investigation and fixing
+- Multi-round code review handling (delegates to `address-review-feedback`)
+- Branch updates and merge conflict resolution
+- Merge confirmation and execution
+- Post-merge cleanup (worktree removal, branch deletion)
 
-**Backward transition:** if review feedback requires code changes → log the feedback in the PR artifact → re-anchor → return to implementation. After fixing, re-enter the quality loop (Phase 2) before returning to the PR.
-
----
-
-## Phase 5: Wrap-up
-
-After the PR is merged, clean up:
-1. Verify all commits are pushed and the branch is clean (no uncommitted changes, no temp files)
-2. Switch back to the main worktree
-3. Delete the feature worktree and its branch
+**Backward transition:** if review feedback or CI fixes require significant code changes,
+pr-drive-to-merge will escalate. Log the feedback in the PR artifact → re-anchor →
+return to implementation (Phase 0.5 strategy). After fixing, re-enter the quality loop
+(Phase 2) before returning to Phase 4.
 
 ---
 
