@@ -70,7 +70,11 @@ Examples of when to ask:
 ### 1.4 Generate slug
 
 Create a short kebab-case slug from the topic for artifact naming:
-`research-<slug>` (e.g., `research-ktor-migration`, `research-push-notifications`)
+`<slug>` (e.g., `ktor-migration`, `push-notifications`)
+
+The slug is the topic only — no `research-` prefix. File paths add their own prefixes:
+- Artifact: `swarm-report/<slug>-research.md`
+- State: `swarm-report/research-<slug>-state.md`
 
 ---
 
@@ -164,7 +168,8 @@ dependencies.
 - `search_artifacts` — find candidate libraries
 - `get_latest_version` — current versions
 - `get_dependency_vulnerabilities` — security issues
-- `compare_dependency_versions` — what changed between versions
+- `get_dependency_changes` — release notes, changelog entries between versions
+- `compare_dependency_versions` — semver delta comparison between versions
 - `check_multiple_dependencies` — batch version checks
 
 **Prompt template:**
