@@ -161,7 +161,7 @@ Started: {date}
 ## Input
 - Goal: {goal}
 - Constraints: {constraints}
-- Source: {text | URL | file | PRD}
+- Source: {text | URL | file | PRD | Figma}
 
 ## Expert Tracks
 - [ ] Codebase — launched
@@ -204,7 +204,7 @@ Each task must include:
 | **Title** | Short descriptive name (imperative mood) |
 | **Description** | What needs to be done — specific enough for an agent to implement |
 | **Dependencies** | List of task IDs this task depends on (`none` if independent) |
-| **Acceptance criteria** | Concrete, verifiable conditions for "done" (2-5 items) |
+| **Acceptance criteria** | Concrete, verifiable conditions for "done" (1-5 items) |
 | **Complexity** | `S` (< 1 hour), `M` (1-4 hours), `L` (4+ hours) |
 | **Suggested agent** | Which agent or skill should implement this task |
 | **Module / Layer** | Which module and architectural layer this task belongs to |
@@ -316,7 +316,7 @@ The decomposition artifact uses this structure:
 # Feature Decomposition: {name}
 
 Date: {date}
-Source: {text | URL | PRD | Figma}
+Source: {text | URL | file | PRD | Figma}
 Experts consulted: {list of agents that ran}
 
 ## Feature Summary
