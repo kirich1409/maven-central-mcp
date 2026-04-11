@@ -4,7 +4,7 @@ description: >
   Explicit-only skill — only invoke when the user directly requests it (e.g. "/developer-workflow:implement-task").
   Do NOT trigger automatically on implementation requests — the user controls when this workflow runs.
   Orchestrates the full development cycle: isolated worktree → TDD → implementation → quality loop
-  (quality loop) → draft PR → CI/CD monitoring → merge-ready PR.
+  → draft PR → CI/CD monitoring → merge-ready PR.
 disable-model-invocation: true
 ---
 
@@ -25,16 +25,21 @@ If any phase fails: identify the root cause — if it's in current changes, fix 
 
 ### 0.1 Worktree
 
-1. Determine the base branch: `git remote show origin 2>/dev/null | grep "HEAD branch" | awk '{print $NF}'` (fallback: main → master → develop)
+1. Determine the base branch:
+     ```bash
+     BASE_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@')
+     BASE_BRANCH=${BASE_BRANCH:-main}  # fallback: main
+     ```
 2. Check current location:
    - Already in a worktree that fits the task → stay, no action needed
    - On the base branch → create a new worktree:
      ```bash
      SLUG="short-task-description"  # kebab-case, 2-4 words
      BRANCH="feature/$SLUG"         # or fix/$SLUG, chore/$SLUG
-     git worktree add .worktrees/$BRANCH $BASE_BRANCH
-     cd .worktrees/$BRANCH
-     git checkout -b $BRANCH
+     WORKTREE_DIR=".worktrees/$(echo $BRANCH | tr '/' '-')"
+     git worktree add "$WORKTREE_DIR" "$BASE_BRANCH"
+     cd "$WORKTREE_DIR"
+     git checkout -b "$BRANCH"
      ```
 3. All subsequent work happens in the worktree.
 
@@ -124,9 +129,9 @@ After the quality loop exits clean, execute the verification approach defined in
 4. Save verification result to `swarm-report/<slug>-verify.md`:
 
 ```markdown
-# Verification: {slug}
+# Verification: <slug>
 
-**Plan:** swarm-report/{slug}-plan.md
+**Plan:** swarm-report/<slug>-plan.md
 **Status:** PASS | FAIL
 **Date:** {date}
 

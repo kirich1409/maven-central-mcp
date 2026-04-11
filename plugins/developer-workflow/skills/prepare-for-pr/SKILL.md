@@ -262,7 +262,7 @@ Experts run in parallel. Wait for all to complete before proceeding.
 At the end of the quality loop (whether exiting clean or hitting the iteration cap), save a summary to `swarm-report/<slug>-quality.md`:
 
 ```markdown
-# Quality Report: {slug}
+# Quality Report: <slug>
 
 **Branch:** {branch name}
 **Base:** {base branch}
