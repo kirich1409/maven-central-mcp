@@ -1,79 +1,80 @@
-# Полный цикл разработки: от идеи до merge
+# Full Development Cycle: From Idea to Merge
 
-## 1. Обзор
+## 1. Overview
 
-developer-workflow реализует полностью автономный цикл разработки, управляемый конечным
-автоматом с явными переходами между стадиями. Каждая задача при поступлении классифицируется
-по одному из пяти профилей (Feature, Bug Fix, Migration, Research, Trivial), и профиль
-определяет, какие стадии пайплайна будут выполнены. Это не жёсткий waterfall -- профиль
-может пропускать стадии (Trivial не требует Research и Plan) или заменять их
-(Migration делегирует в `code-migration`).
+developer-workflow implements a fully autonomous development cycle driven by a state machine
+with explicit transitions between stages. Each incoming task is classified into one of five
+profiles (Feature, Bug Fix, Migration, Research, Trivial), and the profile determines which
+pipeline stages will be executed. This is not a rigid waterfall — a profile can skip stages
+(Trivial does not require Research and Plan) or replace them (Migration delegates to
+`code-migration`).
 
-Исследование выполняется Research Consortium -- до пяти параллельных экспертных агентов,
-каждый из которых работает независимо в своём домене (кодовая база, веб, документация,
-зависимости, архитектура). Результаты синтезируются и проходят автоматическое ревью
-через `business-analyst`. Это гарантирует, что решения принимаются на основе данных,
-а не только на обучающих данных модели.
+Research is performed by the Research Consortium — up to five parallel expert agents, each
+working independently in its own domain (codebase, web, documentation, dependencies,
+architecture). Results are synthesised and automatically reviewed by `business-analyst`.
+This ensures decisions are made based on data, not solely on the model's training data.
 
-Качество обеспечивается Quality Loop -- шесть последовательных гейтов от компиляции до
-проверки соответствия исходному замыслу. Ключевой принцип: автор кода никогда не проверяет
-свой код сам -- gate 4 запускает отдельного `code-reviewer` агента, который получает
-только описание задачи, план и git diff, без контекста реализации. Receipt-based gating
-гарантирует, что ни одна стадия не начнётся без артефакта предыдущей. Re-anchoring
-при каждом переходе между стадиями предотвращает дрейф от исходного замысла.
+Quality is enforced by the Quality Loop — six sequential gates from compilation to intent
+verification. Key principle: the author of the code never reviews their own code — gate 4
+launches a separate `code-reviewer` agent that receives only the task description, plan,
+and git diff, without any implementation context. Receipt-based gating ensures no stage
+starts without the previous stage's artifact. Re-anchoring at every stage transition prevents
+drift from the original intent.
 
 
-## 2. Обзор пайплайна
+## 2. Pipeline Overview
 
 ```
-ИДЕЯ / ЗАПРОС НА ФИЧУ
+IDEA / FEATURE REQUEST
   |
   v
-[Профилирование задачи] ---- Классификация: Feature / Bug Fix / Migration / Research / Trivial
+[Task Profiling] ---- Classification: Feature / Bug Fix / Migration / Research / Trivial
   |
   v
-[research] ---- Research Consortium (до 5 параллельных экспертов)
-  |                Артефакт: swarm-report/<slug>-research.md
+[research] ---- Research Consortium (up to 5 parallel experts)
+  |                Artifact: swarm-report/<slug>-research.md
   v
-[Plan Mode + plan-review] ---- Имплементационный план + PoLL-ревью
-  |                              Артефакт: swarm-report/<slug>-plan.md
+[Plan Mode + plan-review] ---- Implementation plan + PoLL review
+  |                              Artifact: swarm-report/<slug>-plan.md
   v
-[implement-task] ---- Полный автономный цикл
+[implement-task] ---- Full autonomous cycle
   |  |-- kotlin-engineer / compose-developer / code-migration
-  |  |-- Quality Loop (6 гейтов + code-reviewer)
-  |  |     Артефакт: swarm-report/<slug>-quality.md
+  |  |-- Quality Loop (6 gates + code-reviewer)
+  |  |     Artifact: swarm-report/<slug>-quality.md
   |  '-- Verification (Phase 2.5)
-  |        Артефакт: swarm-report/<slug>-verify.md
+  |        Artifact: swarm-report/<slug>-verify.md
+  |
+  | [Implement] --- swarm-report/<slug>-implement.md
   v
 [create-pr] ---- Draft PR -> Ready for Review
-  |                Артефакт: swarm-report/<slug>-pr.md
+  |                Artifact: swarm-report/<slug>-pr.md
   v
-[pr-drive-to-merge] ---- CI мониторинг -> Обработка ревью -> Merge
-  |  '-- address-review-feedback (подчинённый скилл)
+[pr-drive-to-merge] ---- CI monitoring -> Review handling -> Merge
+  |  '-- address-review-feedback (sub-skill)
   v
 MERGED
 ```
 
 
-## 3. Профили задач и маршрутизация
+## 3. Task Profiles and Routing
 
-| Профиль | Пайплайн | Сигналы | Пропускает |
-|---------|----------|---------|------------|
+| Profile | Pipeline | Signals | Skips |
+|---------|----------|---------|-------|
 | **Feature** | Research -> Plan -> Implement -> Quality -> Verify -> PR -> Merge | "add", "implement", "build", "create" | -- |
 | **Bug Fix** | Reproduce -> Diagnose -> Fix -> Quality -> PR -> Merge | "fix", "broken", "crash", "regression" | Research, Plan, Verify |
-| **Migration** | Research -> Snapshot -> Migrate -> Verify -> PR -> Merge | "migrate", "replace", "switch to" | Plan (делегирует в `code-migration`) |
+| **Migration** | Research -> Snapshot -> Migrate -> Verify -> PR -> Merge | "migrate", "replace", "switch to" | Plan (delegates to `code-migration`) |
 | **Research** | Research -> Report | "investigate", "compare", "evaluate" | Implement, Quality, Verify, PR, Merge |
-| **Trivial** | Implement -> Quality -> PR -> Merge | Однофайловое изменение, config tweak | Research, Plan, Verify |
+| **Trivial** | Implement -> Quality -> PR -> Merge | Single-file change, config tweak | Research, Plan, Verify |
 
-Автоопределение по ключевым словам и контексту. При неоднозначности -- запрос
-подтверждения у пользователя перед началом работы.
+Auto-detection is based on keywords and context. When ambiguous — ask the user to confirm
+before starting work.
 
 
 ## 4. Quality Loop
 
 ```
-                              Iteration cap: max 5 полных циклов
-                              Per gate: max 3 попытки исправления
+                              Iteration cap: max 5 full cycles
+                              Per gate: max 3 fix attempts
      ___________________________________________________________________
     |                                                                   |
     v                                                                   |
@@ -93,39 +94,39 @@ MERGED
                    '------- (fix cycle) -----------------------'-------'
 ```
 
-### Гейты
+### Gates
 
-| # | Гейт | Действие | Исполнитель |
-|---|-------|----------|-------------|
-| 1 | Build | Компиляция проекта, устранение ошибок | Implementation agent |
-| 2 | Static Analysis | Lint, форматирование, неиспользуемые импорты | Implementation agent |
-| 3 | Tests | Unit + integration тесты, исправление падений | Implementation agent |
-| 4 | Semantic Self-Review | Сравнение intent vs. `git diff` | `code-reviewer` agent |
-| 5 | Expert Reviews | Параллельные доменные ревью (по триггерам) | Specialist agents |
-| 6 | Intent Check | Перечитать задачу + план, проверить соответствие | Orchestrator |
+| # | Gate | Action | Executor |
+|---|------|--------|----------|
+| 1 | Build | Compile project, resolve all errors | Implementation agent |
+| 2 | Static Analysis | Lint, formatting, unused imports | Implementation agent |
+| 3 | Tests | Unit + integration tests, fix failures | Implementation agent |
+| 4 | Semantic Self-Review | Compare intent vs. `git diff` | `code-reviewer` agent |
+| 5 | Expert Reviews | Parallel domain-specific reviews (by trigger) | Specialist agents |
+| 6 | Intent Check | Re-read task + plan, verify correspondence | Orchestrator |
 
-### Триггеры экспертных ревью (gate 5)
+### Expert Review Triggers (gate 5)
 
-| Эксперт | Триггер -- изменённые файлы затрагивают: |
-|---------|------------------------------------------|
+| Expert | Trigger — changed files touch any of: |
+|--------|---------------------------------------|
 | `security-expert` | Auth, encryption, token storage, network, permissions, PII |
 | `performance-expert` | RecyclerView/LazyColumn, DB queries, image loading, hot loops |
-| `architecture-expert` | Новые модули, изменение direction зависимостей, public API |
+| `architecture-expert` | New modules, changed dependency direction, public API |
 
-Если ни один триггер не сработал -- gate 5 пропускается.
+If no trigger fired — gate 5 is skipped.
 
-### Обработка вердиктов (gate 4)
+### Verdict Handling (gate 4)
 
-| Вердикт | Действие оркестратора |
-|---------|----------------------|
-| **PASS** | Переход к gate 5 (expert reviews) |
-| **WARN** | Переход к gate 5; major issues записываются в `<slug>-quality.md` как "Acknowledged risks" |
-| **FAIL** | Backward transition -> Implement; исправить critical issues, повторить gate 4 (max 3 цикла) |
+| Verdict | Orchestrator action |
+|---------|---------------------|
+| **PASS** | Advance to gate 5 (expert reviews) |
+| **WARN** | Advance to gate 5; major issues recorded in `<slug>-quality.md` as "Acknowledged risks" |
+| **FAIL** | Backward transition -> Implement; fix critical issues, re-run gate 4 (max 3 cycles) |
 
-### Определение build-системы
+### Build System Detection
 
-| Приоритет | Файл | Build | Lint | Test |
-|-----------|-------|-------|------|------|
+| Priority | File | Build | Lint | Test |
+|----------|------|-------|------|------|
 | 1 | `Makefile` | `make build` | `make lint` | `make test` |
 | 2 | `package.json` | `npm run build` | `npm run lint` | `npm test` |
 | 3 | `Cargo.toml` | `cargo build` | `cargo clippy` | `cargo test` |
@@ -175,28 +176,28 @@ MERGED
     swarm-report/<slug>-research.md
 ```
 
-### Экспертные треки
+### Expert Tracks
 
-| Эксперт | Когда включать | Инструменты |
-|---------|---------------|-------------|
-| **Codebase** | Тема затрагивает существующий код, паттерны, модули | `ast-index`, Read, Grep |
-| **Web** | Всегда (обязательно -- Web-Lookup Mandate) | Perplexity (`perplexity_search`, `perplexity_research`), WebSearch |
-| **Docs** | Тема связана с конкретными библиотеками/фреймворками | DeepWiki, Context7 |
-| **Dependencies** | Добавление, замена или оценка JVM/KMP зависимостей | maven-mcp tools |
-| **Architecture** | Влияние на модульные границы, direction зависимостей, API | `architecture-expert` agent |
+| Expert | When to include | Tools |
+|--------|----------------|-------|
+| **Codebase** | Topic touches existing code, patterns, modules | `ast-index`, Read, Grep |
+| **Web** | Always (mandatory — Web-Lookup Mandate) | Perplexity (`perplexity_search`, `perplexity_research`), WebSearch |
+| **Docs** | Topic involves specific libraries/frameworks | DeepWiki, Context7 |
+| **Dependencies** | Adding, replacing, or evaluating JVM/KMP dependencies | maven-mcp tools |
+| **Architecture** | Impact on module boundaries, dependency direction, API | `architecture-expert` agent |
 
-**Web-Lookup Mandate:** интернет-исследование обязательно. Каждый research должен дать
-хотя бы один web-sourced insight. Полагаться только на кодовую базу и training data запрещено.
+**Web-Lookup Mandate:** internet research is mandatory. Every research must produce at
+least one web-sourced insight. Relying solely on the codebase and training data is prohibited.
 
-### Поток данных
+### Data Flow
 
-1. Эксперты работают **параллельно и независимо** -- результаты одного не передаются другому
-2. **Synthesis** -- оркестратор объединяет: ищет convergence, contradictions, gaps
-3. **Auto-review** -- `business-analyst` проверяет полноту, продуктовый смысл, практичность
-4. Если auto-review находит gaps -- targeted re-run отдельных экспертов
+1. Experts work **in parallel and independently** — results from one are not passed to another
+2. **Synthesis** — orchestrator aggregates: finds convergence, contradictions, gaps
+3. **Auto-review** — `business-analyst` checks completeness, product sense, practicality
+4. If auto-review finds gaps — targeted re-run of individual experts
 
 
-## 6. Конечный автомат (State Machine)
+## 6. State Machine
 
 ```
 Research ------> Plan ------> Implement ------> Quality ------> Verify ------> PR ------> Merge
@@ -217,41 +218,41 @@ Research ------> Plan ------> Implement ------> Quality ------> Verify ------> P
                                    '---- review feedback --------------------------'
 ```
 
-### Прямые переходы (по умолчанию)
+### Forward Transitions (default)
 
-| Из | В | Условие |
-|----|---|---------|
-| Research | Plan | Исследование завершено |
-| Plan | Implement | План прошёл ревью |
-| Implement | Quality | Реализация завершена |
-| Quality | Verify | Все гейты пройдены |
-| Verify | PR | Верификация PASS |
-| PR | Merge | CI зелёный, ревью одобрено |
+| From | To | Condition |
+|------|----|-----------|
+| Research | Plan | Research complete |
+| Plan | Implement | Plan passed review |
+| Implement | Quality | Implementation complete |
+| Quality | Verify | All gates passed |
+| Verify | PR | Verification PASS |
+| PR | Merge | CI green, review approved |
 
-### Обратные переходы (recovery paths)
+### Backward Transitions (recovery paths)
 
-| Из | В | Триггер |
-|----|---|---------|
-| Plan | Research | Plan review выявил пробелы в знаниях |
-| Implement | Research | Scope оказался значительно больше ожидаемого |
-| Quality | Implement | Quality loop нашёл issues, требующие code changes |
-| Verify | Implement | Верификация провалилась -- fix и re-verify |
-| PR | Implement | Review feedback требует code changes |
+| From | To | Trigger |
+|------|----|---------|
+| Plan | Research | Plan review revealed knowledge gaps |
+| Implement | Research | Scope turned out significantly larger than expected |
+| Quality | Implement | Quality loop found issues requiring code changes |
+| Verify | Implement | Verification failed — fix and re-verify |
+| PR | Implement | Review feedback requires code changes |
 
-**Правила обратных переходов:**
-1. Причина перехода логируется в артефакте текущей стадии
-2. Re-anchoring к исходному intent перед входом в предыдущую стадию
-3. Carry forward -- не повторять завершённую работу
-4. Если 3-й возврат к той же стадии -- эскалация к пользователю
+**Backward transition rules:**
+1. Reason for the transition is logged in the current stage's artifact
+2. Re-anchoring to the original intent before entering the previous stage
+3. Carry forward — do not repeat completed work
+4. If 3rd return to the same stage — escalate to the user
 
 
 ## 7. Receipt-Based Gating
 
-Каждая стадия производит артефакт в `swarm-report/`. Следующая стадия **обязана** прочитать
-его перед началом работы. Ни одна стадия не начинается без receipt предыдущей.
+Each stage produces an artifact in `swarm-report/`. The next stage **must** read it before
+starting work. No stage starts without the previous stage's receipt.
 
-| Стадия | Артефакт | Требуется перед следующей |
-|--------|----------|-------------------------|
+| Stage | Artifact | Required before next |
+|-------|----------|----------------------|
 | Research | `<slug>-research.md` | Plan (Feature / Migration) |
 | Plan | `<slug>-plan.md` | Implement |
 | Implement | `<slug>-implement.md` | Quality |
@@ -259,126 +260,128 @@ Research ------> Plan ------> Implement ------> Quality ------> Verify ------> P
 | Verify | `<slug>-verify.md` | PR |
 | PR | `<slug>-pr.md` | Merge |
 
-**Slug:** kebab-case из описания задачи, 2-4 слова.
-Пример: задача "Add user avatar upload" -> slug `user-avatar-upload`.
+**Slug:** kebab-case from the task description, 2–4 words.
+Example: task "Add user avatar upload" -> slug `user-avatar-upload`.
 
-**Профиль-зависимый gating:** артефакты требуются только для стадий, включённых в профиль.
-Trivial: первый артефакт -- `<slug>-implement.md`. Bug Fix: `<slug>-research.md` не требуется.
+**Profile-dependent gating:** artifacts are only required for stages included in the profile.
+Trivial: first artifact is `<slug>-implement.md`. Bug Fix: `<slug>-research.md` is not required.
 
-**Если артефакт отсутствует** -> предыдущая стадия не завершена -> не продолжать.
+**If an artifact is missing** -> the previous stage did not complete -> do not proceed.
 
-### Содержание артефакта
+### Artifact Contents
 
-Каждый артефакт включает:
-- Название стадии и timestamp
-- Резюме выполненного / найденного
-- Ключевые решения (с обоснованием)
-- Затронутые файлы (для implementation)
-- PASS/FAIL вердикт (для Quality и Verify)
-- Лог обратных переходов (если были)
+Each artifact includes:
+- Stage name and timestamp
+- Summary of what was done / found
+- Key decisions (with rationale)
+- Files touched (for implementation)
+- PASS/FAIL verdict (for Quality and Verify)
+- Backward transition log (if any occurred)
 
 
-## 8. Карта скиллов и агентов
+## 8. Skill and Agent Map
 
-### Скиллы
+### Skills
 
-| Скилл | Стадия пайплайна | Описание |
-|-------|-----------------|----------|
-| `research` | Research | Research Consortium -- до 5 параллельных экспертов, синтез, auto-review |
-| `plan-review` | Plan | PoLL-ревью плана несколькими агентами |
-| `implement-task` | Implement -> Quality -> PR -> Merge | Полный автономный цикл (explicit-only) |
+| Skill | Pipeline stage | Description |
+|-------|---------------|-------------|
+| `research` | Research | Research Consortium — up to 5 parallel experts, synthesis, auto-review |
+| `plan-review` | Plan | PoLL review of the plan by multiple agents |
+| `implement-task` | Implement -> Quality -> PR -> Merge | Full autonomous cycle (explicit-only) |
 | `code-migration` | Implement (Migration) | Discover -> snapshot -> migrate -> verify -> cleanup |
-| `kmp-migration` | Implement (Migration) | Миграция модуля в Kotlin Multiplatform |
-| `migrate-to-compose` | Implement (Migration) | View -> Compose миграция с visual baseline |
-| `create-pr` | PR | Создание PR/MR: title, description, labels, reviewers |
-| `pr-drive-to-merge`* | Merge | CI мониторинг, обработка ревью, drive to merge |
-| `address-review-feedback` | Merge (sub-skill) | Анализ и обработка комментариев ревьюера |
-| `generate-test-plan` | Plan / Verify | Structured test plan из спецификации |
-| `test-feature` | Verify | Верификация фичи на живом приложении vs. спецификация |
-| `exploratory-test` | Verify | Ненаправленный поиск багов без спецификации |
-| `prepare-for-pr`* | Quality | Запуск Quality Loop перед PR |
-| `decompose-feature`* | Research / Plan | Декомпозиция фичи на задачи |
-| `write-tests`* | Implement | Ретроактивное написание тестов |
-| `simplify`** | Quality | Ревью кода на reuse, качество, эффективность |
+| `kmp-migration` | Implement (Migration) | Module migration to Kotlin Multiplatform |
+| `migrate-to-compose` | Implement (Migration) | View -> Compose migration with visual baseline |
+| `create-pr` | PR | PR/MR creation: title, description, labels, reviewers |
+| `pr-drive-to-merge` | Merge | CI monitoring, review handling, drive to merge |
+| `address-review-feedback` | Merge (sub-skill) | Analysis and handling of reviewer comments |
+| `generate-test-plan` | Plan / Verify | Structured test plan from specification |
+| `test-feature` | Verify | Feature verification on live app vs. specification |
+| `exploratory-test` | Verify | Undirected bug hunting without a specification |
+| `prepare-for-pr` | Quality | Run Quality Loop before PR |
+| `decompose-feature` | Research / Plan | Feature decomposition into tasks |
+| `write-tests` | Implement | Retroactive test writing |
+| `simplify`* | Quality | Code review for reuse, quality, and efficiency |
 
-*Определены в routing table, но не имеют отдельного skill directory.
-**Скилл из другого плагина / built-in.
+*Skill from another plugin / built-in.
 
-### Агенты
+Note: `pr-drive-to-merge`, `decompose-feature`, and `write-tests` are being added in
+concurrent PRs and will be available once those are merged.
 
-| Агент | Стадия | Роль |
-|-------|--------|------|
-| `code-reviewer` | Quality (gate 4) | Независимое ревью: intent vs. diff |
-| `kotlin-engineer` | Implement | Kotlin бизнес-логика, data/domain layer, ViewModel |
-| `compose-developer` | Implement | Compose UI: экраны, компоненты, темы, навигация |
-| `architecture-expert` | Research, Quality (gate 5) | Модульная структура, dependency direction, API design |
-| `business-analyst` | Research (auto-review) | Полнота, продуктовый смысл, практичность |
+### Agents
+
+| Agent | Stage | Role |
+|-------|-------|------|
+| `code-reviewer` | Quality (gate 4) | Independent review: intent vs. diff |
+| `kotlin-engineer` | Implement | Kotlin business logic, data/domain layer, ViewModel |
+| `compose-developer` | Implement | Compose UI: screens, components, themes, navigation |
+| `architecture-expert` | Research, Quality (gate 5) | Module structure, dependency direction, API design |
+| `business-analyst` | Research (auto-review) | Completeness, product sense, practicality |
 | `security-expert` | Quality (gate 5) | Auth, encryption, token storage, OWASP |
 | `performance-expert` | Quality (gate 5) | N+1, memory leaks, UI jank, hot loops |
 | `build-engineer` | Quality (gate 5) | Gradle config, build performance, module structure |
-| `manual-tester` | Verify | QA на живом приложении: test cases, bug reports |
-| `ux-expert` | Quality (gate 5) | UX ревью, accessibility, platform conventions |
+| `manual-tester` | Verify | QA on live app: test cases, bug reports |
+| `ux-expert` | Quality (gate 5) | UX review, accessibility, platform conventions |
 | `devops-expert` | PR / Merge | CI/CD, deployment, release automation |
 
 
-## 9. Модели агентов
+## 9. Agent Models
 
-| Агент | Модель | Обоснование |
-|-------|--------|-------------|
-| `architecture-expert` | opus | Глубокий структурный анализ, multi-module reasoning |
-| `business-analyst` | opus | Стратегическое мышление, product sense, trade-off analysis |
-| `security-expert` | opus | Безопасность требует thoroughness и deep analysis |
-| `code-reviewer` | sonnet | Быстрая итерация в quality loop, stateless invocations |
-| `kotlin-engineer` | sonnet | Стандартная имплементация, code generation |
-| `compose-developer` | sonnet | UI код, паттерны, preview generation |
+| Agent | Model | Rationale |
+|-------|-------|-----------|
+| `architecture-expert` | opus | Deep structural analysis, multi-module reasoning |
+| `business-analyst` | opus | Strategic thinking, product sense, trade-off analysis |
+| `security-expert` | opus | Security requires thoroughness and deep analysis |
+| `code-reviewer` | sonnet | Fast iteration in quality loop, stateless invocations |
+| `kotlin-engineer` | sonnet | Standard implementation, code generation |
+| `compose-developer` | sonnet | UI code, patterns, preview generation |
 | `build-engineer` | sonnet | Gradle config, build optimization |
-| `performance-expert` | sonnet | Анализ производительности по коду |
+| `performance-expert` | sonnet | Performance analysis from code |
 | `manual-tester` | sonnet | QA execution, bug reporting |
 | `ux-expert` | sonnet | UX patterns, accessibility checks |
 | `devops-expert` | sonnet | CI/CD pipelines, deployment config |
 
 
-## 10. Внешние интеграции
+## 10. External Integrations
 
-| Интеграция | Использование | Стадия |
-|------------|---------------|--------|
-| **maven-mcp** | Версии зависимостей, уязвимости, совместимость, changelog | Research (Dependencies Expert), Implementation |
-| **sensitive-guard** | Сканирование файлов на секреты и PII перед отправкой | Pre-tool hook (все стадии) |
-| **Perplexity** | Web research: подходы, best practices, pitfalls | Research (Web Expert) |
-| **DeepWiki** | AI-сгенерированная документация GitHub-репозиториев | Research (Docs Expert) |
-| **Context7** | Документация библиотек и фреймворков | Research (Docs Expert) |
-| **mobile MCP** | Тестирование на реальных устройствах и эмуляторах | Verify (`manual-tester`, `test-feature`) |
-| **playwright MCP** | Тестирование веб-приложений в браузере | Verify (`manual-tester`) |
+| Integration | Usage | Stage |
+|-------------|-------|-------|
+| **maven-mcp** | Dependency versions, vulnerabilities, compatibility, changelog | Research (Dependencies Expert), Implementation |
+| **sensitive-guard** | File scanning for secrets and PII before sending | Pre-tool hook (all stages) |
+| **Perplexity** | Web research: approaches, best practices, pitfalls | Research (Web Expert) |
+| **DeepWiki** | AI-generated documentation for GitHub repositories | Research (Docs Expert) |
+| **Context7** | Library and framework documentation | Research (Docs Expert) |
+| **mobile MCP** | Testing on real devices and emulators | Verify (`manual-tester`, `test-feature`) |
+| **playwright MCP** | Web application testing in the browser | Verify (`manual-tester`) |
 
 
 ## 11. Re-Anchoring Protocol
 
-Перед каждым переходом между стадиями оркестратор выполняет re-anchoring:
+Before each stage transition, the orchestrator performs re-anchoring:
 
-1. Перечитать **оригинальное описание задачи** (verbatim из запроса пользователя)
-2. Перечитать **research report** (`swarm-report/<slug>-research.md`) -- если существует
-3. Перечитать **план** (`swarm-report/<slug>-plan.md`) -- если существует
-4. Включить пути к артефактам в prompt следующего агента -- агент читает их сам
+1. Re-read the **original task description** (verbatim from the user's request)
+2. Re-read the **research report** (`swarm-report/<slug>-research.md`) — if it exists
+3. Re-read the **plan** (`swarm-report/<slug>-plan.md`) — if it exists
+4. Include artifact paths in the next agent's prompt — the agent reads them itself
 
-Это обязательно при каждом переходе, включая обратные. Агент, входящий в стадию,
-должен иметь загруженный исходный intent -- а не пересказ, прошедший через цепочку агентов.
+This is mandatory at every transition, including backward ones. The agent entering a stage
+must have the original intent loaded — not a retelling that passed through a chain of agents.
 
 
-## 12. Эскалация
+## 12. Escalation
 
-Автономная работа прекращается и задача возвращается пользователю когда:
+Autonomous work stops and the task is returned to the user when:
 
-- Scope **2x+** больше первоначальной оценки (план: 3 файла, реальность: 8+)
-- **3-й возврат** к той же стадии (обнаружен loop)
-- Нужна **новая зависимость**, не предусмотренная планом
-- **Несколько архитектурных подходов** без явного winner
-- **Конфликт с существующим кодом**, требующий design decision
-- Верификация **стабильно проваливается** после 3 циклов Implement -> Quality
-- Нужны **доступы или credentials**, которых нет
+- Scope is **2x+** larger than the initial estimate (plan: 3 files, reality: 8+)
+- **3rd return** to the same stage (loop detected)
+- A **new dependency** is required, not covered by the plan
+- **Multiple architectural approaches** with no clear winner
+- **Conflict with existing code** requiring a design decision
+- Verification **consistently fails** after 3 Implement -> Quality cycles
+- **Access or credentials** are needed that are not available
 
 ---
 
-*Подробности каждого компонента -- в соответствующих файлах:*
-- *Скиллы:* `plugins/developer-workflow/skills/<name>/SKILL.md`
-- *Агенты:* `plugins/developer-workflow/agents/<name>.md`
-- *Правила оркестрации:* `~/.claude/rules/dev-workflow-orchestration.md`
+*Details of each component are in the corresponding files:*
+- *Skills:* `plugins/developer-workflow/skills/<name>/SKILL.md`
+- *Agents:* `plugins/developer-workflow/agents/<name>.md`
+- *Orchestration rules:* `~/.claude/rules/dev-workflow-orchestration.md`
