@@ -70,9 +70,9 @@ Update the PR description after each major change so it stays current.
 
 ## Phase 2: Quality Loop
 
-Once implementation is complete, invoke `developer-workflow:prepare-for-pr`. It runs build, simplify, self-review, and lint/tests in a loop — exit criteria and hook behavior are defined inside that skill.
+Once implementation is complete, invoke the `simplify` skill on changed files, then run the Quality Loop gates as defined in orchestration rules (build → static analysis → tests → semantic self-review → expert reviews → intent check).
 
-After `prepare-for-pr` exits clean, run `code-review:code-review`. Fix any non-minor issues, commit, push, and repeat until only minor issues remain.
+After the quality loop exits clean, run `code-review:code-review`. Fix any non-minor issues, commit, push, and repeat until only minor issues remain.
 
 ---
 
