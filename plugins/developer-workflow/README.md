@@ -37,6 +37,17 @@ Examples: Java Date → Kotlin Date, XML layouts → Jetpack Compose, data bindi
 
 Use when migrating code from one technology to another within an existing project.
 
+### `pr-drive-to-merge`
+
+Drives an existing PR/MR from its current state to a successful merge:
+- Monitors CI/CD pipelines, investigates failures, and auto-fixes issues caused by PR changes
+- Handles multi-round code review by delegating to `address-review-feedback`
+- Undrafts the PR when CI passes, updates the branch when behind base
+- Merges with user confirmation (squash + delete branch)
+- Persists state for compaction resilience across long-running merge cycles
+
+Use when a PR already exists and needs to be driven through CI, review, and merge.
+
 ### `address-review-feedback`
 
 Handles reviewer comments on an existing PR/MR:
