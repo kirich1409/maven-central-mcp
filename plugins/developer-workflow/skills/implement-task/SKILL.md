@@ -217,8 +217,6 @@ Once implementation is complete, invoke the `simplify` skill on changed files, t
 
 **Backward transition:** if the quality loop finds issues requiring significant code changes → log the issues in `swarm-report/<slug>-quality.md` → re-anchor → return to implementation (Phase 0.5 strategy).
 
-After the quality loop exits clean, run `code-review:code-review`. Fix any non-minor issues, commit, push, and repeat until only minor issues remain.
-
 ---
 
 ## Phase 2.5: Verification Gate
