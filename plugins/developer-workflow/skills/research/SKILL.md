@@ -12,7 +12,7 @@ description: >-
   "before we start — let's understand", "what do we need to know before".
   Also invoke when implement-task or code-migration needs a Research stage, or when a plan-review
   verdict is FAIL and gaps require investigation.
-  Do NOT invoke for: code review (use code-review), implementation (use implement-task),
+  Do NOT invoke for: code review (use code-reviewer agent), implementation (use implement-task),
   plan review (use plan-review), specific library version lookup (use maven-mcp:latest-version
   directly), debugging existing bugs.
   Cross-references: feeds into plan-review and implement-task as the Research stage of the
