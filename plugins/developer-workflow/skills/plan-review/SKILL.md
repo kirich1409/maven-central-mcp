@@ -150,7 +150,7 @@ Extract from the plan:
 Find all available agents by scanning for real agent definition files:
 
 1. **Plugin agent directories** — `Glob("**/agents/*.md")` across plugin paths in the project
-2. **Built-in subagent types** — only those listed in the system prompt under "Available agent types" (e.g., `general-purpose`, `kotlin-engineer`, `compose-ui-architect`, `manual-tester`, etc.)
+2. **Built-in subagent types** — only those listed in the system prompt under "Available agent types" (e.g., `general-purpose`, `kotlin-engineer`, `compose-developer`, `manual-tester`, etc.)
 
 **Critical rule: only include agents that actually exist.** Read each agent file's frontmatter
 (`name`, `description`) to confirm it's real. Never invent, imagine, or assume agents that aren't
@@ -159,30 +159,47 @@ check before listing it. A phantom agent in the selection list erodes trust.
 
 ### Pre-selection
 
-Score each discovered agent's relevance to the plan based on:
-- **Technology overlap** — does the agent's expertise match the plan's tech stack?
-- **Scope overlap** — does the agent cover the layers/domains the plan touches?
-- **Review value** — would this agent's perspective catch issues others wouldn't?
+Score each discovered agent's relevance **to the specific content of this plan** based on:
+- **Technology match** — does the plan mention technologies, frameworks, or layers this agent specializes in? Generic "architecture" or "security" relevance is NOT enough — the plan must specifically touch that domain.
+- **Problem-specific value** — would this agent catch issues that others on the panel wouldn't? An agent that merely overlaps with another's coverage adds noise, not signal.
+- **Gap coverage** — does this agent cover a blind spot that the other recommended agents miss?
 
-Mark agents as `recommended` if their relevance score is high. Aim for at least 2 recommended
-agents — multi-perspective review is the whole point. But if only 1 agent is genuinely relevant,
-recommend just that one rather than padding with irrelevant agents. `general-purpose` is a good
-fallback when no other agent covers a gap — it brings broad architectural perspective that
-complements any domain specialist.
+**Anti-patterns — do NOT do these:**
+- Do NOT recommend `architecture-expert` on every plan. Only when the plan introduces new modules, changes dependency direction, or modifies public APIs.
+- Do NOT recommend `security-expert` on every plan. Only when the plan touches auth, encryption, token storage, network requests, permissions, or user data.
+- Do NOT recommend an agent just because its domain is tangentially related. The plan must specifically involve that agent's core expertise.
+- Do NOT pad recommendations to reach a number. If only 1 agent is genuinely relevant, recommend just 1.
 
-### Present Multi-Select
+Mark the top-scoring agents as `recommended`. Prefer 2–3 agents, but quality over quantity.
+`general-purpose` is a fallback only when no specialist covers a genuine gap.
 
-Use `AskUserQuestion` with `multiSelect: true` to present the agent list. Structure:
+### Present Confirmation
 
-- Recommended agents listed first, with "(Recommended)" in the label
-- Each agent gets a short description of what perspective they bring to THIS specific plan
-- Non-recommended agents are still available — the user knows their context best
-- `AskUserQuestion` supports max 4 options. If more agents are available, show only the top 4
-  by relevance and mention the rest in the question text so the user can type them in "Other".
+**Phase 1 — Confirm recommended agents:**
+
+Use `AskUserQuestion` to present the recommended agents as a pre-made selection. Structure:
+
+- In the **question text**, list the recommended agents with a one-sentence reason each, specific to this plan (not generic descriptions)
+- Offer two options (single-select, NOT multiSelect):
+  - **"Confirm"** — proceed with the listed agents
+  - **"Change selection"** — go to Phase 2
+
+Example question text:
+> For this plan I recommend reviewing with:
+> • **security-expert** — the plan adds JWT token storage and new API endpoints
+> • **kotlin-engineer** — core business logic changes in the domain layer
+>
+> Confirm or change the selection?
+
+**Phase 2 — Full agent selection (only if user chose "Change selection"):**
+
+Use `AskUserQuestion` with `multiSelect: true` showing all discovered agents. Each agent gets
+a short description of what perspective they bring to THIS specific plan. Show max 4 options;
+mention overflow agents in question text so the user can type them.
 
 **Explicit agent specification:** if the user named specific agents (e.g., "review with
 kotlin-engineer and security"), skip discovery entirely and use those agents directly. No
-multi-select needed — the user already chose.
+confirmation needed — the user already chose.
 
 ## Step 3 — Parallel Independent Review
 
