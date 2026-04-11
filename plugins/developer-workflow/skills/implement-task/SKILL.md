@@ -4,7 +4,7 @@ description: >
   Explicit-only skill — only invoke when the user directly requests it (e.g. "/developer-workflow:implement-task").
   Do NOT trigger automatically on implementation requests — the user controls when this workflow runs.
   Orchestrates the full development cycle: isolated worktree → TDD → implementation → quality loop
-  (simplify + code review) → draft PR → CI/CD monitoring → merge-ready PR.
+  (quality loop) → draft PR → CI/CD monitoring → merge-ready PR.
 disable-model-invocation: true
 ---
 
@@ -17,15 +17,13 @@ disable-model-invocation: true
 Full autonomous implementation cycle — from understanding the task to a merge-ready PR.
 Ask the user only when a decision is **architecturally significant** or **irreversible**. Everything else: decide and proceed.
 
-If any phase fails: identify the root cause — if it's in current changes, fix and re-enter the phase; if pre-existing, ask the user; if unclear, invoke `superpowers:systematic-debugging` (if available) or debug inline by reproducing, isolating, and fixing the issue.
+If any phase fails: identify the root cause — if it's in current changes, fix and re-enter the phase; if pre-existing, ask the user; if unclear, debug inline: reproduce the issue → isolate the failing component → form a hypothesis → verify → fix.
 
 ---
 
 ## Phase 0: Setup
 
 ### 0.1 Worktree
-
-If `superpowers:using-git-worktrees` is available, invoke it. Otherwise, set up the worktree inline:
 
 1. Determine the base branch: `git remote show origin 2>/dev/null | grep "HEAD branch" | awk '{print $NF}'` (fallback: main → master → develop)
 2. Check current location:
@@ -67,17 +65,13 @@ The research report, when present, feeds into design (0.3) and skill selection (
 
 For tasks that touch more than one file or introduce a new abstraction, design before writing code.
 
-**Primary approach:** if `superpowers:brainstorming` is available, invoke it.
-
-**Inline fallback** (when superpowers is not installed):
-
 1. Launch an Explore agent to analyze the codebase: existing patterns, related code, module boundaries, dependency direction
 2. Based on exploration results, present **2-3 design approaches** with trade-offs:
    - Approach name and one-line summary
    - Pros (maintainability, consistency with existing code, simplicity)
    - Cons (complexity, breaking changes, performance impact)
    - Recommended: yes/no with reasoning
-3. Ask the user to pick one. If the user prefers autonomy ("just do it", "your call"), pick the recommended approach and proceed.
+3. Proceed with the recommended approach unless the user objects.
 
 If research report exists at `swarm-report/<slug>-research.md`, include its path in the Explore agent prompt so design decisions are informed by research findings.
 
@@ -87,15 +81,15 @@ Skip for single-file changes and focused bugfixes.
 
 Select the most specific applicable skill and invoke it. If research report exists, include `swarm-report/<slug>-research.md` path in the skill invocation context so the chosen skill has access to research findings.
 
-| Task type | Skill | Fallback (if skill unavailable) |
-|-----------|-------|---------------------------------|
-| Android/Kotlin technology migration | `developer-workflow:code-migration` | — (always available) |
-| KMP migration | `developer-workflow:kmp-migration` | — (always available) |
-| Multi-step feature or architecture change | `superpowers:writing-plans` → `superpowers:executing-plans` | Use Plan Mode to create a plan, then implement step by step |
-| Bug or unexpected behavior | `superpowers:systematic-debugging` | Reproduce → isolate → fix → verify inline |
-| Any other implementation work | `superpowers:test-driven-development` (default) | Write failing test → implement → green → refactor (inline TDD) |
+| Task type | Approach |
+|-----------|----------|
+| Android/Kotlin technology migration | Invoke `developer-workflow:code-migration` |
+| KMP migration | Invoke `developer-workflow:kmp-migration` |
+| Multi-step feature or architecture change | Create implementation plan (sections: Scope, Approach, Files to modify, Testing Strategy, Verification Approach, Acceptance Criteria), save to `swarm-report/<slug>-plan.md`, then implement step by step, updating progress and committing after each logical unit |
+| Bug or unexpected behavior | Reproduce → isolate the failing component → form a hypothesis → verify → fix. Read error output carefully, check logs, use debugger if available |
+| Any other implementation work (default) | Write failing test → implement → verify test passes → refactor. Repeat for each logical unit. If no test infrastructure exists, proceed implementation-first and flag in PR description |
 
-Follow the chosen skill throughout implementation. Switch to a more specific skill if a better match emerges. If a `superpowers` skill is listed but not installed, use the fallback approach — the skill works without external plugins.
+Follow the chosen approach throughout implementation. Switch to a more specific one if a better match emerges.
 
 The core TDD contract: **write a failing test before writing the implementation code it covers.** If the codebase has no test infrastructure, proceed implementation-first and flag the gap in the PR description.
 
@@ -111,9 +105,7 @@ Update the PR description after each major change so it stays current.
 
 ## Phase 2: Quality Loop
 
-Once implementation is complete, invoke `developer-workflow:prepare-for-pr`. It runs build, simplify, self-review, and lint/tests in a loop — exit criteria and hook behavior are defined inside that skill.
-
-After `prepare-for-pr` exits clean, run `code-review:code-review`. Fix any non-minor issues, commit, push, and repeat until only minor issues remain.
+Once implementation is complete, invoke `developer-workflow:prepare-for-pr`. It runs build, simplify, self-review, intent verification, optional expert reviews, and lint/tests in a loop — exit criteria and hook behavior are defined inside that skill.
 
 ---
 
@@ -180,7 +172,12 @@ Wait for CI/CD checks to pass (monitor manually or via the platform UI). Once re
 
 ## Phase 5: Wrap-up
 
-After the PR is merged, invoke `superpowers:finishing-a-development-branch` for worktree cleanup and branch deletion.
+After the PR is merged, clean up the development environment:
+1. Verify all commits are pushed and the branch is clean (`git status` shows nothing)
+2. Remove any temporary files created during development
+3. Switch back to the base branch
+4. Remove the worktree: `git worktree remove .worktrees/<branch>`
+5. Delete the local branch: `git branch -d <branch>`
 
 ---
 

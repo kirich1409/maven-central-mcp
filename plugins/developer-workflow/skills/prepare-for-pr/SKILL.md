@@ -65,7 +65,7 @@ digraph prepare_for_pr {
     build [label="Build", shape=box];
     build_pass [label="Passes?", shape=diamond];
     scope_build [label="Scope decision\n(see below)", shape=box];
-    simplify [label="Simplify (skill: simplify)\n[1st iteration only — skip if unavailable]", shape=box];
+    simplify [label="Simplify\n[1st iteration only]", shape=box];
     selfrev [label="Self-review: git diff $BASE...HEAD\nCheck logic, security, edge cases", shape=box];
     lint [label="Lint + Tests", shape=box];
     intent [label="Intent Verification\n(separate Explore agent)", shape=box];
@@ -129,6 +129,17 @@ digraph scope {
 **Out of scope, obvious fix:** missing import clearly needed by new code, typo in a newly added string, test fixture update required by a changed function signature.
 
 **Out of scope, ask user:** pre-existing failures in untouched files, build errors from unrelated dependency changes, failures in files not touched by this branch. When asking, include: what the issue is, why it appears unrelated, and options (fix here / skip / open separate issue). Pause until user responds.
+
+## Simplify
+
+Review all changed code (`git diff $BASE...HEAD`) for unnecessary complexity, duplication, and unclear naming. Simplify where possible without changing behavior:
+- Remove dead code, unused imports, unreachable branches introduced by current changes
+- Extract duplicated logic into shared functions
+- Simplify overly nested conditionals or verbose patterns
+- Rename unclear variables/functions to express intent
+- Replace manual implementations with standard library equivalents where obvious
+
+Fix issues inline, stage and commit. If no simplification opportunities — proceed to self-review.
 
 ## Self-Review Criteria
 
