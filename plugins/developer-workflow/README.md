@@ -58,6 +58,20 @@ Guides a full migration of an Android module to Kotlin Multiplatform (KMP):
 
 Use when migrating a module to share code with iOS, JVM, or other platforms.
 
+### `write-tests`
+
+Writes retroactive tests for existing code that lacks coverage:
+- Accepts a file, class, module, or directory as target
+- Discovers the project's test infrastructure (framework, assertions, mocking, naming conventions)
+- Plans test cases for untested public API, edge cases, and error paths
+- Delegates code generation to `kotlin-engineer` (or `compose-developer` for Compose UI)
+- Verifies tests compile and pass; classifies failures as test bugs vs production bugs
+- Reports coverage gains and any production bugs discovered (without fixing production code)
+
+Consumes test plans from `generate-test-plan` when available, but works independently.
+
+Use when adding tests to existing, untested code — not for tests as part of new feature development.
+
 ### `generate-test-plan`
 
 Creates a structured, reusable test plan from a specification source without executing any tests:
