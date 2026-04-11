@@ -11,7 +11,7 @@ pipeline stages will be executed. This is not a rigid waterfall — a profile ca
 
 Research is performed by the Research Consortium — up to five parallel expert agents, each
 working independently in its own domain (codebase, web, documentation, dependencies,
-architecture). Results are synthesised and automatically reviewed by `business-analyst`.
+architecture). Results are reviewed and validated by `business-analyst`.
 This ensures decisions are made based on data, not solely on the model's training data.
 
 Quality is enforced by the Quality Loop — six sequential gates from compilation to intent
@@ -297,15 +297,12 @@ Each artifact includes:
 | `generate-test-plan` | Plan / Verify | Structured test plan from specification |
 | `test-feature` | Verify | Feature verification on live app vs. specification |
 | `exploratory-test` | Verify | Undirected bug hunting without a specification |
-| `prepare-for-pr` | Quality | Run Quality Loop before PR |
 | `decompose-feature` | Research / Plan | Feature decomposition into tasks |
 | `write-tests` | Implement | Retroactive test writing |
 | `simplify`* | Quality | Code review for reuse, quality, and efficiency |
 
 *Skill from another plugin / built-in.
 
-Note: `pr-drive-to-merge`, `decompose-feature`, and `write-tests` are being added in
-concurrent PRs and will be available once those are merged.
 
 ### Agents
 
