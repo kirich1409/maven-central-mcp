@@ -113,44 +113,43 @@ Be thorough — check build files, configuration, and test code too.
 Respond in the same language as the research topic description. Structure: overview, then findings grouped by category.
 ```
 
-#### Web Expert (Perplexity)
+#### Web Expert
 
-**What:** Research approaches, best practices, common pitfalls, and real-world examples.
+**What:** Search the web for approaches, best practices, common pitfalls, and real-world examples — if web search is available.
 
-**How:** Use Perplexity tools — `perplexity_search` for finding specific information,
-`perplexity_research` for in-depth multi-source investigation.
+**How:** If web search is available, look for approaches and best practices; find recent articles and community discussions. If web search is not available, note this as a limitation in the research report.
 
 **Prompt template:**
 ```
-Use Perplexity to research: {topic}
+Research: {topic}
 
-Investigate:
+If web search is available, investigate:
 1. Common approaches and best practices (with trade-offs for each)
 2. Known pitfalls and mistakes to avoid
 3. Real-world examples from open-source projects
 4. Recent developments or changes (last 12 months)
 5. Community consensus — what does the majority recommend and why?
 
-Use perplexity_research for the main investigation. Follow up with perplexity_search
-for specific details if needed.
+If web search is available, perform an in-depth investigation first,
+then follow up with targeted searches for specific details if needed.
+If web search is not available, note this as a limitation in the research report
+and rely on training knowledge where possible.
 
 Respond in the same language as the research topic description. Include source URLs for key claims.
 ```
 
-#### Docs Expert (DeepWiki / Context7)
+#### Docs Expert
 
-**What:** Retrieve official documentation for libraries and frameworks involved.
+**What:** Find official documentation for involved libraries and frameworks.
 
-**How:** Use DeepWiki tools (`mcp__deepwiki__read_wiki_structure` to get topic structure,
-then `mcp__deepwiki__ask_question` for specific questions) or Context7
-(`resolve-library-id` then `query-docs`).
+**How:** Look up official documentation for the libraries involved; fetch API reference and usage examples.
 
 **Prompt template:**
 ```
 Find official documentation for: {libraries/frameworks related to topic}
 
 For each library/framework:
-1. Read the wiki structure first (DeepWiki) or resolve the library ID (Context7)
+1. Look up official documentation for the library (API reference, guides, changelogs)
 2. Find documentation for: API surface, migration guides, compatibility notes,
    configuration options, known limitations
 3. Check for version-specific documentation if version matters

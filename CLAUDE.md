@@ -10,7 +10,7 @@ Monorepo for Claude Code plugins by krozov. Contains four plugins:
 |--------|-----------|-------------|
 | maven-mcp | `plugins/maven-mcp/` | MCP server for Maven dependency intelligence |
 | sensitive-guard | `plugins/sensitive-guard/` | Scans files for secrets and PII before they reach AI servers |
-| developer-workflow | `plugins/developer-workflow/` | Skills for developer workflow — code migration, PR preparation and lifecycle |
+| developer-workflow | `plugins/developer-workflow/` | Full dev workflow pipeline — task decomposition, research, implementation, code review, QA testing, PR lifecycle |
 | extend | `plugins/extend/` | Extend Claude Code built-in features: agent review, skill optimization, configuration audit |
 
 ## Structure
@@ -19,7 +19,7 @@ Monorepo for Claude Code plugins by krozov. Contains four plugins:
 plugins/
   maven-mcp/           # TypeScript, npm package @krozov/maven-central-mcp
   sensitive-guard/      # Shell-based Claude Code plugin
-  developer-workflow/   # Skills-only plugin for developer workflow habits
+  developer-workflow/   # Skills + agents for the full development lifecycle
   extend/               # Meta-tools for improving Claude Code setup
 ```
 
