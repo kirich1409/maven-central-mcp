@@ -248,7 +248,7 @@ Print the PR/MR URL immediately after creation.
 
 **Draft PR:**
 > Draft PR created: \<url\>
-> When implementation is complete, run the quality loop to check the branch, then mark it ready for review.
+> When implementation is complete, invoke `simplify`, then run Quality Loop gates (build, static analysis, tests) from `~/.claude/rules/dev-workflow-orchestration.md`, then mark it ready for review.
 
 **Ready-for-review PR:**
 > PR created: \<url\>
