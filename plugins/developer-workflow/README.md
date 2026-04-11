@@ -60,7 +60,7 @@ Use when migrating a module to share code with iOS, JVM, or other platforms.
 
 ### `write-tests`
 
-Writes retroactive tests for existing code that lacks coverage:
+Orchestrates retroactive test generation for existing code that lacks coverage — discovers test infrastructure, plans test cases, delegates code generation to specialist agents:
 - Accepts a file, class, module, or directory as target
 - Discovers the project's test infrastructure (framework, assertions, mocking, naming conventions)
 - Plans test cases for untested public API, edge cases, and error paths

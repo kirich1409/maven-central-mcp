@@ -53,7 +53,7 @@ Read all source files in the target scope. For each file, identify:
 
 Search for existing tests:
 - Check the corresponding test source set (`src/test/`, `src/androidTest/`, `src/commonTest/`)
-- Use `ast-index search` or Grep to find test classes that reference the target classes
+- Use `ast-index search "TargetClass"` or `ast-index usages "TargetClass"` to find test classes that reference the target classes
 - Check for `@Test` annotations that exercise target functions
 
 ### 1.4 Identify untested code
