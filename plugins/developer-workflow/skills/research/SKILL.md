@@ -115,23 +115,25 @@ Respond in the same language as the research topic description. Structure: overv
 
 #### Web Expert
 
-**What:** Search the web for approaches, best practices, common pitfalls, and real-world examples.
+**What:** Search the web for approaches, best practices, common pitfalls, and real-world examples — if web search is available.
 
-**How:** Search the web for approaches and best practices; find recent articles and community discussions.
+**How:** If web search is available, look for approaches and best practices; find recent articles and community discussions. If web search is not available, note this as a limitation in the research report.
 
 **Prompt template:**
 ```
-Search the web to research: {topic}
+Research: {topic}
 
-Investigate:
+If web search is available, investigate:
 1. Common approaches and best practices (with trade-offs for each)
 2. Known pitfalls and mistakes to avoid
 3. Real-world examples from open-source projects
 4. Recent developments or changes (last 12 months)
 5. Community consensus — what does the majority recommend and why?
 
-Search the web for approaches and best practices. Perform an in-depth investigation first,
+If web search is available, perform an in-depth investigation first,
 then follow up with targeted searches for specific details if needed.
+If web search is not available, note this as a limitation in the research report
+and rely on training knowledge where possible.
 
 Respond in the same language as the research topic description. Include source URLs for key claims.
 ```

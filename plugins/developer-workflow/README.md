@@ -106,7 +106,7 @@ Use when you want an independent quality check on a plan before implementation.
 Structured investigation skill for exploring codebases, technologies, and approaches:
 - Launches parallel research agents (codebase, web, docs, deps, architecture)
 - Produces a consolidated research report with findings, recommendations, and open questions
-- Includes web research for approaches and best practices — never relies solely on codebase analysis and training data
+- Can include web research for approaches and best practices when web search is available
 
 Use for investigation tasks that don't require implementation — evaluations, comparisons, feasibility studies.
 
