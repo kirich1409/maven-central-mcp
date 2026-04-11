@@ -14,7 +14,7 @@ description: >-
   verdict is FAIL and gaps require investigation.
   Do NOT invoke for: code review (use code-review), implementation (use implement-task),
   plan review (use plan-review), specific library version lookup (use maven-mcp:latest-version
-  directly), debugging existing bugs (use systematic-debugging).
+  directly), debugging existing bugs.
   Cross-references: feeds into plan-review and implement-task as the Research stage of the
   dev-workflow-orchestration pipeline.
 ---
@@ -73,8 +73,8 @@ Create a short kebab-case slug from the topic for artifact naming:
 `<slug>` (e.g., `ktor-migration`, `push-notifications`)
 
 The slug is the topic only — no `research-` prefix. File paths add their own prefixes:
-- Artifact: `swarm-report/<slug>-research.md`
-- State: `swarm-report/research-<slug>-state.md`
+- Artifact: `./swarm-report/<slug>-research.md`
+- State: `./swarm-report/research-<slug>-state.md`
 
 ---
 
@@ -110,7 +110,7 @@ Find and report:
 Use ast-index for all symbol searches. Use Grep only for string literals and comments.
 Be thorough — check build files, configuration, and test code too.
 
-Report in Russian. Structure: overview, then findings grouped by category.
+Respond in the same language as the research topic description. Structure: overview, then findings grouped by category.
 ```
 
 #### Web Expert (Perplexity)
@@ -134,7 +134,7 @@ Investigate:
 Use perplexity_research for the main investigation. Follow up with perplexity_search
 for specific details if needed.
 
-Report in Russian. Include source URLs for key claims.
+Respond in the same language as the research topic description. Include source URLs for key claims.
 ```
 
 #### Docs Expert (DeepWiki / Context7)
@@ -155,7 +155,7 @@ For each library/framework:
    configuration options, known limitations
 3. Check for version-specific documentation if version matters
 
-Report in Russian. Quote relevant documentation sections. Note any gaps where
+Respond in the same language as the research topic description. Quote relevant documentation sections. Note any gaps where
 documentation is missing or unclear.
 ```
 
@@ -184,7 +184,7 @@ Investigate:
    maintenance activity, KMP support, community size
 5. Breaking changes in recent versions
 
-Report in Russian. Include specific version numbers and groupId:artifactId coordinates.
+Respond in the same language as the research topic description. Include specific version numbers and groupId:artifactId coordinates.
 ```
 
 #### Architecture Expert (architecture-expert agent)
@@ -206,7 +206,7 @@ Analyze:
 5. Integration points — where does this touch existing abstractions?
 
 Read the relevant module structure and build files before making judgments.
-Report in Russian.
+Respond in the same language as the research topic description.
 ```
 
 ### 2.2 State persistence
@@ -324,7 +324,7 @@ Check:
 6. Does the recommendation align with practical constraints (time, team skills, maintenance)?
 
 If you find gaps or issues, list them with severity (critical / major / minor).
-Report in Russian.
+Respond in the same language as the research topic description.
 ```
 
 ### 4.1 Handle review findings
