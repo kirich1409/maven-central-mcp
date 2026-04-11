@@ -145,8 +145,8 @@ When a check fails:
 
 ```bash
 # GitHub — find the failed run and get logs
-gh run list --branch "$HEAD" --status failure --limit 1 --json databaseId,name -q '.[0]'
-gh run view <RUN_ID> --log-failed
+FAILED_RUN=$(gh run list --branch "$HEAD" --status failure --limit 1 --json databaseId -q '.[0].databaseId')
+gh run view "$FAILED_RUN" --log-failed
 ```
 
 2. **Cross-reference with PR diff:**
@@ -269,8 +269,10 @@ After pushing fixes, re-request review from the reviewers who requested changes:
 REVIEWERS=$(gh api "repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
   --jq '[.[] | select(.state == "CHANGES_REQUESTED") | .user.login] | unique | join(",")')
 
-# GitHub — re-request review
-gh pr edit "$PR_NUMBER" --add-reviewer "$REVIEWERS"
+# GitHub — re-request review (only if there are reviewers to re-request)
+if [ -n "$REVIEWERS" ]; then
+  gh pr edit "$PR_NUMBER" --add-reviewer "$REVIEWERS"
+fi
 
 # GitLab — no explicit re-request; pushing new commits notifies reviewers
 ```
@@ -280,14 +282,28 @@ gh pr edit "$PR_NUMBER" --add-reviewer "$REVIEWERS"
 Poll for new review activity:
 
 ```bash
-# GitHub — check if review decision changed
+# GitHub — check if review decision changed or new activity arrived
+BASELINE_DECISION=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision)
+BASELINE_REVIEW=$(gh api "repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
+  --jq 'sort_by(.submitted_at) | last | .submitted_at // ""')
+BASELINE_COMMENTS=$(gh api "repos/$OWNER/$REPO_NAME/issues/$PR_NUMBER/comments" \
+  --jq 'sort_by(.updated_at) | last | .updated_at // ""')
+
 while true; do
-  CURRENT=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision)
-  LATEST_REVIEW=$(gh api "repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
-    --jq 'sort_by(.submitted_at) | last | .submitted_at')
-  # Compare with the timestamp from before re-request
-  # If new review arrived → break and re-enter the loop at 3.2
   sleep 300  # 5 minutes between polls
+
+  CURRENT_DECISION=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision)
+  LATEST_REVIEW=$(gh api "repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
+    --jq 'sort_by(.submitted_at) | last | .submitted_at // ""')
+  LATEST_COMMENT=$(gh api "repos/$OWNER/$REPO_NAME/issues/$PR_NUMBER/comments" \
+    --jq 'sort_by(.updated_at) | last | .updated_at // ""')
+
+  # Break when review decision changed or new review/comment activity detected
+  if [ "$CURRENT_DECISION" != "$BASELINE_DECISION" ] || \
+     [ "$LATEST_REVIEW" != "$BASELINE_REVIEW" ] || \
+     [ "$LATEST_COMMENT" != "$BASELINE_COMMENTS" ]; then
+    break  # New activity detected — re-enter the loop at 3.2
+  fi
 done
 ```
 
