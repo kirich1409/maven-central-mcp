@@ -41,6 +41,13 @@ The user provides one or more of:
 Resolve vague references using `ast-index search` or `ast-index class`. If ambiguous, ask
 **one clarifying question** before proceeding.
 
+### 1.1.1 Generate slug
+
+Create a short kebab-case slug from the target name for artifact naming:
+`<slug>` (e.g., `user-repository`, `auth-module`, `network-client`)
+
+Used in: `swarm-report/<slug>-test-findings.md`
+
 ### 1.2 Read target code
 
 Read all source files in the target scope. For each file, identify:
@@ -254,10 +261,16 @@ Respond in the same language as the user's request.
 Run the test suite for the target module:
 
 ```bash
+# Unit tests
 ./gradlew :module:test
+# or more specific: ./gradlew :module:testDebugUnitTest
+
+# Instrumentation / Compose UI tests (if generated into src/androidTest/)
+./gradlew :module:connectedAndroidTest
 ```
 
-Or the more specific task if known (e.g., `:module:testDebugUnitTest`).
+Choose the appropriate command based on where tests were generated. If both unit and
+instrumentation tests were created, run both.
 
 ### 5.2 Handle failures
 
