@@ -9,7 +9,7 @@ Claude Code plugin with skills for developer workflow habits — safe code migra
 Orchestrates the full development cycle for any implementation task:
 - Creates an isolated worktree, timeboxes exploration, selects the best-matching sub-skill
 - Brainstorms design for multi-file changes; follows TDD throughout
-- Creates a draft PR early, runs quality loop (simplify + quality gates + `code-review`), then marks the PR ready
+- Creates a draft PR early, runs quality loop (simplify + quality gates + `code-reviewer` agent), then marks the PR ready
 - Delegates review comment handling to `address-review-feedback`
 
 Explicit-only — invoke directly with `/developer-workflow:implement-task`.
@@ -105,6 +105,17 @@ Performs manual-style QA testing of a running mobile or web application:
 - Supports re-test loops: re-executes failed cases after fixes and marks them VERIFIED or STILL FAILING
 
 Use when you need a running app validated against a spec — or just exploratory smoke-tested.
+
+### `code-reviewer`
+
+Independent code reviewer for Quality Loop gate 4 (semantic self-review):
+- Receives only task description, plan, and git diff — never the implementation conversation
+- Reviews 5 dimensions: semantic correctness, logic errors, basic security, code quality, consistency
+- Produces structured output with PASS/WARN/FAIL verdict
+- Recommends specialist agents (security, performance, architecture) when findings exceed scope
+- Read-only — cannot modify code, only report issues
+
+Use when running the quality loop before PR, or when independent code review is needed.
 
 ### `compose-developer`
 

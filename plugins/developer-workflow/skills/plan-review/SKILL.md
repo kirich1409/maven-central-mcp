@@ -10,7 +10,7 @@ description: >-
   plan good?", "what did I miss?", "sanity check this", "review this before I start", "check my
   approach", or wants multiple viewpoints on an implementation strategy — even if the plan is
   described inline in the message or referenced as a file. Do NOT invoke for code review (use
-  code-review instead) or PR review.
+  code-reviewer agent instead) or PR review.
 ---
 
 # Plan Review
