@@ -93,7 +93,7 @@ glab mr update --remove-draft --title "<final title>" --description "<final desc
 
 ## Phase 4: CI/CD and Review
 
-Invoke `developer-workflow:pr-drive-to-merge` and let it run. This skill pauses only when human input is needed (out-of-scope issues, merge confirmation, stale review).
+Wait for CI/CD checks to pass (monitor manually or via the platform UI). Once reviewer feedback arrives, invoke `developer-workflow:address-review-feedback` to handle review comments.
 
 ---
 
@@ -111,7 +111,7 @@ After the PR is merged, invoke `superpowers:finishing-a-development-branch` for 
 | Breaking changes visible outside the PR | Variable or method naming |
 | Unclear done criteria before starting | Whether to add a test |
 | Reviewer raises an architectural concern | Order of code review fixes |
-| Merge confirmation (handled by pr-drive-to-merge) | Obvious lint fixes |
+| Merge confirmation | Obvious lint fixes |
 
 ---
 

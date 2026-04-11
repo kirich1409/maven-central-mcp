@@ -252,4 +252,4 @@ Print the PR/MR URL immediately after creation.
 
 **Ready-for-review PR:**
 > PR created: \<url\>
-> Run `pr-drive-to-merge` to monitor CI/CD and handle review.
+> Monitor CI/CD via the platform UI. When reviewer feedback arrives, run `address-review-feedback` to handle review comments.
