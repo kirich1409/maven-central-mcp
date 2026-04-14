@@ -12,6 +12,7 @@ description: >-
   Do NOT trigger when: the user provides a spec/mockup/PRD and wants verification against it (use
   acceptance), the user only wants test cases written without execution (use generate-test-plan),
   or the user asks about automated unit/integration tests (out of scope).
+disable-model-invocation: true
 ---
 
 # Exploratory Test

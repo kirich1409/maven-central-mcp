@@ -12,6 +12,7 @@ description: >-
   exploratory-test), the user wants automated unit/integration tests written in code (out of scope),
   or the user wants to run an existing test plan (use acceptance). This skill never launches an
   app, device, or browser — it only produces a document.
+disable-model-invocation: true
 ---
 
 # Generate Test Plan

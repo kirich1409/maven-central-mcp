@@ -15,6 +15,7 @@ description: >-
   Cross-references: produces task lists that feed into the implement skill for execution. Tasks
   flagged with research-recommended feed into the research skill. The output artifact can be
   reviewed via plan-review before implementation begins.
+disable-model-invocation: true
 ---
 
 # Decompose Feature

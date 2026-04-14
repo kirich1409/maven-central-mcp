@@ -14,6 +14,7 @@ description: >-
   directly; kotlin-engineer or compose-developer agents produce the test files.
   Cross-references: consumes test plans from generate-test-plan (docs/testplans/) when available;
   feeds into the Quality Loop as additional coverage.
+disable-model-invocation: true
 ---
 
 # Write Tests

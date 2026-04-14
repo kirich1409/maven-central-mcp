@@ -17,6 +17,7 @@ description: >-
   directly), debugging existing bugs.
   Cross-references: feeds into plan-review and the implement skill as the Research stage of the
   dev-workflow-orchestration pipeline.
+disable-model-invocation: true
 ---
 
 # Research

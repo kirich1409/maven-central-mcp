@@ -11,6 +11,7 @@ description: >
   "протестируй", or any request to compare a running app against a specification source.
   Also trigger when the user finishes implementing a feature or bug fix and wants confirmation
   it works before creating or finalizing a PR.
+disable-model-invocation: true
 ---
 
 # Acceptance

@@ -13,6 +13,7 @@ description: >-
   "пофикси", or when an orchestrator delegates the implementation stage.
   Do NOT use for: debugging/investigation (use debug), research (use research),
   PR creation (use create-pr), live QA (use acceptance).
+disable-model-invocation: true
 ---
 
 # Implement

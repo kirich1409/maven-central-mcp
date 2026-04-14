@@ -12,6 +12,7 @@ description: >-
 
   Do NOT use for: feature implementation, code review, performance optimization (unless it's a
   performance bug), writing new tests from scratch (use write-tests), general research (use research).
+disable-model-invocation: true
 ---
 
 # Systematic Debugging
