@@ -13,7 +13,6 @@ description: >
   round of review comments without merge intent (use address-review-feedback directly).
   Cross-references: invokes address-review-feedback for review handling. Invoked by
   the orchestrator as the final pipeline stage.
-disable-model-invocation: true
 ---
 
 # PR Drive to Merge

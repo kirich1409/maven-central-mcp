@@ -1,7 +1,6 @@
 ---
 name: migrate-to-compose
 description: Use when migrating any Android View-based UI to Jetpack Compose — whether the source is an Activity, a Fragment, or a standalone custom View/ViewGroup. Invoke proactively whenever the user says "migrate to Compose", "convert this screen to Compose", "rewrite in Compose", "move to Compose", "this screen needs Compose", "replace XML layout", "drop this fragment", "convert this Activity", "replace this custom view", "rewrite this ViewGroup", or asks how to approach a View→Compose migration for a specific screen or component. Covers: analyzing the existing View-based implementation regardless of its host (Activity/Fragment/custom View), discovering patterns from screens already written in Compose, identifying shared components that need to be built first, capturing a visual baseline via screenshot, implementing the Compose equivalent, and verifying both visual fidelity and structural consistency. Do NOT use for: migrating entire apps at once (do it screen-by-screen), KMP migrations (use kmp-migration instead), or non-UI code rewrites.
-disable-model-invocation: true
 ---
 
 # Migrate to Compose

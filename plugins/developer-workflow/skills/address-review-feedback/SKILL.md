@@ -12,7 +12,6 @@ description: >
   or any mention of processing, triaging, or responding to existing review comments
   on a pull request or merge request. Do NOT use for writing new reviews, creating PRs,
   or CI/CD monitoring — those are separate skills.
-disable-model-invocation: true
 ---
 
 # Address Review Feedback

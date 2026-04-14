@@ -11,7 +11,6 @@ description: >-
   approach", or wants multiple viewpoints on an implementation strategy — even if the plan is
   described inline in the message or referenced as a file. Do NOT invoke for code review (use
   code-reviewer agent instead) or PR review.
-disable-model-invocation: true
 ---
 
 # Plan Review
