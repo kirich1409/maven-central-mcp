@@ -281,44 +281,37 @@ fi
 
 ### 3.6 Wait for reviewer response
 
-Poll for new review activity:
+Distinguish between **bot reviews** (CI, automated checks) and **human reviews**:
 
+**Bot reviews** (review author is a bot or CI system) — wait and poll:
 ```bash
-# GitHub — check if review decision changed or new activity arrived
-BASELINE_DECISION=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision)
-BASELINE_REVIEW=$(gh api "repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
-  --jq 'sort_by(.submitted_at) | last | .submitted_at // ""')
-BASELINE_COMMENTS=$(gh api "repos/$OWNER/$REPO_NAME/issues/$PR_NUMBER/comments" \
-  --jq 'sort_by(.updated_at) | last | .updated_at // ""')
-
+# Poll for bot review activity (short cycle — bots respond in minutes)
 while true; do
-  sleep 300  # 5 minutes between polls
-
+  sleep 60
   CURRENT_DECISION=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision)
-  LATEST_REVIEW=$(gh api "repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
-    --jq 'sort_by(.submitted_at) | last | .submitted_at // ""')
-  LATEST_COMMENT=$(gh api "repos/$OWNER/$REPO_NAME/issues/$PR_NUMBER/comments" \
-    --jq 'sort_by(.updated_at) | last | .updated_at // ""')
-
-  # Break when review decision changed or new review/comment activity detected
-  if [ "$CURRENT_DECISION" != "$BASELINE_DECISION" ] || \
-     [ "$LATEST_REVIEW" != "$BASELINE_REVIEW" ] || \
-     [ "$LATEST_COMMENT" != "$BASELINE_COMMENTS" ]; then
-    break  # New activity detected — re-enter the loop at 3.2
-  fi
+  # Check for new bot reviews...
+  # Break when bot activity detected
 done
 ```
 
-### 3.7 Staleness escalation
+**Human reviews** — **do NOT poll**. Human reviews can take hours or days.
+Instead, stop and report to the user:
 
-If no reviewer response arrives within **4 hours** of the last re-request:
+1. Log current state in the state file
+2. Report:
+   - PR URL and current status
+   - Which reviewers were requested
+   - What bot checks remain (if any)
+   - All automated work is complete — waiting for human review
+3. **Stop the skill.** The user resumes when a reviewer responds (e.g., "check PR",
+   "reviewer responded", "continue with PR")
 
-1. Log the stall in the state file under Escalations
-2. Report to the user:
-   - Which reviewers were re-requested
-   - When the re-request was sent
-   - Current review state
-3. Ask: ping the reviewer again, assign a different reviewer, or wait longer
+On resume:
+1. Re-read the state file at `swarm-report/<slug>-drive-to-merge-state.md`
+2. Fetch current PR state (new reviews, comments, CI status)
+3. If new review comments → re-enter at step 3.2
+4. If approved → proceed to Phase 4 (Merge)
+5. If no new activity → report and stop again
 
 ### 3.8 Update state
 
