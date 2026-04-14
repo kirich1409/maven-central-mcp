@@ -347,6 +347,24 @@ Present the report to the user with a brief summary of:
 - Key recommendation (one sentence)
 - Number of open questions that need user decision
 
+### Suggest next action
+
+Based on the research findings, propose the logical next step:
+
+| Situation | Suggested action |
+|-----------|-----------------|
+| Feature is large, multiple independent parts | `/decompose-feature` — break into tasks |
+| Feature is clear, single task, ready to build | `/implement` — start implementation |
+| Complex approach, needs validation before coding | Plan Mode → `/plan-review` |
+| Research revealed a bug, not a feature need | `/bugfix-flow` — switch to bug pipeline |
+| Open questions block progress | List questions, ask user to resolve before proceeding |
+| Multiple viable approaches, no clear winner | Present trade-offs, ask user to choose |
+
+Frame the suggestion as an actionable proposal, not a question:
+
+> **Следующий шаг:** фича разбивается на 3 независимых части → предлагаю `/decompose-feature`.
+> Или если хочешь сразу в код — `/implement`.
+
 ---
 
 ## Scope Decision Guide
