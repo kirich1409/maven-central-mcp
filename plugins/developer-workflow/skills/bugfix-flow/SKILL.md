@@ -1,15 +1,15 @@
 ---
-name: bugfix
+name: bugfix-flow
 description: >-
   Thin orchestrator for bug fix tasks — sequences modular skills: debug → implement → acceptance → PR.
   Invoke when the user reports a bug and wants it fixed end-to-end.
-  Trigger on: "/bugfix", "fix this bug", "исправь баг", "почини", "это сломалось, почини",
+  Trigger on: "/bugfix-flow", "bugfix flow", "fix this bug", "исправь баг", "почини", "это сломалось, почини",
   "fix and ship", "find and fix", "debug and fix".
-  Do NOT use for: feature implementation (use implement-task), investigation without fix (use debug),
+  Do NOT use for: feature implementation (use feature-flow), investigation without fix (use debug),
   quick obvious fix that doesn't need diagnosis (invoke implement directly).
 ---
 
-# Bugfix — Bug Fix Orchestrator
+# Bugfix Flow — Bug Fix Orchestrator
 
 Thin orchestrator that routes a bug through diagnosis, fix, verification, and PR.
 Contains no implementation logic — each stage is a separate skill invocation via subagents.
@@ -26,8 +26,10 @@ It only manages transitions, passes context between stages, and reports summarie
 ```
 Setup      -> Debug
 Setup      -> Implement        (trivially obvious fix — skip debug)
-Debug      -> Implement        (root cause diagnosed)
+Debug      -> Plan             (complex fix — needs planning)
+Debug      -> Implement        (simple fix — root cause diagnosed, fix is clear)
 Debug      -> Report           (not reproducible or escalated)
+Plan       -> Implement
 Implement  -> Acceptance
 Acceptance -> PR               (VERIFIED — bug gone)
 Acceptance -> Implement        (FAILED — bug still reproduces or new bugs)
@@ -67,7 +69,7 @@ Auto-detect the profile. Then confirm:
 
 > **Определён профиль: Поиск бага. Верно?**
 
-If the user says it's a feature — redirect to `/implement-task`.
+If the user says it's a feature — redirect to `/feature-flow`.
 If the fix is trivially obvious (typo, missing null check) — announce skip and go to Implement.
 
 ---
@@ -86,9 +88,24 @@ This file is persistent state — survives context compaction. Re-read it before
 action that depends on reproduction steps.
 
 **Route by status:**
-- **Diagnosed** → **Стадия: Debug → Implement.** Proceed with root cause and fix direction.
+- **Diagnosed, simple fix** (single file, clear direction) → **Стадия: Debug → Implement.**
+- **Diagnosed, complex fix** (multiple files, architectural impact, unclear approach) → **Стадия: Debug → Plan.**
 - **Not Reproducible** → report to user, ask for more info. Stop.
 - **Escalated** → report findings, stop. Bug needs user decision.
+
+---
+
+## Phase 1.5: Plan (optional — complex fixes only)
+
+When the debug artifact indicates a complex fix (touches multiple modules, needs architectural
+decisions, or the recommended fix direction has alternatives):
+
+1. Create an implementation plan in Plan Mode based on the debug findings
+2. Invoke `developer-workflow:plan-review` to validate the plan
+3. If FAIL → back to Debug for more context
+4. If PASS/CONDITIONAL → proceed to Implement
+
+Skip for straightforward fixes where the debug artifact already gives a clear, single-path direction.
 
 ---
 

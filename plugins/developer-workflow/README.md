@@ -16,6 +16,20 @@ Breaks a feature idea, PRD, or epic into a structured task list with dependencie
 
 Use when breaking down a feature idea into implementable tasks before starting work.
 
+### `feature-flow`
+
+Thin orchestrator for features — routes through the full pipeline autonomously:
+- research → decompose → plan review → [implement → acceptance] per task → PR → merge
+- Strict state machine with explicit allowed transitions
+- Stops at human review, PARTIAL verdict, and escalation points
+
+### `bugfix-flow`
+
+Thin orchestrator for bug fixes — routes through diagnosis to merge:
+- debug → implement → acceptance → PR → merge
+- Verifies bug no longer reproduces before PR
+- Stops at human review and when bug is not reproducible
+
 ### `implement`
 
 Standalone implementation stage — takes a task with optional context and produces working code:

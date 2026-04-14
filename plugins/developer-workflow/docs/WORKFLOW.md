@@ -384,7 +384,10 @@ Each artifact includes:
 
 | Skill | Pipeline stage | Description |
 |-------|---------------|-------------|
+| **`feature-flow`** | **Orchestrator** | **Thin orchestrator: research → decompose → implement → acceptance → PR → merge** |
+| **`bugfix-flow`** | **Orchestrator** | **Thin orchestrator: debug → implement → acceptance → PR → merge** |
 | `research` | Research | Research Consortium — up to 5 parallel experts, synthesis, auto-review |
+| `debug` | Debug | Systematic root cause investigation — stops at diagnosis |
 | `plan-review` | Plan | PoLL review of the plan by multiple agents |
 | `implement` | Implement -> Quality | Standalone implementation stage with quality loop |
 | `code-migration` | Implement (Migration) | Discover -> snapshot -> migrate -> verify -> cleanup |

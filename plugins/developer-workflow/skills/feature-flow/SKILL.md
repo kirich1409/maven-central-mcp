@@ -1,15 +1,15 @@
 ---
-name: implement-task
+name: feature-flow
 description: >-
   Thin orchestrator for feature tasks — sequences modular skills through the full pipeline.
   Invoke when the user gives a feature task and wants it done end-to-end autonomously.
-  Trigger on: "/implement-task", "implement this feature", "сделай эту фичу от начала до конца",
+  Trigger on: "/feature-flow", "implement this feature", "сделай эту фичу от начала до конца",
   "full cycle", "autonomous implementation".
-  Do NOT use for: bug fixes (use bugfix), research-only (use research), single quick change
+  Do NOT use for: bug fixes (use bugfix-flow), research-only (use research), single quick change
   (invoke implement directly).
 ---
 
-# Implement Task — Feature Orchestrator
+# Feature Flow — Feature Orchestrator
 
 Thin orchestrator that routes a feature task through modular skills. Contains no implementation
 logic — each stage is a separate skill invocation via subagents.
@@ -24,10 +24,11 @@ It only manages transitions, passes context between stages, and reports summarie
 ### Allowed transitions
 
 ```
-Setup      -> Research
-Setup      -> Implement        (trivial task — skip research/planning)
-Research   -> Decompose
-Research   -> Implement        (single-task, no decomposition needed)
+Setup      -> Research         (unknown APIs, libraries, or architectural decisions)
+Setup      -> Implement        (trivial/simple task — skip research/planning)
+Research   -> Decompose        (large feature — split into tasks)
+Research   -> PlanReview       (complex single-task — needs plan review)
+Research   -> Implement        (simple single-task — research was enough)
 Decompose  -> PlanReview
 PlanReview -> Implement
 PlanReview -> Research         (FAIL — knowledge gaps)
@@ -38,6 +39,11 @@ Acceptance -> Debug            (FAILED — unclear root cause)
 PR         -> Merge
 PR         -> Implement        (review feedback requires code changes)
 ```
+
+**Decision criteria for skipping stages:**
+- **Skip Research:** task is well-understood, no external APIs, no unfamiliar libraries
+- **Skip Decompose:** task is a single logical unit, no independent sub-parts
+- **Skip PlanReview:** change is straightforward, touches 1-3 files, no architectural impact
 
 **ALL other transitions are FORBIDDEN.** Before every transition, announce:
 
@@ -71,7 +77,7 @@ Auto-detect the profile from keywords and context. Then confirm:
 
 > **Определён профиль: Бизнес-фича. Верно?**
 
-If the user says it's a bug — redirect to `/bugfix`.
+If the user says it's a bug — redirect to `/bugfix-flow`.
 If the task is trivial (single-file, obvious change) — announce skip and go to Implement.
 
 ---
