@@ -24,27 +24,27 @@ drift from the original intent.
 
 ## 2. Pipeline Overview
 
+### Feature pipeline
+
 ```
 IDEA / FEATURE REQUEST
-  |
-  v
-[Task Profiling] ---- Classification: Feature / Bug Fix / Migration / Research / Trivial
   |
   v
 [research] ---- Research Consortium (up to 5 parallel experts)
   |                Artifact: swarm-report/<slug>-research.md
   v
-[Plan Mode + plan-review] ---- Implementation plan + PoLL review
+[Plan Mode + plan-review] ---- Implementation plan + PoLL review (optional)
   |                              Artifact: swarm-report/<slug>-plan.md
   v
-[implement] ---- Full autonomous cycle
-  |  |-- kotlin-engineer / compose-developer / code-migration
-  |  |-- Quality Loop (6 gates + code-reviewer)
-  |  |     Artifact: swarm-report/<slug>-quality.md
-  |  '-- Verification (Phase 2.5)
-  |        Artifact: swarm-report/<slug>-verify.md
-  |
-  | [Implement] --- swarm-report/<slug>-implement.md
+[implement] ---- Code + simplify + Quality Loop
+  |  |-- kotlin-engineer / compose-developer / specialist agents
+  |  '-- Quality Loop (6 gates + code-reviewer)
+  |        Artifacts: swarm-report/<slug>-implement.md
+  |                   swarm-report/<slug>-quality.md
+  v
+[acceptance] ---- Verify against requirements on live app
+  |  '-- manual-tester agent
+  |        Artifact: Verification Report (VERIFIED / FAILED / PARTIAL)
   v
 [create-pr] ---- Draft PR -> Ready for Review
   |                Artifact: swarm-report/<slug>-pr.md
@@ -55,16 +55,40 @@ IDEA / FEATURE REQUEST
 MERGED
 ```
 
+### Bug pipeline
+
+```
+BUG REPORT / ISSUE
+  |
+  v
+[debug] ---- Reproduce -> Binary search -> Hypothesis -> Confirm root cause
+  |             Artifact: swarm-report/<slug>-debug.md
+  v
+[implement] ---- Fix based on root cause + simplify + Quality Loop
+  |                Artifacts: swarm-report/<slug>-implement.md
+  |                           swarm-report/<slug>-quality.md
+  v
+[acceptance] ---- Verify bug no longer reproduces on live app
+  |                Artifact: Verification Report (VERIFIED / FAILED / PARTIAL)
+  v
+[create-pr] ---- Draft PR -> Ready for Review
+  |                Artifact: swarm-report/<slug>-pr.md
+  v
+[pr-drive-to-merge] ---- CI monitoring -> Review handling -> Merge
+  v
+MERGED
+```
+
 
 ## 3. Task Profiles and Routing
 
 | Profile | Pipeline | Signals | Skips |
 |---------|----------|---------|-------|
-| **Feature** | Research -> Plan -> Implement -> Quality -> Verify -> PR -> Merge | "add", "implement", "build", "create" | -- |
-| **Bug Fix** | Reproduce -> Diagnose -> Fix -> Quality -> PR -> Merge | "fix", "broken", "crash", "regression" | Research, Plan, Verify |
-| **Migration** | Research -> Snapshot -> Migrate -> Verify -> PR -> Merge | "migrate", "replace", "switch to" | Plan (delegates to `code-migration`) |
-| **Research** | Research -> Report | "investigate", "compare", "evaluate" | Implement, Quality, Verify, PR, Merge |
-| **Trivial** | Implement -> Quality -> PR -> Merge | Single-file change, config tweak | Research, Plan, Verify |
+| **Feature** | Research -> Plan -> Implement -> Acceptance -> PR -> Merge | "add", "implement", "build", "create" | -- |
+| **Bug Fix** | Debug -> Implement -> Acceptance -> PR -> Merge | "fix", "broken", "crash", "regression" | Research, Plan |
+| **Migration** | Research -> Snapshot -> Migrate -> Acceptance -> PR -> Merge | "migrate", "replace", "switch to" | Plan (delegates to `code-migration`) |
+| **Research** | Research -> Report | "investigate", "compare", "evaluate" | Implement, Acceptance, PR, Merge |
+| **Trivial** | Implement -> PR -> Merge | Single-file change, config tweak | Research, Plan, Debug, Acceptance |
 
 Auto-detection is based on keywords and context. When ambiguous — ask the user to confirm
 before starting work.
@@ -253,20 +277,33 @@ starting work. No stage starts without the previous stage's receipt.
 
 | Stage | Artifact | Required before next |
 |-------|----------|----------------------|
-| Research | `<slug>-research.md` | Plan (Feature / Migration) |
-| Plan | `<slug>-plan.md` | Implement |
-| Implement | `<slug>-implement.md` | Quality |
-| Quality | `<slug>-quality.md` | Verify |
-| Verify | `<slug>-verify.md` | PR |
+| Research | `<slug>-research.md` | Plan / Implement (Feature) |
+| Debug | `<slug>-debug.md` | Implement (Bug Fix) |
+| Plan | `<slug>-plan.md` | Implement (when planning is done) |
+| Implement | `<slug>-implement.md` + `<slug>-quality.md` | Acceptance |
+| Acceptance | Verification Report | PR |
 | PR | `<slug>-pr.md` | Merge |
 
 **Slug:** kebab-case from the task description, 2–4 words.
 Example: task "Add user avatar upload" -> slug `user-avatar-upload`.
 
 **Profile-dependent gating:** artifacts are only required for stages included in the profile.
-Trivial: first artifact is `<slug>-implement.md`. Bug Fix: `<slug>-research.md` is not required.
+Trivial: first artifact is `<slug>-implement.md`, skips Acceptance. Bug Fix: starts from
+`<slug>-debug.md`, no research artifact required.
 
 **If an artifact is missing** -> the previous stage did not complete -> do not proceed.
+
+### Stage Input/Output Contracts
+
+| Stage | Skill | Input | Output |
+|-------|-------|-------|--------|
+| Research | `research` | Research question + constraints | `<slug>-research.md`: approaches, recommendations, risks, open questions |
+| Debug | `debug` | Bug description (text, issue URL, error log) | `<slug>-debug.md`: symptom, reproduction steps, root cause, fix direction |
+| Plan | Plan Mode + `plan-review` | Task + research/debug artifact | `<slug>-plan.md`: scope, approach, files, testing strategy, acceptance criteria |
+| Implement | `implement` | Task + optional artifacts (`research.md`, `debug.md`, `plan.md`) | `<slug>-implement.md`: changes summary, files, decisions + `<slug>-quality.md`: gate results |
+| Acceptance | `acceptance` | Spec source (requirements / `debug.md` reproduction steps) + running app | Verification Report: VERIFIED / FAILED / PARTIAL with bug list |
+| PR | `create-pr` | Branch with commits + optional `implement.md` / `quality.md` | PR URL + `<slug>-pr.md` |
+| Merge | `pr-drive-to-merge` | Existing PR | Merged PR, cleaned up branches |
 
 ### Artifact Contents
 
@@ -275,7 +312,7 @@ Each artifact includes:
 - Summary of what was done / found
 - Key decisions (with rationale)
 - Files touched (for implementation)
-- PASS/FAIL verdict (for Quality and Verify)
+- PASS/FAIL verdict (for Quality and Acceptance)
 - Backward transition log (if any occurred)
 
 
