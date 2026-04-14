@@ -86,6 +86,43 @@ step and proceed directly.
 
 ---
 
+## Step 2.5: Persist E2E Scenario
+
+Before launching the tester, save the verification scenario to disk. This file is the
+persistent state of acceptance — it survives context compaction.
+
+Save to `swarm-report/<slug>-e2e-scenario.md`:
+
+```markdown
+# E2E Scenario: <task name>
+Type: Feature / Bug fix
+Platforms: <selected platforms>
+Spec source: <what was used>
+
+## Steps
+- [ ] 1. <concrete user action> → Expected: <result>
+- [ ] 2. <concrete user action> → Expected: <result>
+- [ ] 3. <concrete user action> → Expected: <result>
+...
+```
+
+For bug fixes, the steps come from `debug.md` reproduction steps — inverted:
+- Original: "Step X triggers the bug"
+- E2E: "Step X no longer triggers the bug"
+
+**Compaction resilience rules:**
+- Before EVERY verification action — re-read this file via Read tool
+- After each step passes — update the file, mark as `[x]`:
+  ```
+  - [x] 1. Open screen X → Expected: shows data ✅
+  - [ ] 2. Tap button Y → Expected: navigates to Z
+  ```
+- Completed steps (`[x]`) — do NOT re-check
+- Resume from the first incomplete step (`[ ]`)
+- This guarantees no wasted work after compaction
+
+---
+
 ## Step 3: Launch Manual Tester
 
 Spawn the `manual-tester` agent with all gathered context. The agent prompt must include:

@@ -12,7 +12,36 @@ description: >-
 # Implement Task — Feature Orchestrator
 
 Thin orchestrator that routes a feature task through modular skills. Contains no implementation
-logic — each stage is a separate skill invocation.
+logic — each stage is a separate skill invocation via subagents.
+
+**STRICT RULE:** The orchestrator DOES NOT write code, run tests, or perform analysis directly.
+It only manages transitions, passes context between stages, and reports summaries to the user.
+
+---
+
+## Strict State Machine
+
+### Allowed transitions
+
+```
+Setup      -> Research
+Setup      -> Implement        (trivial task — skip research/planning)
+Research   -> Decompose
+Research   -> Implement        (single-task, no decomposition needed)
+Decompose  -> PlanReview
+PlanReview -> Implement
+PlanReview -> Research         (FAIL — knowledge gaps)
+Implement  -> Acceptance
+Acceptance -> PR               (VERIFIED)
+Acceptance -> Implement        (FAILED — bugs to fix)
+Acceptance -> Debug            (FAILED — unclear root cause)
+PR         -> Merge
+PR         -> Implement        (review feedback requires code changes)
+```
+
+**ALL other transitions are FORBIDDEN.** Before every transition, announce:
+
+> **Стадия: [текущая] → Переход на: [следующая]. Причина: [почему]**
 
 ---
 
@@ -36,10 +65,14 @@ Generate a slug: kebab-case, 2-4 words.
 
 Ask **one clarifying question** if ambiguous. Otherwise proceed.
 
-### 0.3 Profile check
+### 0.3 Profile confirmation
 
-If the task is trivial (single-file, obvious change) — skip to Phase 2 (Implement) directly.
-If it's a bug — tell the user to use `/bugfix` instead.
+Auto-detect the profile from keywords and context. Then confirm:
+
+> **Определён профиль: Бизнес-фича. Верно?**
+
+If the user says it's a bug — redirect to `/bugfix`.
+If the task is trivial (single-file, obvious change) — announce skip and go to Implement.
 
 ---
 
@@ -65,7 +98,7 @@ Skip for single-task features.
 
 If a plan or decomposition was produced:
 - Invoke `developer-workflow:plan-review`
-- If FAIL → back to 1.1 Research with the gaps identified
+- If FAIL → **Стадия: PlanReview → Research.** Back to 1.1 with gaps identified
 - If CONDITIONAL → proceed with noted concerns
 - If PASS → proceed
 
@@ -76,6 +109,12 @@ If a plan or decomposition was produced:
 For each task (or the single task if no decomposition):
 
 ### 2.1 Implement
+
+**Context passing (MANDATORY):** when invoking the implement skill, pass:
+1. Original user request (verbatim)
+2. Summary of previous stage result
+3. Paths to all artifacts produced so far
+4. If rollback — reason for the rollback
 
 Invoke `developer-workflow:implement` with:
 - Task description
@@ -90,12 +129,16 @@ Invoke `developer-workflow:acceptance` with:
 - Spec source: requirements from the task / plan / decomposition
 - The running app
 
+The acceptance skill saves an E2E scenario to `swarm-report/<slug>-e2e-scenario.md`.
+This file uses checkboxes for each verification step — completed steps (`[x]`) survive
+context compaction and are NOT re-checked on resume.
+
 Wait for `swarm-report/<slug>-acceptance.md`.
 
 **Route by result:**
-- VERIFIED → proceed to Phase 3
-- FAILED (P0/P1) → back to 2.1 Implement with bug list. Max 3 round-trips.
-- FAILED (unclear cause) → invoke `developer-workflow:debug` first, then 2.1
+- VERIFIED → **Стадия: Acceptance → PR**
+- FAILED (P0/P1, obvious cause) → **Стадия: Acceptance → Implement.** Max 3 round-trips.
+- FAILED (P0/P1, unclear cause) → **Стадия: Acceptance → Debug.** Then Implement.
 - PARTIAL (P2/P3) → ask user: fix now or ship as-is
 - Out-of-scope bugs → create issues, don't block
 
@@ -122,25 +165,28 @@ Resume when the user says to continue.
 
 ---
 
-## Backward Transitions
+## Backward Transitions (STRICT limits)
 
 | From | To | Trigger | Max |
 |------|----|---------|-----|
-| Plan review | Research | FAIL — knowledge gaps | 2 |
+| PlanReview | Research | FAIL — knowledge gaps | 2 |
 | Acceptance | Implement | FAILED bugs | 3 |
 | Acceptance | Debug | P0/P1 with unclear cause | 1 |
-| PR review | Implement | Significant code changes requested | 2 |
+| PR | Implement | Significant code changes requested | 2 |
 
 Each backward transition:
-1. Log reason in the current artifact
-2. Re-read original task + all artifacts (re-anchor)
-3. If max reached → escalate to user
+1. **Announce** the transition with reason
+2. Log reason in the current artifact
+3. Re-read original task + all artifacts (re-anchor)
+4. Pass rollback reason to the next subagent
+5. If max reached → escalate to user
 
 ---
 
 ## Stop Points
 
 The orchestrator **stops and waits for the user** at:
+- Profile confirmation (Phase 0.3)
 - Human PR review (via pr-drive-to-merge)
 - PARTIAL acceptance verdict (user decides: fix or ship)
 - Escalation (scope explosion, repeated failures, architectural decision needed)

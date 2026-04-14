@@ -12,7 +12,33 @@ description: >-
 # Bugfix — Bug Fix Orchestrator
 
 Thin orchestrator that routes a bug through diagnosis, fix, verification, and PR.
-Contains no implementation logic — each stage is a separate skill invocation.
+Contains no implementation logic — each stage is a separate skill invocation via subagents.
+
+**STRICT RULE:** The orchestrator DOES NOT write code, run tests, or perform analysis directly.
+It only manages transitions, passes context between stages, and reports summaries to the user.
+
+---
+
+## Strict State Machine
+
+### Allowed transitions
+
+```
+Setup      -> Debug
+Setup      -> Implement        (trivially obvious fix — skip debug)
+Debug      -> Implement        (root cause diagnosed)
+Debug      -> Report           (not reproducible or escalated)
+Implement  -> Acceptance
+Acceptance -> PR               (VERIFIED — bug gone)
+Acceptance -> Implement        (FAILED — bug still reproduces or new bugs)
+Acceptance -> Debug            (FAILED — fix didn't address root cause)
+PR         -> Merge
+PR         -> Implement        (review feedback requires code changes)
+```
+
+**ALL other transitions are FORBIDDEN.** Before every transition, announce:
+
+> **Стадия: [текущая] → Переход на: [следующая]. Причина: [почему]**
 
 ---
 
@@ -35,25 +61,43 @@ Extract from the user's input:
 
 Generate a slug: kebab-case, 2-4 words.
 
-If the bug is trivially obvious (typo, missing null check, off-by-one) — skip to Phase 2
-(Implement) directly. No need to run the full debug pipeline for a one-liner.
+### 0.3 Profile confirmation
+
+Auto-detect the profile. Then confirm:
+
+> **Определён профиль: Поиск бага. Верно?**
+
+If the user says it's a feature — redirect to `/implement-task`.
+If the fix is trivially obvious (typo, missing null check) — announce skip and go to Implement.
 
 ---
 
 ## Phase 1: Debug
 
-Invoke `developer-workflow:debug` with the bug description and any reproduction info.
+**Context passing (MANDATORY):** pass the original bug description, source, and any
+reproduction info the user provided.
+
+Invoke `developer-workflow:debug` with the bug description.
 
 Wait for `swarm-report/<slug>-debug.md`.
 
-Check the status:
-- **Diagnosed** → proceed to Phase 2 with root cause and fix direction
-- **Not Reproducible** → report to user, ask for more information. Stop.
-- **Escalated** → report findings, stop. The bug needs user decision.
+The debug skill saves reproduction steps to `swarm-report/<slug>-reproduce.md`.
+This file is persistent state — survives context compaction. Re-read it before any
+action that depends on reproduction steps.
+
+**Route by status:**
+- **Diagnosed** → **Стадия: Debug → Implement.** Proceed with root cause and fix direction.
+- **Not Reproducible** → report to user, ask for more info. Stop.
+- **Escalated** → report findings, stop. Bug needs user decision.
 
 ---
 
 ## Phase 2: Implement Fix
+
+**Context passing (MANDATORY):** pass:
+1. Original bug description (verbatim)
+2. Path to `swarm-report/<slug>-debug.md`
+3. If rollback — reason and what was tried
 
 Invoke `developer-workflow:implement` with:
 - Task: fix description based on debug findings
@@ -71,16 +115,19 @@ Invoke `developer-workflow:acceptance` with:
 - The running app
 - Explicit instruction: verify the reproduction steps no longer trigger the bug
 
+The acceptance skill saves an E2E scenario to `swarm-report/<slug>-e2e-scenario.md`.
+This file uses checkboxes — completed checks (`[x]`) survive compaction and are NOT repeated.
+
 Wait for `swarm-report/<slug>-acceptance.md`.
 
 **Route by result:**
 
-| Result | Action |
-|--------|--------|
-| VERIFIED (bug gone) | Proceed to Phase 4 |
-| FAILED — same bug reproduces | Back to Phase 2. If 2nd failure → back to Phase 1 (re-diagnose) |
-| FAILED — new/different bug | Route each new bug: trivial → Phase 2, complex → Phase 1 |
-| PARTIAL — bug gone but minor issues | Ask user: fix or ship as-is |
+| Result | Transition | Action |
+|--------|-----------|--------|
+| VERIFIED (bug gone) | **Acceptance → PR** | Proceed |
+| FAILED — same bug | **Acceptance → Implement** | Fix again. If 2nd failure → **Acceptance → Debug** (re-diagnose) |
+| FAILED — new bug | Route per bug: trivial → Implement, complex → Debug |
+| PARTIAL — bug gone, minor issues | Ask user: fix or ship as-is |
 
 ---
 
@@ -99,26 +146,43 @@ Resume when the user says to continue.
 
 ---
 
-## Backward Transitions
+## Backward Transitions (STRICT limits)
 
 | From | To | Trigger | Max |
 |------|----|---------|-----|
-| Implement | Debug | Fix didn't address root cause (acceptance fails twice) | 1 |
-| Acceptance | Implement | Bug still reproduces or new bugs found | 3 |
-| PR review | Implement | Review feedback requires code changes | 2 |
+| Acceptance | Implement | Bug still reproduces or new bugs | 3 |
+| Acceptance | Debug | Fix didn't address root cause (2 failed implementations) | 1 |
+| PR | Implement | Review feedback requires code changes | 2 |
 
 Each backward transition:
-1. Log reason in the current artifact
-2. Re-read original bug report + all artifacts (re-anchor)
-3. If max reached → escalate to user
+1. **Announce** the transition with reason
+2. Log reason in the current artifact
+3. Re-read original bug report + all artifacts (re-anchor)
+4. Pass rollback reason to the next subagent
+5. If max reached → escalate to user
 
 ---
 
 ## Stop Points
 
 The orchestrator **stops and waits for the user** at:
+- Profile confirmation (Phase 0.3)
 - Bug not reproducible (need more info)
 - Debug escalation (architectural issue, needs decision)
 - Human PR review
 - PARTIAL acceptance verdict
 - Merge confirmation
+
+---
+
+## Report
+
+After Done (merge complete) or Stop (escalation), save a report to
+`swarm-report/<slug>-YYYY-MM-DD.md` with:
+- Bug description and source
+- Reproduction steps (from debug)
+- Root cause (from debug)
+- What was fixed (from implement)
+- Validation results (from acceptance)
+- Rollbacks and issues (if any)
+- Status: Fixed / Not Reproducible / Escalated / Partially Fixed
