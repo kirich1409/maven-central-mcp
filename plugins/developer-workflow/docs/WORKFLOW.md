@@ -33,27 +33,39 @@ IDEA / FEATURE REQUEST
 [research] ---- Research Consortium (up to 5 parallel experts)
   |                Artifact: swarm-report/<slug>-research.md
   v
-[Plan Mode + plan-review] ---- Implementation plan + PoLL review (optional)
-  |                              Artifact: swarm-report/<slug>-plan.md
+[decompose-feature] ---- Break into tasks with dependencies (optional)
+  |                        Artifact: swarm-report/<slug>-decomposition.md
   v
-[implement] ---- Code + simplify + Quality Loop
-  |  |-- kotlin-engineer / compose-developer / specialist agents
-  |  '-- Quality Loop (6 gates + code-reviewer)
-  |        Artifacts: swarm-report/<slug>-implement.md
-  |                   swarm-report/<slug>-quality.md
+[plan-review] ---- PoLL review of the plan (optional)
+  |                  Artifact: plan review verdict
   v
-[acceptance] ---- Verify against requirements on live app
-  |  '-- manual-tester agent
-  |        Artifact: Verification Report (VERIFIED / FAILED / PARTIAL)
+  |   ┌────────────── for each task ──────────────┐
+  |   │                                            │
+  |   v                                            │
+  | [implement] ---- Code + simplify + Quality Loop
+  |   |  |-- specialist agents                     │
+  |   |  '-- Quality Loop (6 gates)                │
+  |   |        Artifacts: <slug>-implement.md      │
+  |   |                   <slug>-quality.md        │
+  |   v                                            │
+  | [acceptance] ---- Verify against spec          │
+  |   |  '-- manual-tester agent                   │
+  |   |        Artifact: <slug>-acceptance.md      │
+  |   |                                            │
+  |   |── FAILED? back to implement ───────────────┘
+  |   v
+  | [create-pr] ---- PR per task or bundled
+  |   v
+  | [pr-drive-to-merge] ---- CI + review + merge
+  |   │
+  └───┘ next task
   v
-[create-pr] ---- Draft PR -> Ready for Review
-  |                Artifact: swarm-report/<slug>-pr.md
-  v
-[pr-drive-to-merge] ---- CI monitoring -> Review handling -> Merge
-  |  '-- address-review-feedback (sub-skill)
-  v
-MERGED
+MERGED (all tasks)
 ```
+
+**PR granularity** is decided by the orchestrator:
+- One PR per task — when tasks are independent and reviewable separately
+- Bundled PR — when tasks are tightly coupled or the feature is small enough
 
 ### Bug pipeline
 
@@ -84,7 +96,7 @@ MERGED
 
 | Profile | Pipeline | Signals | Skips |
 |---------|----------|---------|-------|
-| **Feature** | Research -> Plan -> Implement -> Acceptance -> PR -> Merge | "add", "implement", "build", "create" | -- |
+| **Feature** | Research -> Decompose -> Plan Review -> [Implement -> Acceptance] per task -> PR -> Merge | "add", "implement", "build", "create" | Decompose optional for single-task features |
 | **Bug Fix** | Debug -> Implement -> Acceptance -> PR -> Merge | "fix", "broken", "crash", "regression" | Research, Plan |
 | **Migration** | Research -> Snapshot -> Migrate -> Acceptance -> PR -> Merge | "migrate", "replace", "switch to" | Plan (delegates to `code-migration`) |
 | **Research** | Research -> Report | "investigate", "compare", "evaluate" | Implement, Acceptance, PR, Merge |
@@ -224,44 +236,53 @@ least one web-sourced insight. Relying solely on the codebase and training data 
 ## 6. State Machine
 
 ```
-Research ------> Plan ------> Implement ------> Quality ------> Verify ------> PR ------> Merge
-    ^               |              |                |               |              |
-    |               |              |                |               |              |
-    '---- gaps -----'              |                |               |              |
-    ^                              |                |               |              |
-    |                              |                |               |              |
-    '---- scope too large ---------'                |               |              |
-                                   ^                |               |              |
-                                   |                |               |              |
-                                   '---- issues ----'               |              |
-                                   ^                                |              |
-                                   |                                |              |
-                                   '---- verify fails --------------'              |
-                                   ^                                               |
-                                   |                                               |
-                                   '---- review feedback --------------------------'
+Research --> Decompose --> Plan Review --> Implement --> Acceptance --> PR --> Merge
+   ^            |              |              ^  ^           |          |
+   |            |              |              |  |           |          |
+   '-- gaps ----'              |              |  '-- FAILED -'          |
+   ^                           |              |                        |
+   '-- scope too large --------+--------------'                        |
+                               |              ^                        |
+                               '-- FAIL ------'                        |
+                                              ^                        |
+                                              '-- review feedback -----'
+```
+
+For Bug Fix pipeline, replace Research + Decompose with Debug:
+
+```
+Debug --> Implement --> Acceptance --> PR --> Merge
+             ^              |
+             '--- FAILED ---'
 ```
 
 ### Forward Transitions (default)
 
 | From | To | Condition |
 |------|----|-----------|
-| Research | Plan | Research complete |
-| Plan | Implement | Plan passed review |
-| Implement | Quality | Implementation complete |
-| Quality | Verify | All gates passed |
-| Verify | PR | Verification PASS |
+| Research | Decompose | Research complete |
+| Debug | Implement | Root cause identified |
+| Decompose | Plan Review | Tasks defined |
+| Plan Review | Implement | Plan PASS or CONDITIONAL |
+| Implement | Acceptance | `implement.md` + `quality.md` produced, all gates passed |
+| Acceptance | PR | VERIFIED |
 | PR | Merge | CI green, review approved |
 
 ### Backward Transitions (recovery paths)
 
 | From | To | Trigger |
 |------|----|---------|
-| Plan | Research | Plan review revealed knowledge gaps |
-| Implement | Research | Scope turned out significantly larger than expected |
-| Quality | Implement | Quality loop found issues requiring code changes |
-| Verify | Implement | Verification failed — fix and re-verify |
+| Plan Review | Research | Plan review FAIL — knowledge gaps |
+| Implement | Research | Scope significantly larger than expected |
+| Acceptance | Implement | FAILED — P0/P1 bugs found, fix needed |
 | PR | Implement | Review feedback requires code changes |
+
+### User Decision Points
+
+| From | Condition | Options |
+|------|-----------|---------|
+| Acceptance | PARTIAL (P2/P3 only) | Fix now → back to Implement / Ship as-is → proceed to PR |
+| Decompose | Multiple tasks produced | One PR per task / Bundled PR |
 
 **Backward transition rules:**
 1. Reason for the transition is logged in the current stage's artifact
@@ -299,11 +320,52 @@ Trivial: first artifact is `<slug>-implement.md`, skips Acceptance. Bug Fix: sta
 |-------|-------|-------|--------|
 | Research | `research` | Research question + constraints | `<slug>-research.md`: approaches, recommendations, risks, open questions |
 | Debug | `debug` | Bug description (text, issue URL, error log) | `<slug>-debug.md`: symptom, reproduction steps, root cause, fix direction |
-| Plan | Plan Mode + `plan-review` | Task + research/debug artifact | `<slug>-plan.md`: scope, approach, files, testing strategy, acceptance criteria |
+| Decompose | `decompose-feature` | Feature idea/PRD + research artifact | `<slug>-decomposition.md`: tasks with dependencies, acceptance criteria, waves |
+| Plan review | `plan-review` | Plan or decomposition artifact | Verdict: PASS / CONDITIONAL / FAIL with blockers |
 | Implement | `implement` | Task + optional artifacts (`research.md`, `debug.md`, `plan.md`) | `<slug>-implement.md`: changes summary, files, decisions + `<slug>-quality.md`: gate results |
-| Acceptance | `acceptance` | Spec source (requirements / `debug.md` reproduction steps) + running app | Verification Report: VERIFIED / FAILED / PARTIAL with bug list |
-| PR | `create-pr` | Branch with commits + optional `implement.md` / `quality.md` | PR URL + `<slug>-pr.md` |
-| Merge | `pr-drive-to-merge` | Existing PR | Merged PR, cleaned up branches |
+| Acceptance | `acceptance` | Spec source (requirements / `debug.md` reproduction steps) + running app | `<slug>-acceptance.md`: VERIFIED / FAILED / PARTIAL with bug list |
+| PR | `create-pr` | Branch with commits | PR URL |
+| Merge | `pr-drive-to-merge` | Existing PR | Merged PR |
+
+### Pipeline Cycles
+
+The pipeline is **not linear** — stages form feedback loops when issues are found.
+
+```
+                         ┌────── FAILED ──────┐
+                         │                    v
+research/debug ──→ implement ──→ acceptance ──→ create-pr ──→ merge
+                     ^  │            │
+                     │  │            │ PARTIAL: user decides
+                     │  │            │   fix → back to implement
+                     │  │            │   ship → proceed to create-pr
+                     │  └── inner ───┘
+                     │    quality loop
+                     │    (build/lint/
+                     │     tests/review)
+                     │
+                     └── review feedback (from pr-drive-to-merge)
+```
+
+**Acceptance → Implement loop:**
+- `acceptance` produces `<slug>-acceptance.md` with VERIFIED / FAILED / PARTIAL
+- VERIFIED → proceed to `create-pr`
+- FAILED (P0/P1 bugs) → back to `implement` with the bug list as input. After fix, re-run `acceptance`
+- PARTIAL (P2/P3 only) → orchestrator asks user: fix now or ship with known issues
+
+**Implement inner loop:**
+- Quality gates (build → lint → tests → code-reviewer) run inside `implement`
+- Gate failure → fix → re-run gate (max 3 attempts per gate, max 5 full cycles)
+- If not converging → escalate to user
+
+**PR review loop:**
+- `pr-drive-to-merge` handles review feedback via `address-review-feedback`
+- If review requires significant code changes → back to `implement` → `acceptance` → update PR
+
+**Loop limits:**
+- Acceptance → Implement: max 3 round-trips. After that → escalate
+- Quality gates: max 3 attempts per gate, max 5 full cycles
+- PR review: no hard limit, but escalate if same feedback repeats
 
 ### Artifact Contents
 

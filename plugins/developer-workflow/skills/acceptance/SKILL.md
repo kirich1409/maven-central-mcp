@@ -136,39 +136,47 @@ The result is one of three states:
 
 ### Verification Report
 
-Present a structured report:
+Save the report to `swarm-report/<slug>-acceptance.md` — this artifact is the receipt for
+the PR stage. Later stages (`create-pr`, `pr-drive-to-merge`) reference it for PR description
+and merge readiness.
 
 ```
-## Feature Verification
+# Acceptance: <slug>
 
-**Status: [VERIFIED / FAILED / PARTIAL]**
-**Spec source:** [what was used]
+**Status:** VERIFIED / FAILED / PARTIAL
+**Date:** <date>
+**Type:** Feature / Bug fix
+**Spec source:** [what was used — requirements, debug.md reproduction steps, etc.]
 **Test plan:** [user-provided / generated from spec]
+**Context artifacts:** [paths to research.md, debug.md, implement.md used as input]
 
-### Summary
+## Summary
 [1-3 sentences on the overall state]
 
-### Test Results
+## Test Results
 - Total: [n] | Passed: [n] | Failed: [n] | Blocked: [n]
 
-### Bugs Found
+## Bugs Found
 [List bugs by severity — P0 first, then P1, P2, P3]
 [Each with a one-line summary and link to full bug report]
 
-### Recommendation
+## Bug Reproduction Check (bug fix only)
+- Reproduction steps from debug.md: [executed / not applicable]
+- Bug reproduces after fix: [yes / no]
+
+## Recommendation
 [Ship / Do not ship / Ship with known issues — and why]
 ```
 
 ### What Happens Next
 
-Based on the verification state, guide the user on next steps:
+Based on the verification state, the orchestrator decides the next transition:
 
-- **VERIFIED** — the feature is ready. If this was part of a PR workflow, proceed to PR creation
-  or mark the PR as ready for review.
-- **FAILED** — fix the bugs first. List the failures clearly so the user (or an implementation
-  agent) can address them. After fixes, offer to re-run verification.
-- **PARTIAL** — present the minor issues and let the user decide: fix now, or ship with known
-  issues documented in the PR.
+- **VERIFIED** → proceed to `create-pr` (or mark existing PR as ready for review)
+- **FAILED** (P0/P1 bugs) → back to `implement` with the bug list from `<slug>-acceptance.md`
+  as input. After fix, re-run `acceptance`. Max 3 round-trips before escalating to the user.
+- **PARTIAL** (P2/P3 only) → orchestrator asks the user: fix now (back to `implement`) or
+  ship with known issues (proceed to `create-pr`, include issues in PR description)
 
 ---
 
