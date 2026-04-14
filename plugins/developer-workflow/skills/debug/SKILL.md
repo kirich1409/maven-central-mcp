@@ -1,23 +1,28 @@
 ---
 name: debug
 description: >-
-  Use when encountering any bug, test failure, crash, or unexpected behavior — BEFORE proposing fixes.
+  Systematic root cause investigation — stops at diagnosis, does NOT fix.
   Invoke when user says "debug", "find root cause", "why is X broken", "investigate bug",
   "что сломалось", "почему не работает", "найди причину", "дебаг", "отладь",
   "test fails", "build breaks", "crash", "unexpected behavior", "regression",
   or when a previous fix attempt didn't work.
 
-  Do NOT use for: feature implementation, code review, performance optimization (unless it's a performance bug),
-  writing new tests from scratch (use write-tests), general research (use research).
+  Produces a debug report with symptom, reproduction steps, root cause evidence, and
+  recommended fix direction — ready to hand off to the implement stage.
+
+  Do NOT use for: feature implementation, code review, performance optimization (unless it's a
+  performance bug), writing new tests from scratch (use write-tests), general research (use research).
+disable-model-invocation: true
 ---
 
 # Systematic Debugging
 
 ## Core Principle
 
-**NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.**
+**UNDERSTAND BEFORE FIXING.**
 
-Random fixes waste time and create new bugs. Symptom fixes mask underlying issues. You MUST complete Phase 1 before proposing any fix.
+Random fixes waste time and create new bugs. Symptom fixes mask underlying issues.
+This skill stops at root cause — the fix is a separate stage.
 
 ## When to Use
 
@@ -28,15 +33,14 @@ Random fixes waste time and create new bugs. Symptom fixes mask underlying issue
 - Crashes
 - Integration issues
 - Regressions
-- **Especially when:** under time pressure, "just one quick fix" seems obvious, previous fix didn't work, you've tried multiple fixes already
+- **Especially when:** under time pressure, "just one quick fix" seems obvious, previous fix
+  didn't work, you've tried multiple fixes already
 
-## The Four Phases
+## Three Phases
 
 Complete each phase before proceeding to the next.
 
 ### Phase 1: Root Cause Investigation
-
-**MANDATORY before any fix attempt.**
 
 1. **Read error messages completely**
    - Don't skip past errors or warnings
@@ -65,11 +69,13 @@ Complete each phase before proceeding to the next.
    - Wrong API response? → Find which handler produced it
    - Ask: "If the result is X, what must have happened before?"
 
-**Delegate investigation to the `debugging-expert` agent** — it specializes in read-only root cause analysis.
+**Delegate investigation to the `debugging-expert` agent** — it specializes in read-only root
+cause analysis.
 
 ### Phase 2: Binary Search Narrowing
 
-**LLMs naturally enumerate all possibilities instead of bisecting. This phase enforces disciplined narrowing.**
+**LLMs naturally enumerate all possibilities instead of bisecting. This phase enforces
+disciplined narrowing.**
 
 At each step, halve the search space:
 - Comment out half the code path → does the bug persist?
@@ -82,39 +88,21 @@ At each step, halve the search space:
 - If you find yourself listing 5+ hypotheses without testing → STOP, switch to binary search
 - Document what was eliminated at each step
 
-### Phase 3: Hypothesis and Minimal Test
+### Phase 3: Hypothesis and Confirmation
 
 1. **Form ONE specific hypothesis**
    - "I think X is the root cause because Y"
-   - Be specific — not "something in the network layer", but "the retry interceptor swallows 401 responses"
+   - Be specific — not "something in the network layer", but "the retry interceptor swallows
+     401 responses"
 
 2. **Design the SMALLEST possible test**
    - One variable at a time
    - Don't test multiple hypotheses simultaneously
 
 3. **Evaluate result**
-   - Confirmed → proceed to Phase 4
+   - Confirmed → document root cause and produce artifact
    - Refuted → form NEW hypothesis informed by what was learned, return to Phase 2
    - After 3+ failed hypotheses → STOP, likely an architectural issue, escalate to user
-
-### Phase 4: Fix and Verify
-
-1. **Fix the root cause, not the symptom**
-   - ONE change at a time
-   - No "while I'm here" improvements
-   - No bundled refactoring
-
-2. **Verify the fix**
-   - Run the exact scenario that was failing
-   - Run broader test suite to check for regressions
-   - If the fix involves a multi-component system — verify at each layer
-
-3. **If fix doesn't work after 3 attempts**
-   - STOP — this signals an architectural problem
-   - Each fix revealing a new problem elsewhere = structural coupling
-   - Escalate to user with findings before attempting more fixes
-
-**Delegate the fix** to the appropriate implementation agent: `kotlin-engineer`, `compose-developer`, `build-engineer`, etc.
 
 ## Debugger Integration
 
@@ -127,30 +115,25 @@ If no debugger is available:
 - Use test isolation and binary search (Phase 2)
 - Use `git bisect` for regression hunting
 
-This is an extension point — the methodology works with or without a debugger.
-
 ## Red Flags — STOP and Return to Phase 1
 
 If you catch yourself thinking:
-- "Quick fix for now, investigate later"
 - "Just try changing X and see if it works"
-- "Add multiple changes, run tests"
 - "It's probably X, let me fix that"
 - "I don't fully understand but this might work"
 - Proposing solutions before tracing data flow
 - Listing 5+ hypotheses without binary search narrowing
-- "One more fix attempt" when already tried 2+
 
 **ALL of these mean: STOP. Return to Phase 1.**
 
 ## Escalation
 
 Escalate to user when:
-- 3+ fix attempts failed → likely architectural issue
 - Investigation reveals scope is larger than expected
 - Root cause is in a dependency or external system beyond your control
 - Multiple valid fix approaches exist with non-obvious trade-offs
 - The bug requires access, credentials, or environment you don't have
+- Cannot reproduce after exhausting available information
 
 ## Report
 
@@ -160,18 +143,18 @@ Save findings to `swarm-report/<slug>-debug.md`:
 ## Symptom
 What was observed — error message, failing test, unexpected behavior
 
+## Reproduction Steps
+Exact steps to trigger the bug consistently
+
 ## Investigation Path
 What was checked, what was eliminated (binary search log)
 
 ## Root Cause
-What actually caused it — with evidence (file:line, stack trace, data flow)
+What actually causes it — with evidence (file:line, stack trace, data flow)
 
-## Fix
-What was changed and why (or: escalated because X)
-
-## Verification
-How the fix was verified — test results, reproduction scenario
+## Recommended Fix Direction
+What needs to change and where — NOT the implementation, just the direction
 
 ## Status
-Fixed / Escalated / Architectural Issue
+Diagnosed / Escalated / Not Reproducible
 ```

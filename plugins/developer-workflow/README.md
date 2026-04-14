@@ -16,15 +16,33 @@ Breaks a feature idea, PRD, or epic into a structured task list with dependencie
 
 Use when breaking down a feature idea into implementable tasks before starting work.
 
-### `implement-task`
+### `feature-flow`
 
-Orchestrates the full development cycle for any implementation task:
-- Creates an isolated worktree, timeboxes exploration, selects the best-matching sub-skill
-- Brainstorms design for multi-file changes; follows TDD throughout
-- Creates a draft PR early, runs quality loop (simplify + quality gates + `code-reviewer` agent), then marks the PR ready
-- Delegates review comment handling to `address-review-feedback`
+Thin orchestrator for features — routes through the full pipeline autonomously:
+- research → decompose → plan review → [implement → acceptance] per task → PR → merge
+- Strict state machine with explicit allowed transitions
+- Stops at human review, PARTIAL verdict, and escalation points
 
-Explicit-only — invoke directly with `/developer-workflow:implement-task`.
+See [detailed flow diagram](docs/ORCHESTRATORS.md#feature-flow-feature-flow).
+
+### `bugfix-flow`
+
+Thin orchestrator for bug fixes — routes through diagnosis to merge:
+- debug → implement → acceptance → PR → merge
+- Verifies bug no longer reproduces before PR
+- Stops at human review and when bug is not reproducible
+
+See [detailed flow diagram](docs/ORCHESTRATORS.md#bugfix-flow-bugfix-flow).
+
+### `implement`
+
+Standalone implementation stage — takes a task with optional context and produces working code:
+- Accepts any task source: text, issue URL, or pipeline artifacts (`research.md`, `debug.md`, `plan.md`)
+- Delegates code writing to specialist agents (`kotlin-engineer`, `compose-developer`, etc.)
+- Runs `simplify` + quality loop (build → lint → tests → `code-reviewer` → expert reviews)
+- Produces `implement.md` + `quality.md` artifacts for the next pipeline stage
+
+Can be invoked by an orchestrator or directly by the user.
 
 ### `create-pr`
 
@@ -131,11 +149,11 @@ Creates a structured, reusable test plan from a specification source without exe
 - Identifies risk areas, edge cases, and state combinations
 - Writes prioritized test cases (P0–P3) across Smoke / Feature / Regression tiers
 - Cross-references multiple spec sources and flags discrepancies
-- Produces a `docs/testplans/<feature>-test-plan.md` ready for `manual-tester` or `test-feature`
+- Produces a `docs/testplans/<feature>-test-plan.md` ready for `manual-tester` or `acceptance`
 
 Use when planning testing separately from execution — for review, reuse, or handoff.
 
-### `test-feature`
+### `acceptance`
 
 Verifies a running application against a specification:
 - Accepts a spec (Figma, PRD, acceptance criteria) and/or a test plan
@@ -146,7 +164,7 @@ Verifies a running application against a specification:
 
 Use after implementing a feature to confirm it matches the spec before PR.
 
-### `exploratory-test`
+### `bug-hunt`
 
 Undirected bug hunting on a running app — no spec or test plan required:
 - Explores screens guided by usability heuristics, error handling checks, and input edge cases

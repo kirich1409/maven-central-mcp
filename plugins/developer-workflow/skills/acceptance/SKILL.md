@@ -1,19 +1,22 @@
 ---
-name: test-feature
+name: acceptance
 description: >
-  Verify a feature against its specification by running manual QA on a live app. Use this skill
-  whenever the user wants to test, verify, or validate an implemented feature — whether they provide
-  a test plan, a spec (PRD, Figma mockup, acceptance criteria, PR description), or both.
-  Trigger on: "test this feature", "verify against spec", "QA the implementation", "check if it matches
+  Acceptance verification — confirm that implementation meets requirements (feature) or that a bug
+  no longer reproduces (bug fix). Runs manual QA on a live app against a spec source.
+  Accepts any spec: PRD, Figma mockup, acceptance criteria, PR description, GitHub issue,
+  debug.md artifact (reproduction steps), or a test plan.
+  Trigger on: "test this", "verify against spec", "QA the implementation", "check if it matches
   the design", "run the test plan", "validate the acceptance criteria", "does it match the mockup",
-  "verify the PR", or any request to compare a running app against a specification source.
-  Also trigger when the user finishes implementing a feature and wants confirmation it works before
-  creating or finalizing a PR.
+  "verify the PR", "verify the fix", "confirm bug is gone", "acceptance", "приёмка", "проверь",
+  "протестируй", or any request to compare a running app against a specification source.
+  Also trigger when the user finishes implementing a feature or bug fix and wants confirmation
+  it works before creating or finalizing a PR.
+disable-model-invocation: true
 ---
 
-# Test Feature
+# Acceptance
 
-Verify that a running application matches its specification. This skill bridges implementation and
+Verify that a running application meets its acceptance criteria. This skill bridges implementation and
 review — it takes a spec source and/or a test plan, ensures the app is running, launches QA
 against it, and produces a verification result.
 
@@ -84,6 +87,43 @@ step and proceed directly.
 
 ---
 
+## Step 2.5: Persist E2E Scenario
+
+Before launching the tester, save the verification scenario to disk. This file is the
+persistent state of acceptance — it survives context compaction.
+
+Save to `swarm-report/<slug>-e2e-scenario.md`:
+
+```markdown
+# E2E Scenario: <task name>
+Type: Feature / Bug fix
+Platforms: <selected platforms>
+Spec source: <what was used>
+
+## Steps
+- [ ] 1. <concrete user action> → Expected: <result>
+- [ ] 2. <concrete user action> → Expected: <result>
+- [ ] 3. <concrete user action> → Expected: <result>
+...
+```
+
+For bug fixes, the steps come from `debug.md` reproduction steps — inverted:
+- Original: "Step X triggers the bug"
+- E2E: "Step X no longer triggers the bug"
+
+**Compaction resilience rules:**
+- Before EVERY verification action — re-read this file via Read tool
+- After each step passes — update the file, mark as `[x]`:
+  ```
+  - [x] 1. Open screen X → Expected: shows data ✅
+  - [ ] 2. Tap button Y → Expected: navigates to Z
+  ```
+- Completed steps (`[x]`) — do NOT re-check
+- Resume from the first incomplete step (`[ ]`)
+- This guarantees no wasted work after compaction
+
+---
+
 ## Step 3: Launch Manual Tester
 
 Spawn the `manual-tester` agent with all gathered context. The agent prompt must include:
@@ -134,39 +174,47 @@ The result is one of three states:
 
 ### Verification Report
 
-Present a structured report:
+Save the report to `swarm-report/<slug>-acceptance.md` — this artifact is the receipt for
+the PR stage. Later stages (`create-pr`, `pr-drive-to-merge`) reference it for PR description
+and merge readiness.
 
 ```
-## Feature Verification
+# Acceptance: <slug>
 
-**Status: [VERIFIED / FAILED / PARTIAL]**
-**Spec source:** [what was used]
+**Status:** VERIFIED / FAILED / PARTIAL
+**Date:** <date>
+**Type:** Feature / Bug fix
+**Spec source:** [what was used — requirements, debug.md reproduction steps, etc.]
 **Test plan:** [user-provided / generated from spec]
+**Context artifacts:** [paths to research.md, debug.md, implement.md used as input]
 
-### Summary
+## Summary
 [1-3 sentences on the overall state]
 
-### Test Results
+## Test Results
 - Total: [n] | Passed: [n] | Failed: [n] | Blocked: [n]
 
-### Bugs Found
+## Bugs Found
 [List bugs by severity — P0 first, then P1, P2, P3]
 [Each with a one-line summary and link to full bug report]
 
-### Recommendation
+## Bug Reproduction Check (bug fix only)
+- Reproduction steps from debug.md: [executed / not applicable]
+- Bug reproduces after fix: [yes / no]
+
+## Recommendation
 [Ship / Do not ship / Ship with known issues — and why]
 ```
 
 ### What Happens Next
 
-Based on the verification state, guide the user on next steps:
+Based on the verification state, the orchestrator decides the next transition:
 
-- **VERIFIED** — the feature is ready. If this was part of a PR workflow, proceed to PR creation
-  or mark the PR as ready for review.
-- **FAILED** — fix the bugs first. List the failures clearly so the user (or an implementation
-  agent) can address them. After fixes, offer to re-run verification.
-- **PARTIAL** — present the minor issues and let the user decide: fix now, or ship with known
-  issues documented in the PR.
+- **VERIFIED** → proceed to `create-pr` (or mark existing PR as ready for review)
+- **FAILED** (P0/P1 bugs) → back to `implement` with the bug list from `<slug>-acceptance.md`
+  as input. After fix, re-run `acceptance`. Max 3 round-trips before escalating to the user.
+- **PARTIAL** (P2/P3 only) → orchestrator asks the user: fix now (back to `implement`) or
+  ship with known issues (proceed to `create-pr`, include issues in PR description)
 
 ---
 

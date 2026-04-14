@@ -9,10 +9,10 @@ description: >
   "finish this PR", "get it merged", "land this PR", "ship this PR",
   "доведи PR до мержа", "следи за CI и мержь".
   Do NOT use for: creating new PRs (use create-pr), writing code or implementing features
-  (use implement-task), reviewing code (use code-reviewer agent), addressing a single
+  (use implement), reviewing code (use code-reviewer agent), addressing a single
   round of review comments without merge intent (use address-review-feedback directly).
   Cross-references: invokes address-review-feedback for review handling. Invoked by
-  implement-task as its final phase.
+  the orchestrator as the final pipeline stage.
 ---
 
 # PR Drive to Merge
@@ -281,44 +281,26 @@ fi
 
 ### 3.6 Wait for reviewer response
 
-Poll for new review activity:
+CI/automated checks (status checks, check runs) are already monitored in **Phase 2**.
+Step 3.6 only concerns **code review responses from people**.
 
-```bash
-# GitHub — check if review decision changed or new activity arrived
-BASELINE_DECISION=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision)
-BASELINE_REVIEW=$(gh api "repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
-  --jq 'sort_by(.submitted_at) | last | .submitted_at // ""')
-BASELINE_COMMENTS=$(gh api "repos/$OWNER/$REPO_NAME/issues/$PR_NUMBER/comments" \
-  --jq 'sort_by(.updated_at) | last | .updated_at // ""')
+**Human reviews — do NOT poll.** Human reviews can take hours or days.
+Instead, stop and report to the user:
 
-while true; do
-  sleep 300  # 5 minutes between polls
+1. Log current state in the state file
+2. Report:
+   - PR URL and current status
+   - Which reviewers were requested
+   - All automated work is complete — waiting for human review
+3. **Stop the skill.** The user resumes when a reviewer responds (e.g., "check PR",
+   "reviewer responded", "continue with PR")
 
-  CURRENT_DECISION=$(gh pr view "$PR_NUMBER" --json reviewDecision -q .reviewDecision)
-  LATEST_REVIEW=$(gh api "repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER/reviews" \
-    --jq 'sort_by(.submitted_at) | last | .submitted_at // ""')
-  LATEST_COMMENT=$(gh api "repos/$OWNER/$REPO_NAME/issues/$PR_NUMBER/comments" \
-    --jq 'sort_by(.updated_at) | last | .updated_at // ""')
-
-  # Break when review decision changed or new review/comment activity detected
-  if [ "$CURRENT_DECISION" != "$BASELINE_DECISION" ] || \
-     [ "$LATEST_REVIEW" != "$BASELINE_REVIEW" ] || \
-     [ "$LATEST_COMMENT" != "$BASELINE_COMMENTS" ]; then
-    break  # New activity detected — re-enter the loop at 3.2
-  fi
-done
-```
-
-### 3.7 Staleness escalation
-
-If no reviewer response arrives within **4 hours** of the last re-request:
-
-1. Log the stall in the state file under Escalations
-2. Report to the user:
-   - Which reviewers were re-requested
-   - When the re-request was sent
-   - Current review state
-3. Ask: ping the reviewer again, assign a different reviewer, or wait longer
+On resume:
+1. Re-read the state file at `swarm-report/<slug>-drive-to-merge-state.md`
+2. Fetch current PR state (new reviews, comments, CI status)
+3. If new review comments → re-enter at step 3.2
+4. If approved → proceed to Phase 4 (Merge)
+5. If no new activity → report and stop again
 
 ### 3.8 Update state
 
@@ -490,7 +472,7 @@ Stop and ask the user when:
 This skill operates both standalone and as a phase in larger workflows:
 
 - **Standalone:** user has an existing PR and wants it merged — invoke directly
-- **Pipeline phase:** `implement-task` invokes this skill as its Phase 4 (Drive to Merge)
+- **Pipeline phase:** the orchestrator invokes this skill after implementation, quality loop,
   after the quality loop (Phase 2) and PR creation (Phase 3) are complete
 
 In both cases, the skill takes ownership from the current PR state and drives
