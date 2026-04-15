@@ -170,8 +170,16 @@ Resume when the user says to continue.
 
 When feedback-stage returns CLEAR:
 
-1. Confirm with the user (unless pre-approved)
-2. Execute merge:
+1. **Stop and confirm with the user.** Present:
+   ```
+   ## Ready to merge
+   PR: <title> (<url>)
+   CI: all checks passing
+   Reviews: approved by <reviewers>
+   Proceed with merge?
+   ```
+2. Wait for explicit user confirmation. Do not merge without it.
+3. Execute merge:
    ```bash
    gh pr merge "$PR_NUMBER" --squash --delete-branch
    ```

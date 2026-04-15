@@ -241,8 +241,17 @@ to this orchestrator. It does NOT fix code or execute merges.
 
 When feedback-stage returns CLEAR (no actionable items, CI green, approved):
 
-1. Confirm with the user (unless pre-approved: "merge when ready")
-2. Execute merge:
+1. **Stop and confirm with the user.** Present:
+   ```
+   ## Ready to merge
+   PR: <title> (<url>)
+   CI: all checks passing
+   Reviews: approved by <reviewers>
+   Unresolved threads: 0
+   Proceed with merge?
+   ```
+2. Wait for explicit user confirmation. Do not merge without it.
+3. Execute merge:
    ```bash
    # GitHub
    gh pr merge "$PR_NUMBER" --squash --delete-branch
@@ -286,6 +295,7 @@ The orchestrator stops and waits for the user **only** at:
 | Profile confirmation | Phase 0.2 (always) |
 | Consolidated approval | Phase 0.4 (unless user said "start immediately") |
 | PARTIAL acceptance verdict | User decides: fix or ship |
+| Merge confirmation | Phase 3.3 (always — no exceptions) |
 | Escalation | See Escalation section below |
 
 Everything else — handle autonomously, log in artifacts, continue.
