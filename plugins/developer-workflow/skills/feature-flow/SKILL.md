@@ -17,6 +17,10 @@ logic — each stage is a separate skill invocation via subagents.
 **STRICT RULE:** The orchestrator DOES NOT write code, run tests, or perform analysis directly.
 It only manages transitions, passes context between stages, and reports summaries to the user.
 
+**AUTONOMY RULE:** After the user approves the plan (Phase 0.4), work autonomously without
+stopping. Interrupt the user ONLY for critical blockers listed in the Escalation section.
+The goal: all interaction happens upfront, execution runs unattended.
+
 ---
 
 ## Strict State Machine
@@ -24,27 +28,35 @@ It only manages transitions, passes context between stages, and reports summarie
 ### Allowed transitions
 
 ```
-Setup      -> Research         (unknown APIs, libraries, or architectural decisions)
-Setup      -> Implement        (trivial/simple task — skip research/planning)
-Research   -> Decompose        (large feature — split into tasks)
-Research   -> PlanReview       (complex single-task — needs plan review)
-Research   -> Implement        (simple single-task — research was enough)
-Decompose  -> PlanReview       (complex decomposition — needs review)
-Decompose  -> Implement        (straightforward tasks — skip review)
-PlanReview -> Implement
-PlanReview -> Research         (FAIL — knowledge gaps)
-Implement  -> Acceptance
-Acceptance -> PR               (VERIFIED)
-Acceptance -> Implement        (FAILED — bugs to fix)
-Acceptance -> Debug            (FAILED — unclear root cause)
-PR         -> Merge
-PR         -> Implement        (review feedback requires code changes)
+Setup         -> Research         (unknown APIs, libraries, or architectural decisions)
+Setup         -> GenerateTestPlan (trivial/simple task — skip research)
+Setup         -> Implement        (trivial single-file task — skip all planning)
+Research      -> GenerateTestPlan
+GenerateTestPlan -> Decompose     (large feature — split into tasks)
+GenerateTestPlan -> PlanReview    (complex single-task — needs plan review)
+GenerateTestPlan -> Implement     (simple single-task — planning enough)
+Decompose     -> PlanReview       (complex decomposition — needs review)
+Decompose     -> Implement        (straightforward tasks — skip review)
+PlanReview    -> Approval         (plan ready — present to user)
+PlanReview    -> Research         (FAIL — knowledge gaps)
+Approval      -> Implement        (user confirmed)
+Implement     -> Acceptance
+Acceptance    -> FeedbackStage    (VERIFIED)
+Acceptance    -> Implement        (FAILED — code bug, max 3 round-trips)
+Acceptance    -> Research         (FAILED — wrong approach)
+Acceptance    -> PlanReview       (FAILED — design issue)
+FeedbackStage -> Implement        (code issue in feedback)
+FeedbackStage -> Research         (approach issue in feedback)
+FeedbackStage -> Acceptance       (functional issue in feedback)
+FeedbackStage -> Done             (all feedback resolved, merged)
 ```
 
 **Decision criteria for skipping stages:**
 - **Skip Research:** task is well-understood, no external APIs, no unfamiliar libraries
+- **Skip GenerateTestPlan:** task is trivial, single obvious change
 - **Skip Decompose:** task is a single logical unit, no independent sub-parts
 - **Skip PlanReview:** change is straightforward, touches 1-3 files, no architectural impact
+- **Skip Approval:** user has already said "start immediately" or equivalent
 
 **ALL other transitions are FORBIDDEN.** Before every transition, announce:
 
@@ -54,14 +66,10 @@ PR         -> Implement        (review feedback requires code changes)
 
 ## Phase 0: Setup
 
-### 0.1 Worktree
+### 0.1 Understand the task
 
-Create an isolated worktree for the task:
-1. From the default branch, create a worktree in `.worktrees/<branch-name>`
-2. Branch naming: `feature/short-description` — kebab-case
-3. If already in a fitting worktree — stay
-
-### 0.2 Understand the task
+**Note: worktree is created outside this flow** — by the environment or a parent orchestrator
+before feature-flow is invoked. Do not create worktrees here.
 
 Extract from the user's input:
 - **What** needs to change
@@ -72,7 +80,7 @@ Generate a slug: kebab-case, 2-4 words.
 
 Ask **one clarifying question** if ambiguous. Otherwise proceed.
 
-### 0.3 Profile confirmation
+### 0.2 Profile confirmation
 
 Auto-detect the profile from keywords and context. Then confirm:
 
@@ -85,7 +93,7 @@ If the task is trivial (single-file, obvious change) — announce skip and go to
 
 ## Phase 1: Research and Planning
 
-### 1.1 Research
+### 1.1 Research (optional)
 
 Invoke `developer-workflow:research` with the task description and constraints.
 Wait for `swarm-report/<slug>-research.md`.
@@ -93,38 +101,75 @@ Wait for `swarm-report/<slug>-research.md`.
 Skip if the task is well-understood and doesn't touch external APIs, unfamiliar libraries,
 or architectural decisions.
 
-### 1.2 Decompose (optional)
+### 1.2 Generate Test Plan
+
+Invoke `developer-workflow:generate-test-plan` with:
+- Task description and done criteria
+- Research artifact path (if exists)
+
+Wait for `swarm-report/<slug>-test-plan.md`.
+
+The test plan is the acceptance contract — it defines exactly what will be verified
+before the feature is considered done. It is produced before implementation so that
+the implementor knows what success looks like.
+
+Skip only for truly trivial tasks (single-file, obvious change with no user-facing behavior).
+
+### 1.3 Decompose (optional)
 
 If the task is large enough to split into independent sub-tasks:
-- Invoke `developer-workflow:decompose-feature` with the research artifact
+- Invoke `developer-workflow:decompose-feature` with the research artifact and test plan
 - Wait for `swarm-report/<slug>-decomposition.md`
 
 Skip for single-task features.
 
-### 1.3 Create plan (optional)
+### 1.4 Plan Review (optional)
 
-If the task remains a single task after research but is complex enough to benefit from review:
-- Create a short implementation plan in Plan Mode
-- Save it to `swarm-report/<slug>-plan.md`
-
-Skip if decomposition already produced the execution plan, or if the task is simple enough
-to implement directly.
-
-### 1.4 Plan review (optional)
-
-If `swarm-report/<slug>-plan.md` or `swarm-report/<slug>-decomposition.md` was produced:
-- Invoke `developer-workflow:plan-review` with that artifact
+If decomposition was produced or the task is complex:
+- Invoke `developer-workflow:plan-review` with the plan/decomposition artifact
 - If FAIL → **Stage: PlanReview → Research.** Back to 1.1 with gaps identified
 - If CONDITIONAL → proceed with noted concerns
-- If PASS → proceed
+- If PASS → proceed to Approval
+
+### 0.4 Consolidated Approval (stop point)
+
+Before starting implementation, present a summary to the user:
+
+```
+## Ready to implement
+
+**Task:** <original task>
+**Approach:** <1-2 sentence summary from research/plan>
+
+**Test plan:** swarm-report/<slug>-test-plan.md
+  - <list top 3-5 test cases>
+
+**Implementation plan:** <source artifact>
+  - <list tasks/steps>
+
+**Estimated scope:** <N files, N tasks>
+
+Proceed? (say "go" to start, or give corrections)
+```
+
+If the user has already said "start immediately" / "just do it" / equivalent — skip this stop
+and proceed autonomously.
+
+After approval — run autonomously. Do not stop unless a critical escalation condition is met.
 
 ---
 
-## Phase 2: Implement and Verify (per task)
+## Phase 2: Implement and Verify
 
-For each task (or the single task if no decomposition):
+### Task parallelism
 
-### 2.1 Implement
+When decomposition produced multiple tasks:
+- Group tasks by wave (as defined in `<slug>-decomposition.md`)
+- Within each wave: launch tasks in parallel (independent tasks have no shared state)
+- Between waves: wait for the previous wave to complete before starting the next
+- Each task runs its own Implement → Acceptance cycle independently
+
+### 2.1 Implement (per task)
 
 **Context passing (MANDATORY):** when invoking the implement skill, pass:
 1. Original user request (verbatim)
@@ -135,49 +180,65 @@ For each task (or the single task if no decomposition):
 Invoke `developer-workflow:implement` with:
 - Task description
 - Slug
-- Paths to available artifacts (`research.md`, `plan.md`, `decomposition.md`)
+- Paths to available artifacts (`research.md`, `plan.md`, `decomposition.md`, `test-plan.md`)
 
 Wait for `swarm-report/<slug>-implement.md` + `swarm-report/<slug>-quality.md`.
 
-### 2.2 Acceptance
+### 2.2 Acceptance (per task)
 
 Invoke `developer-workflow:acceptance` with:
-- Spec source: requirements from the task / plan / decomposition
-- The running app
+- Spec source: `swarm-report/<slug>-test-plan.md` (pre-built contract)
+- Implementation artifact: `swarm-report/<slug>-implement.md`
 
-The acceptance skill saves an E2E scenario to `swarm-report/<slug>-e2e-scenario.md`.
-This file uses checkboxes for each verification step — completed steps (`[x]`) survive
-context compaction and are NOT re-checked on resume.
+The acceptance skill executes the test plan and verifies requirements are met.
+It saves the result to `swarm-report/<slug>-acceptance.md`.
 
-Wait for `swarm-report/<slug>-acceptance.md`.
+**Route by result and failure type:**
 
-**Route by result:**
-- VERIFIED → **Stage: Acceptance → PR**
-- FAILED (P0/P1, obvious cause) → **Stage: Acceptance → Implement.** Max 3 round-trips.
-- FAILED (P0/P1, unclear cause) → **Stage: Acceptance → Debug.** Then Implement.
-- PARTIAL (P2/P3) → ask user: fix now or ship as-is
-- Out-of-scope bugs → create issues, don't block
+| Result | Failure type | Transition | Max |
+|--------|-------------|------------|-----|
+| VERIFIED | — | → FeedbackStage | — |
+| FAILED | Code bug (P0/P1) | → Implement | 3 |
+| FAILED | Wrong approach / design flaw | → PlanReview or Research | 2 |
+| FAILED | Requirements misunderstood | → escalate to user | — |
+| PARTIAL | P2/P3 only | → ask user: fix or ship | — |
+
+Out-of-scope bugs → create issues, don't block.
 
 ---
 
-## Phase 3: PR
+## Phase 3: Feedback Stage
 
 ### 3.1 Create PR
 
-Invoke `developer-workflow:create-pr`.
+Before invoking `feedback-stage`, create a PR:
+- Invoke `developer-workflow:create-pr`
 
 **PR granularity** (when decomposed):
-- Independent tasks → one PR per task (invoke create-pr after each task's acceptance)
+- Independent tasks → one PR per task (create-pr after each task's acceptance)
 - Tightly coupled tasks → bundled PR after all tasks pass acceptance
 
-### 3.2 Drive to merge
+### 3.2 Feedback Stage
 
-Invoke `developer-workflow:pr-drive-to-merge`.
+Invoke `developer-workflow:feedback-stage` with:
+- PR reference (URL or number)
+- All artifacts: `research.md`, `test-plan.md`, `implement.md`, `acceptance.md`
+- Full git diff of changes
 
-This skill handles CI monitoring, bot review polling, and review feedback.
-When it stops for human review — **this orchestrator also stops**.
+The feedback-stage monitors all feedback sources, classifies each item, and delegates
+to the appropriate stage. This orchestrator resumes when feedback-stage returns a routing
+decision.
 
-Resume when the user says to continue.
+**Route by feedback-stage verdict:**
+
+| Verdict | Transition |
+|---------|-----------|
+| code issue | → Implement |
+| approach issue | → Research or PlanReview |
+| functional issue | → Acceptance |
+| merged | → Done |
+
+When routed back to Implement or earlier — re-run Acceptance and feedback-stage again.
 
 ---
 
@@ -186,9 +247,11 @@ Resume when the user says to continue.
 | From | To | Trigger | Max |
 |------|----|---------|-----|
 | PlanReview | Research | FAIL — knowledge gaps | 2 |
-| Acceptance | Implement | FAILED bugs | 3 |
-| Acceptance | Debug | P0/P1 with unclear cause | 1 |
-| PR | Implement | Significant code changes requested | 2 |
+| Acceptance | Implement | FAILED code bug | 3 |
+| Acceptance | Research / PlanReview | FAILED approach | 2 |
+| FeedbackStage | Implement | code issue | 3 |
+| FeedbackStage | Research | approach issue | 2 |
+| FeedbackStage | Acceptance | functional issue | 2 |
 
 Each backward transition:
 1. **Announce** the transition with reason
@@ -201,9 +264,30 @@ Each backward transition:
 
 ## Stop Points
 
-The orchestrator **stops and waits for the user** at:
-- Profile confirmation (Phase 0.3)
-- Human PR review (via pr-drive-to-merge)
-- PARTIAL acceptance verdict (user decides: fix or ship)
-- Escalation (scope explosion, repeated failures, architectural decision needed)
-- Merge confirmation
+The orchestrator stops and waits for the user **only** at:
+
+| Point | When |
+|-------|------|
+| Profile confirmation | Phase 0.2 (always) |
+| Consolidated approval | Phase 0.4 (unless user said "start immediately") |
+| PARTIAL acceptance verdict | User decides: fix or ship |
+| Escalation | See Escalation section below |
+
+Everything else — handle autonomously, log in artifacts, continue.
+
+---
+
+## Escalation
+
+Stop and escalate to the user when:
+
+- Scope is **2x+** larger than the initial estimate (plan: 3 files, reality: 8+)
+- **3rd return** to the same stage (loop detected)
+- A **new dependency** is required, not covered by the plan
+- **Multiple architectural approaches** with no clear winner
+- **Conflict with existing code** requiring a design decision
+- Verification **consistently fails** after 3 Implement → Acceptance cycles
+- **Access or credentials** are needed that are not available
+- Requirements are **fundamentally misunderstood** — needs user clarification
+
+When escalating: state what was tried, what the options are, what decision is needed.

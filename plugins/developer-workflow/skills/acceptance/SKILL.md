@@ -182,10 +182,11 @@ and merge readiness.
 # Acceptance: <slug>
 
 **Status:** VERIFIED / FAILED / PARTIAL
+**Failure type:** code bug / design flaw / wrong approach / requirements misunderstood / — (if VERIFIED)
 **Date:** <date>
 **Type:** Feature / Bug fix
-**Spec source:** [what was used — requirements, debug.md reproduction steps, etc.]
-**Test plan:** [user-provided / generated from spec]
+**Spec source:** [what was used — requirements, test-plan.md, debug.md reproduction steps, etc.]
+**Test plan:** swarm-report/<slug>-test-plan.md
 **Context artifacts:** [paths to research.md, debug.md, implement.md used as input]
 
 ## Summary
@@ -206,15 +207,43 @@ and merge readiness.
 [Ship / Do not ship / Ship with known issues — and why]
 ```
 
+### Intent Check
+
+Before producing the final verdict, verify that the implementation matches the original intent:
+
+1. Re-read the original task description (verbatim)
+2. Re-read `swarm-report/<slug>-test-plan.md` — the pre-agreed acceptance contract
+3. Re-read `swarm-report/<slug>-implement.md` — what was actually built
+4. Check: does the implementation address the original task, not a misinterpretation of it?
+
+If drift is detected — classify it:
+- **Minor drift** (e.g. a missing edge case) → treat as a test failure, include in bug list
+- **Major drift** (e.g. wrong feature built) → FAILED with failure type: requirements misunderstood
+
+### Failure Classification
+
+When the result is FAILED, classify the root cause to guide the orchestrator's routing:
+
+| Failure type | Signals | Orchestrator routes to |
+|---|---|---|
+| **Code bug** | Logic error, crash, wrong output — code does the wrong thing | Implement |
+| **Design flaw** | Approach works but is architecturally wrong, causes side effects | PlanReview |
+| **Wrong approach** | Solution direction is fundamentally misguided | Research |
+| **Requirements misunderstood** | Implemented the wrong thing entirely | Escalate to user |
+
+Include `failure_type` in the acceptance artifact.
+
 ### What Happens Next
 
-Based on the verification state, the orchestrator decides the next transition:
+Based on the verification state and failure type, the orchestrator decides the next transition:
 
-- **VERIFIED** → proceed to `create-pr` (or mark existing PR as ready for review)
-- **FAILED** (P0/P1 bugs) → back to `implement` with the bug list from `<slug>-acceptance.md`
-  as input. After fix, re-run `acceptance`. Max 3 round-trips before escalating to the user.
+- **VERIFIED** → proceed to `feedback-stage`
+- **FAILED, code bug** (P0/P1) → back to `implement` with bug list. Max 3 round-trips.
+- **FAILED, design flaw** → back to `plan-review`. Max 2 round-trips.
+- **FAILED, wrong approach** → back to `research`. Max 2 round-trips.
+- **FAILED, requirements misunderstood** → escalate to user immediately.
 - **PARTIAL** (P2/P3 only) → orchestrator asks the user: fix now (back to `implement`) or
-  ship with known issues (proceed to `create-pr`, include issues in PR description)
+  ship with known issues (proceed to `feedback-stage`, include issues in PR description)
 
 ---
 

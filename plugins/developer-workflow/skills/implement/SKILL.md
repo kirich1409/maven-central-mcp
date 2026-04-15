@@ -147,9 +147,6 @@ Launch only when relevant, in parallel:
 
 No triggers matched → skip.
 
-### Gate 6: Intent check
-Re-read original task + plan. Verify the diff addresses them. If drift detected — fix or flag.
-
 ### Iteration limits
 
 - Per gate: max 3 fix attempts. Still failing → escalate.
@@ -201,7 +198,6 @@ Save to `swarm-report/<slug>-quality.md`:
 | 3 | Tests | PASS/FAIL | N |
 | 4 | Semantic review | PASS/WARN/FAIL | N |
 | 5 | Expert reviews | PASS/SKIP | — |
-| 6 | Intent check | PASS/DRIFT | — |
 
 ## Issues Found and Fixed
 - <issue> — <fix applied>

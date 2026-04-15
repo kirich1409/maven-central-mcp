@@ -6,8 +6,10 @@ description: >-
   "plan testing coverage", "document test scenarios", "create a QA handoff document", "what should
   I test?", "what are the edge cases?", or "how would you test this?". Also use when the user
   describes requirements or acceptance criteria and asks how to verify them, or wants to plan testing
-  before actually running tests. Produces a structured, prioritized test plan document saved to
-  docs/testplans/ with risk analysis, coverage matrix, automation candidates, and proper TC format.
+  before actually running tests. Also invoked by feature-flow orchestrator during the preparation
+  phase — before implementation — to establish the acceptance contract.
+  Produces a structured, prioritized test plan document with risk analysis, coverage matrix,
+  automation candidates, and proper TC format.
   Do NOT trigger when: the user wants to execute tests on a running app (use acceptance or
   bug-hunt), the user wants automated unit/integration tests written in code (out of scope),
   or the user wants to run an existing test plan (use acceptance). This skill never launches an
@@ -20,10 +22,39 @@ Analyze a feature from its specification, design, or implementation and produce 
 prioritized test plan as a markdown document. No tests are executed — the output is a plan ready
 for a human QA engineer or the `manual-tester` agent to pick up later.
 
+## Invocation Modes
+
+### Pipeline mode (invoked by feature-flow orchestrator)
+
+When called by the orchestrator during the preparation phase, the slug is provided.
+The test plan is the **acceptance contract** — it defines what implementation must satisfy.
+
+Required inputs from orchestrator:
+- Task description and done criteria
+- Slug (kebab-case, 2-4 words)
+- Optional: `swarm-report/<slug>-research.md` path
+
+Primary output: `swarm-report/<slug>-test-plan.md` — this file is used by `acceptance`
+to verify the implementation.
+
+After producing the plan, present it to the user for review. The orchestrator's consolidated
+approval stop includes this plan. Adjust based on feedback before proceeding.
+
+### Standalone mode (invoked directly by user)
+
+User provides a spec, mockup, or description. No slug is required.
+
 ## Output
 
-Save every test plan to the repository:
+### Pipeline mode
+Save to:
+```
+swarm-report/<slug>-test-plan.md     ← primary (used by acceptance)
+docs/testplans/<slug>-test-plan.md   ← human reference copy
+```
 
+### Standalone mode
+Save to:
 ```
 docs/testplans/<feature-name>-test-plan.md
 ```

@@ -9,17 +9,31 @@ pipeline stages will be executed. This is not a rigid waterfall — a profile ca
 (Trivial does not require Research and Plan) or replace them (Migration delegates to
 `code-migration`).
 
+**Autonomy principle:** all interaction with the user is front-loaded into the preparation
+phase (Research → Test Plan → Plan Review → Consolidated Approval). After the user approves,
+execution runs autonomously. The orchestrator interrupts the user only for critical blockers
+that cannot be resolved without a decision.
+
 Research is performed by the Research Consortium — up to five parallel expert agents, each
 working independently in its own domain (codebase, web, documentation, dependencies,
 architecture). Results are reviewed and validated by `business-analyst`.
 This ensures decisions are made based on data, not solely on the model's training data.
 
-Quality is enforced by the Quality Loop — six sequential gates from compilation to intent
-verification. Key principle: the author of the code never reviews their own code — gate 4
-launches a separate `code-reviewer` agent that receives only the task description, plan,
-and git diff, without any implementation context. Receipt-based gating ensures no stage
-starts without the previous stage's artifact. Re-anchoring at every stage transition prevents
-drift from the original intent.
+The test plan is produced during preparation — before implementation — and serves as the
+acceptance contract. `acceptance` executes this pre-agreed plan rather than generating
+test cases after the fact.
+
+Quality is enforced by the Quality Loop — five sequential gates from compilation to expert
+review. Key principle: the author of the code never reviews their own code — gate 4 launches
+a separate `code-reviewer` agent that receives only the task description, plan, and git diff,
+without any implementation context. Intent verification (does the implementation meet
+requirements?) is handled by `acceptance`, not the quality loop. Receipt-based gating ensures
+no stage starts without the previous stage's artifact. Re-anchoring at every stage transition
+prevents drift from the original intent.
+
+Feedback from any source (CI, reviewers, bots, UAT) is processed by `feedback-stage` — a
+source-agnostic classifier that reads the full diff, generalizes specific comments to systemic
+patterns, and routes each item to the appropriate stage.
 
 
 ## 2. Pipeline Overview
@@ -29,38 +43,57 @@ drift from the original intent.
 ```
 IDEA / FEATURE REQUEST
   |
-  v
-[research] ---- Research Consortium (up to 5 parallel experts)
+  v  [worktree created by environment / parent orchestrator]
+[research] ---- Research Consortium (up to 5 parallel experts)   (optional)
   |                Artifact: swarm-report/<slug>-research.md
   v
-[decompose-feature] ---- Break into tasks with dependencies (optional)
+[generate-test-plan] ---- Acceptance contract before implementation
+  |                         Artifact: swarm-report/<slug>-test-plan.md
+  v
+[decompose-feature] ---- Break into tasks with dependencies        (optional)
   |                        Artifact: swarm-report/<slug>-decomposition.md
   v
-[plan-review] ---- PoLL review of the plan (optional)
+[plan-review] ---- PoLL review of the plan                         (optional)
   |                  Artifact: plan review verdict
   v
-  |   ┌────────────── for each task ──────────────┐
-  |   │                                            │
-  |   v                                            │
-  | [implement] ---- Code + simplify + Quality Loop
-  |   |  |-- specialist agents                     │
-  |   |  '-- Quality Loop (6 gates)                │
-  |   |        Artifacts: <slug>-implement.md      │
-  |   |                   <slug>-quality.md        │
-  |   v                                            │
-  | [acceptance] ---- Verify against spec          │
-  |   |  '-- manual-tester agent                   │
-  |   |        Artifact: <slug>-acceptance.md      │
-  |   |                                            │
-  |   |── FAILED? back to implement ───────────────┘
-  |   v
-  | [create-pr] ---- PR per task or bundled
-  |   v
-  | [pr-drive-to-merge] ---- CI + review + merge
-  |   │
-  └───┘ next task
+[CONSOLIDATED APPROVAL] ---- User reviews research + test plan + implementation plan
+  |                            Single stop point before execution starts
   v
-MERGED (all tasks)
+  |   ┌──── wave 1: tasks in parallel ────────────────────────────┐
+  |   │  ┌─ task 1 ─────────────────────────────────────────────┐ │
+  |   │  │                                                       │ │
+  |   │  v                                                       │ │
+  |   │ [implement] ---- Code + simplify + Quality Loop (5 gates)│ │
+  |   │  |  |-- specialist agents                                │ │
+  |   │  |  '-- Quality Loop: build→lint→tests→code-reviewer     │ │
+  |   │  |        →expert reviews                                │ │
+  |   │  |        Artifacts: <slug>-implement.md                 │ │
+  |   │  |                   <slug>-quality.md                   │ │
+  |   │  v                                                       │ │
+  |   │ [acceptance] ---- Execute test-plan, verify requirements │ │
+  |   │  |  |-- intent check (requirements vs. implementation)   │ │
+  |   │  |  '-- manual-tester agent                              │ │
+  |   │  |        Artifact: <slug>-acceptance.md                 │ │
+  |   │  |                  (includes failure_type if FAILED)    │ │
+  |   │  │                                                       │ │
+  |   │  ├─ FAILED (code bug)    → back to implement ───────────┘ │
+  |   │  ├─ FAILED (approach)    → back to research/plan-review   │
+  |   │  └─ VERIFIED → next stage                                  │
+  |   └───────────────────────────────────────────────────────────┘
+  |   (wave 2, wave 3... sequentially after previous wave)
+  v
+[create-pr] ---- PR per task or bundled
+  v
+[feedback-stage] ---- Monitor all feedback sources, classify, delegate
+  |  Sources: CI/CD · code reviewer · bots · UAT · stakeholder
+  |  Fast feedback (CI, bots): active monitoring
+  |  Slow feedback (human review): stop session, resume on user signal
+  |  Generalizes specific comments to systemic patterns across full diff
+  |
+  ├─ code issue    → implement → acceptance → feedback-stage
+  ├─ approach      → research / plan-review → implement → acceptance → feedback-stage
+  ├─ functional    → acceptance → feedback-stage
+  └─ all resolved + CI green + approved → [pr-drive-to-merge] → MERGED
 ```
 
 **PR granularity** is decided by the orchestrator:
@@ -96,11 +129,11 @@ MERGED
 
 | Profile | Pipeline | Signals | Skips |
 |---------|----------|---------|-------|
-| **Feature** | Research -> Decompose -> Plan Review -> [Implement -> Acceptance] per task -> PR -> Merge | "add", "implement", "build", "create" | Decompose optional for single-task features |
-| **Bug Fix** | Debug -> Implement -> Acceptance -> PR -> Merge | "fix", "broken", "crash", "regression" | Research, Plan |
-| **Migration** | Research -> Snapshot -> Migrate -> Acceptance -> PR -> Merge | "migrate", "replace", "switch to" | Plan (delegates to `code-migration`) |
-| **Research** | Research -> Report | "investigate", "compare", "evaluate" | Implement, Acceptance, PR, Merge |
-| **Trivial** | Implement -> PR -> Merge | Single-file change, config tweak | Research, Plan, Debug, Acceptance |
+| **Feature** | Research → TestPlan → Decompose → PlanReview → Approval → [Implement → Acceptance] per task → PR → FeedbackStage → Merge | "add", "implement", "build", "create" | Decompose optional for single-task; TestPlan optional for trivial |
+| **Bug Fix** | Debug → Implement → Acceptance → PR → FeedbackStage → Merge | "fix", "broken", "crash", "regression" | Research, TestPlan, Plan |
+| **Migration** | Research → Snapshot → Migrate → Acceptance → PR → FeedbackStage → Merge | "migrate", "replace", "switch to" | Plan (delegates to `code-migration`) |
+| **Research** | Research → Report | "investigate", "compare", "evaluate" | Implement, Acceptance, PR, Merge |
+| **Trivial** | Implement → PR → FeedbackStage → Merge | Single-file change, config tweak | Research, TestPlan, Plan, Debug, Acceptance |
 
 Auto-detection is based on keywords and context. When ambiguous — ask the user to confirm
 before starting work.
@@ -108,26 +141,29 @@ before starting work.
 
 ## 4. Quality Loop
 
+Quality loop runs inside `implement`. It validates code quality only — functional correctness
+(does this meet requirements?) is verified by `acceptance`, not here.
+
 ```
                               Iteration cap: max 5 full cycles
                               Per gate: max 3 fix attempts
-     ___________________________________________________________________
-    |                                                                   |
-    v                                                                   |
-+--------+    +---------+    +-------+    +-------------+    +--------+ |
-| Gate 1 |--->| Gate 2  |--->| Gate 3|--->|   Gate 4    |--->| Gate 5 | |
-| Build  |    | Static  |    | Tests |    | code-       |    | Expert | |
-|        |    | Analysis|    |       |    | reviewer    |    | Reviews| |
-+--------+    +---------+    +-------+    +-------------+    +--------+ |
-    |fail         |fail          |fail         |                  |     |
-    v             v              v             v                  v     |
- [fix]         [fix]          [fix]     PASS: gate 5        +--------+ |
-    |             |              |      WARN: gate 5 +      | Gate 6 | |
-    '-----.-------'-------.------'       acknowledged risks | Intent  | |
-          |               |             FAIL: --> Implement | Check   | |
-          '--------.------'                                 +--------+ |
-                   |                                           |       |
-                   '------- (fix cycle) -----------------------'-------'
+     _______________________________________________________________
+    |                                                               |
+    v                                                               |
++--------+    +---------+    +-------+    +-------------+    +--------+
+| Gate 1 |--->| Gate 2  |--->| Gate 3|--->|   Gate 4    |--->| Gate 5 |
+| Build  |    | Static  |    | Tests |    | code-       |    | Expert |
+|        |    | Analysis|    |       |    | reviewer    |    | Reviews|
++--------+    +---------+    +-------+    +-------------+    +--------+
+    |fail         |fail          |fail         |                  |
+    v             v              v             v                  v
+ [fix]         [fix]          [fix]     PASS: gate 5          PASS/SKIP
+    |             |              |      WARN: gate 5 +
+    '-----.-------'-------.------'       acknowledged risks
+          |               |             FAIL: fix, re-run gate 4
+          '--------.------'
+                   |
+                   '------- (fix cycle) ------'
 ```
 
 ### Gates
@@ -137,9 +173,11 @@ before starting work.
 | 1 | Build | Compile project, resolve all errors | Implementation agent |
 | 2 | Static Analysis | Lint, formatting, unused imports | Implementation agent |
 | 3 | Tests | Unit + integration tests, fix failures | Implementation agent |
-| 4 | Semantic Self-Review | Compare intent vs. `git diff` | `code-reviewer` agent |
+| 4 | Semantic Self-Review | Compare code quality vs. `git diff` | `code-reviewer` agent |
 | 5 | Expert Reviews | Parallel domain-specific reviews (by trigger) | Specialist agents |
-| 6 | Intent Check | Re-read task + plan, verify correspondence | Orchestrator |
+
+**Gate 6 (Intent Check) has been removed.** Verifying that the implementation matches
+requirements is the responsibility of `acceptance`, which runs the pre-agreed test plan.
 
 ### Expert Review Triggers (gate 5)
 
@@ -236,53 +274,63 @@ least one web-sourced insight. Relying solely on the codebase and training data 
 ## 6. State Machine
 
 ```
-Research --> Decompose --> Plan Review --> Implement --> Acceptance --> PR --> Merge
-   ^            |              |              ^  ^           |          |
-   |            |              |              |  |           |          |
-   '-- gaps ----'              |              |  '-- FAILED -'          |
-   ^                           |              |                        |
-   '-- scope too large --------+--------------'                        |
-                               |              ^                        |
-                               '-- FAIL ------'                        |
-                                              ^                        |
-                                              '-- review feedback -----'
+Research → TestPlan → Decompose → PlanReview → [Approval] → Implement → Acceptance → FeedbackStage → Merge
+   ^           |           |            |                       ^  ^           |              |
+   |           |           |            |                       |  |           |              |
+   '-- gaps ---'           |            |                       |  '- code bug-'              |
+   ^                       |            |                       |                             |
+   '-- approach issue -----+------------+-----------------------'                             |
+                           |            |                       ^                             |
+                           |            '-- FAIL ---------------'                             |
+                           |                                    ^                             |
+                           |                                    '-- code issue ───────────────'
+                           |                                    ^
+                           |                                    '-- approach issue ───────────'
+                           v (waves)
+                    [T1] [T2] [T3] parallel
 ```
 
-For Bug Fix pipeline, replace Research + Decompose with Debug:
+For Bug Fix pipeline:
 
 ```
-Debug --> Implement --> Acceptance --> PR --> Merge
-             ^              |
-             '--- FAILED ---'
+Debug → Implement → Acceptance → FeedbackStage → Merge
+             ^            |
+             '-- FAILED --'
 ```
 
 ### Forward Transitions (default)
 
 | From | To | Condition |
 |------|----|-----------|
-| Research | Decompose | Research complete |
+| Research | TestPlan | Research complete |
+| TestPlan | Decompose / PlanReview / Implement | Task size and complexity |
+| PlanReview | Approval | Plan PASS or CONDITIONAL |
+| Approval | Implement | User confirmed |
 | Debug | Implement | Root cause identified |
-| Decompose | Plan Review | Tasks defined |
-| Plan Review | Implement | Plan PASS or CONDITIONAL |
 | Implement | Acceptance | `implement.md` + `quality.md` produced, all gates passed |
-| Acceptance | PR | VERIFIED |
-| PR | Merge | CI green, review approved |
+| Acceptance | FeedbackStage | VERIFIED |
+| FeedbackStage | Merge | All feedback resolved, CI green, approved |
 
 ### Backward Transitions (recovery paths)
 
-| From | To | Trigger |
-|------|----|---------|
-| Plan Review | Research | Plan review FAIL — knowledge gaps |
-| Implement | Research | Scope significantly larger than expected |
-| Acceptance | Implement | FAILED — P0/P1 bugs found, fix needed |
-| PR | Implement | Review feedback requires code changes |
+| From | To | Trigger | Max |
+|------|----|---------|-----|
+| PlanReview | Research | FAIL — knowledge gaps | 2 |
+| Acceptance | Implement | FAILED — code bug | 3 |
+| Acceptance | PlanReview | FAILED — design flaw | 2 |
+| Acceptance | Research | FAILED — wrong approach | 2 |
+| FeedbackStage | Implement | code issue in feedback | 3 |
+| FeedbackStage | Research | approach issue | 2 |
+| FeedbackStage | Acceptance | functional issue | 2 |
 
 ### User Decision Points
 
 | From | Condition | Options |
 |------|-----------|---------|
-| Acceptance | PARTIAL (P2/P3 only) | Fix now → back to Implement / Ship as-is → proceed to PR |
+| Approval | After preparation phase | Confirm plan or give corrections |
+| Acceptance | PARTIAL (P2/P3 only) | Fix now → back to Implement / Ship as-is → FeedbackStage |
 | Decompose | Multiple tasks produced | One PR per task / Bundled PR |
+| FeedbackStage | Slow feedback (human review) | Session stops; user resumes when review arrives |
 
 **Backward transition rules:**
 1. Reason for the transition is logged in the current stage's artifact
@@ -298,12 +346,13 @@ starting work. No stage starts without the previous stage's receipt.
 
 | Stage | Artifact | Required before next |
 |-------|----------|----------------------|
-| Research | `<slug>-research.md` | Plan / Implement (Feature) |
+| Research | `<slug>-research.md` | TestPlan / Implement (Feature) |
+| TestPlan | `<slug>-test-plan.md` | Decompose / PlanReview / Implement |
 | Debug | `<slug>-debug.md` | Implement (Bug Fix) |
 | Plan | `<slug>-plan.md` | Implement (when planning is done) |
 | Implement | `<slug>-implement.md` + `<slug>-quality.md` | Acceptance |
-| Acceptance | `<slug>-acceptance.md` | PR |
-| PR | `<slug>-pr.md` | Merge |
+| Acceptance | `<slug>-acceptance.md` (includes `failure_type`) | FeedbackStage |
+| FeedbackStage | `<slug>-feedback.md` | Merge or routed stage |
 
 **Slug:** kebab-case from the task description, 2–4 words.
 Example: task "Add user avatar upload" -> slug `user-avatar-upload`.
@@ -320,53 +369,73 @@ artifact required.
 | Stage | Skill | Input | Output |
 |-------|-------|-------|--------|
 | Research | `research` | Research question + constraints | `<slug>-research.md`: approaches, recommendations, risks, open questions |
+| TestPlan | `generate-test-plan` | Task description + `research.md` (optional) | `<slug>-test-plan.md`: structured test cases, the acceptance contract |
 | Debug | `debug` | Bug description (text, issue URL, error log) | `<slug>-debug.md`: symptom, reproduction steps, root cause, fix direction |
-| Decompose | `decompose-feature` | Feature idea/PRD + research artifact | `<slug>-decomposition.md`: tasks with dependencies, acceptance criteria, waves |
+| Decompose | `decompose-feature` | Feature idea/PRD + research + test-plan | `<slug>-decomposition.md`: tasks with dependencies, acceptance criteria, waves |
 | Plan review | `plan-review` | Plan or decomposition artifact | Verdict: PASS / CONDITIONAL / FAIL with blockers |
-| Implement | `implement` | Task + optional artifacts (`research.md`, `debug.md`, `plan.md`) | `<slug>-implement.md`: changes summary, files, decisions + `<slug>-quality.md`: gate results |
-| Acceptance | `acceptance` | Spec source (requirements / `debug.md` reproduction steps) + running app | `<slug>-acceptance.md`: VERIFIED / FAILED / PARTIAL with bug list |
+| Implement | `implement` | Task + optional artifacts (`research.md`, `debug.md`, `plan.md`, `test-plan.md`) | `<slug>-implement.md`: changes summary, files, decisions + `<slug>-quality.md`: gate results |
+| Acceptance | `acceptance` | `<slug>-test-plan.md` (pre-built contract) + `implement.md` + running app | `<slug>-acceptance.md`: VERIFIED / FAILED / PARTIAL + `failure_type` |
 | PR | `create-pr` | Branch with commits | PR URL |
-| Merge | `pr-drive-to-merge` | Existing PR | Merged PR |
+| Feedback | `feedback-stage` | PR ref + git diff + all artifacts | `<slug>-feedback.md`: routing plan per feedback item |
+| Merge | `pr-drive-to-merge` | Resolved feedback + approved PR | Merged PR |
 
 ### Pipeline Cycles
 
 The pipeline is **not linear** — stages form feedback loops when issues are found.
 
 ```
-                         ┌────── FAILED ──────┐
-                         │                    v
-research/debug ──→ implement ──→ acceptance ──→ create-pr ──→ merge
-                     ^  │            │
-                     │  │            │ PARTIAL: user decides
-                     │  │            │   fix → back to implement
-                     │  │            │   ship → proceed to create-pr
-                     │  └── inner ───┘
-                     │    quality loop
-                     │    (build/lint/
-                     │     tests/review)
-                     │
-                     └── review feedback (from pr-drive-to-merge)
+prepare: research → test-plan → decompose → plan-review → [approval]
+                                                                │
+                              ┌─────────────────────────────────┘
+                              │       (per task, parallel within wave)
+                              v
+                    implement (quality loop: 5 gates)
+                         │  ^
+                         │  └── gate failure → fix (max 3x per gate)
+                         v
+                    acceptance (executes test-plan, intent check)
+                         │
+              ┌──────────┼──────────────────────┐
+              │          │                      │
+         code bug    design flaw /          VERIFIED
+              │      wrong approach              │
+              v          │                      v
+          implement   research /          create-pr
+                      plan-review               │
+                                                v
+                                        feedback-stage
+                                         │   │    │
+                                    code  appr  func
+                                    issue oach  issue
+                                     │    │      │
+                                  impl  research  acceptance
+                                         │
+                                    all resolved
+                                         │
+                                   pr-drive-to-merge → MERGED
 ```
 
-**Acceptance → Implement loop:**
-- `acceptance` produces `<slug>-acceptance.md` with VERIFIED / FAILED / PARTIAL
-- VERIFIED → proceed to `create-pr`
-- FAILED (P0/P1 bugs) → back to `implement` with the bug list as input. After fix, re-run `acceptance`
-- PARTIAL (P2/P3 only) → orchestrator asks user: fix now or ship with known issues
+**Acceptance failure routing (by failure_type):**
+- VERIFIED → `feedback-stage`
+- FAILED, code bug → `implement` (max 3x)
+- FAILED, design flaw → `plan-review` (max 2x)
+- FAILED, wrong approach → `research` (max 2x)
+- FAILED, requirements misunderstood → escalate to user
 
 **Implement inner loop:**
-- Quality gates (build → lint → tests → code-reviewer) run inside `implement`
+- Quality gates (build → lint → tests → code-reviewer → expert reviews) run inside `implement`
 - Gate failure → fix → re-run gate (max 3 attempts per gate, max 5 full cycles)
 - If not converging → escalate to user
 
-**PR review loop:**
-- `pr-drive-to-merge` handles review feedback via `address-review-feedback`
-- If review requires significant code changes → back to `implement` → `acceptance` → update PR
+**Feedback loop:**
+- `feedback-stage` reads all feedback, generalizes specific comments to full diff
+- Routes by issue type: code → implement, approach → research, functional → acceptance
+- Fast sources (CI, bots): actively monitored. Slow sources (human review): session stops.
 
 **Loop limits:**
 - Acceptance → Implement: max 3 round-trips. After that → escalate
 - Quality gates: max 3 attempts per gate, max 5 full cycles
-- PR review: no hard limit, but escalate if same feedback repeats
+- FeedbackStage backward transitions: see Backward Transitions table
 
 ### Artifact Contents
 
@@ -385,26 +454,29 @@ Each artifact includes:
 
 | Skill | Pipeline stage | Description |
 |-------|---------------|-------------|
-| **`feature-flow`** | **Orchestrator** | **Thin orchestrator: research → decompose → implement → acceptance → PR → merge** |
-| **`bugfix-flow`** | **Orchestrator** | **Thin orchestrator: debug → implement → acceptance → PR → merge** |
+| **`feature-flow`** | **Orchestrator** | **Thin orchestrator: research → test-plan → decompose → approval → [implement → acceptance] → feedback-stage → merge** |
+| **`bugfix-flow`** | **Orchestrator** | **Thin orchestrator: debug → implement → acceptance → feedback-stage → merge** |
 | `research` | Research | Research Consortium — up to 5 parallel experts, synthesis, auto-review |
+| `generate-test-plan` | Preparation | Acceptance contract before implementation: structured test cases from spec/research |
 | `debug` | Debug | Systematic root cause investigation — stops at diagnosis |
 | `plan-review` | Plan | PoLL review of the plan by multiple agents |
-| `implement` | Implement -> Quality | Standalone implementation stage with quality loop |
-| `code-migration` | Implement (Migration) | Discover -> snapshot -> migrate -> verify -> cleanup |
+| `implement` | Implement → Quality | Standalone implementation stage with quality loop (5 gates, no intent check) |
+| `code-migration` | Implement (Migration) | Discover → snapshot → migrate → verify → cleanup |
 | `kmp-migration` | Implement (Migration) | Module migration to Kotlin Multiplatform |
-| `migrate-to-compose` | Implement (Migration) | View -> Compose migration with visual baseline |
+| `migrate-to-compose` | Implement (Migration) | View → Compose migration with visual baseline |
+| `acceptance` | Verify | Execute pre-built test plan, verify requirements, classify failure type |
+| `feedback-stage` | Feedback | Source-agnostic feedback: read, generalize, classify, route to the right stage |
 | `create-pr` | PR | PR/MR creation: title, description, labels, reviewers |
-| `pr-drive-to-merge` | Merge | CI monitoring, review handling, drive to merge |
-| `address-review-feedback` | Merge (sub-skill) | Analysis and handling of reviewer comments |
-| `generate-test-plan` | Plan / Verify | Structured test plan from specification |
-| `acceptance` | Verify | Acceptance verification on live app — features and bug fixes |
+| `pr-drive-to-merge` | Merge | Pure merge mechanics: push, CI monitoring, undraft, execute merge |
 | `bug-hunt` | Verify | Undirected bug hunting without a specification |
-| `decompose-feature` | Research / Plan | Feature decomposition into tasks |
+| `decompose-feature` | Research / Plan | Feature decomposition into tasks with waves |
 | `write-tests` | Implement | Retroactive test writing |
 | `simplify`* | Quality | Code review for reuse, quality, and efficiency |
 
 *Skill from another plugin / built-in.
+
+**Removed skills:**
+- `address-review-feedback` — absorbed into `feedback-stage`
 
 
 ### Agents
