@@ -17,7 +17,7 @@ logic — each stage is a separate skill invocation via subagents.
 **STRICT RULE:** The orchestrator DOES NOT write code, run tests, or perform analysis directly.
 It only manages transitions, passes context between stages, and reports summaries to the user.
 
-**AUTONOMY RULE:** After the user approves the plan (Phase 0.4), work autonomously without
+**AUTONOMY RULE:** After the user approves the plan (Phase 1.5), work autonomously without
 stopping. Interrupt the user ONLY for critical blockers listed in the Escalation section.
 The goal: all interaction happens upfront, execution runs unattended.
 
@@ -34,12 +34,12 @@ Setup         -> Implement        (trivial single-file task — skip all plannin
 Research      -> GenerateTestPlan
 GenerateTestPlan -> Decompose     (large feature — split into tasks)
 GenerateTestPlan -> PlanReview    (complex single-task — needs plan review)
-GenerateTestPlan -> Implement     (simple single-task — planning enough)
+GenerateTestPlan -> Approval      (simple single-task — planning enough)
 Decompose     -> PlanReview       (complex decomposition — needs review)
-Decompose     -> Implement        (straightforward tasks — skip review)
+Decompose     -> Approval         (straightforward tasks — skip plan review)
 PlanReview    -> Approval         (plan ready — present to user)
 PlanReview    -> Research         (FAIL — knowledge gaps)
-Approval      -> Implement        (user confirmed)
+Approval      -> Implement        (user confirmed, or pre-approved)
 Implement     -> Acceptance
 Acceptance    -> FeedbackStage    (VERIFIED)
 Acceptance    -> Implement        (FAILED — code bug, max 3 round-trips)
@@ -56,7 +56,7 @@ FeedbackStage -> Done             (all feedback resolved, merged)
 - **Skip GenerateTestPlan:** task is trivial, single obvious change
 - **Skip Decompose:** task is a single logical unit, no independent sub-parts
 - **Skip PlanReview:** change is straightforward, touches 1-3 files, no architectural impact
-- **Skip Approval:** user has already said "start immediately" or equivalent
+- **Skip Approval:** user has already said "start immediately" or equivalent — auto-confirm and proceed
 
 **ALL other transitions are FORBIDDEN.** Before every transition, announce:
 
@@ -131,7 +131,7 @@ If decomposition was produced or the task is complex:
 - If CONDITIONAL → proceed with noted concerns
 - If PASS → proceed to Approval
 
-### 0.4 Consolidated Approval (stop point)
+### 1.5 Consolidated Approval (stop point)
 
 Before starting implementation, present a summary to the user:
 
@@ -293,7 +293,7 @@ The orchestrator stops and waits for the user **only** at:
 | Point | When |
 |-------|------|
 | Profile confirmation | Phase 0.2 (always) |
-| Consolidated approval | Phase 0.4 (unless user said "start immediately") |
+| Consolidated approval | Phase 1.5 (unless user said "start immediately") |
 | PARTIAL acceptance verdict | User decides: fix or ship |
 | Merge confirmation | Phase 3.3 (always — no exceptions) |
 | Escalation | See Escalation section below |

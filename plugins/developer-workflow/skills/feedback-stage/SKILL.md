@@ -218,7 +218,7 @@ Save to `swarm-report/<slug>-feedback.md`:
 [items where a specific comment was expanded to cover more of the diff]
 
 ## Verdict
-ROUTING / RESOLVED / WAITING
+ROUTING / CLEAR / WAITING
 ```
 
 ---

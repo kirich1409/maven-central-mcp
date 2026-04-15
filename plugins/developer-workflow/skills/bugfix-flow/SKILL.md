@@ -24,19 +24,22 @@ It only manages transitions, passes context between stages, and reports summarie
 ### Allowed transitions
 
 ```
-Setup      -> Debug
-Setup      -> Implement        (trivially obvious fix — skip debug)
-Debug      -> Plan             (complex fix — needs planning)
-Debug      -> Implement        (simple fix — root cause diagnosed, fix is clear)
-Debug      -> Report           (not reproducible or escalated)
-Plan       -> Implement
-Plan       -> Debug            (plan review FAIL — need more diagnostic context)
-Implement  -> Acceptance
-Acceptance -> PR               (VERIFIED — bug gone)
-Acceptance -> Implement        (FAILED — bug still reproduces or new bugs)
-Acceptance -> Debug            (FAILED — fix didn't address root cause)
-PR         -> Merge
-PR         -> Implement        (review feedback requires code changes)
+Setup         -> Debug
+Setup         -> Implement        (trivially obvious fix — skip debug)
+Debug         -> Plan             (complex fix — needs planning)
+Debug         -> Implement        (simple fix — root cause diagnosed, fix is clear)
+Debug         -> Report           (not reproducible or escalated)
+Plan          -> Implement
+Plan          -> Debug            (plan review FAIL — need more diagnostic context)
+Implement     -> Acceptance
+Acceptance    -> FeedbackStage    (VERIFIED — bug gone)
+Acceptance    -> Implement        (FAILED — code bug, max 3 round-trips)
+Acceptance    -> Plan             (FAILED — design flaw)
+Acceptance    -> Debug            (FAILED — wrong approach, unclear root cause)
+FeedbackStage -> Implement        (code issue in feedback)
+FeedbackStage -> Debug            (approach issue in feedback)
+FeedbackStage -> Acceptance       (functional issue in feedback)
+FeedbackStage -> Done             (CLEAR — all feedback resolved, user confirmed merge)
 ```
 
 **ALL other transitions are FORBIDDEN.** Before every transition, announce:
@@ -49,10 +52,8 @@ PR         -> Implement        (review feedback requires code changes)
 
 ### 0.1 Worktree
 
-Create an isolated worktree:
-1. From the default branch, create a worktree in `.worktrees/<branch-name>`
-2. Branch naming: `fix/short-description` — kebab-case
-3. If already in a fitting worktree — stay
+**Note: worktree is created outside this flow** — by the environment or a parent orchestrator
+before bugfix-flow is invoked. Do not create worktrees here.
 
 ### 0.2 Understand the bug
 
@@ -138,14 +139,15 @@ This file uses checkboxes — completed checks (`[x]`) survive compaction and ar
 
 Wait for `swarm-report/<slug>-acceptance.md`.
 
-**Route by result:**
+**Route by result and failure type:**
 
-| Result | Transition | Action |
-|--------|-----------|--------|
-| VERIFIED (bug gone) | **Acceptance → PR** | Proceed |
-| FAILED — same bug | **Acceptance → Implement** | Fix again. If 2nd failure → **Acceptance → Debug** (re-diagnose) |
-| FAILED — new bug | Route per bug: trivial → Implement, complex → Debug |
-| PARTIAL — bug gone, minor issues | Ask user: fix or ship as-is |
+| Result | Failure type | Transition | Max |
+|--------|-------------|------------|-----|
+| VERIFIED | — | **Acceptance → FeedbackStage** | — |
+| FAILED | Code bug | **Acceptance → Implement** | 3 |
+| FAILED | Design flaw | **Acceptance → Plan** | — |
+| FAILED | Wrong approach | **Acceptance → Debug** | — |
+| PARTIAL | — | Ask user: fix or ship as-is | — |
 
 ---
 
@@ -183,7 +185,7 @@ When feedback-stage returns CLEAR:
    ```bash
    gh pr merge "$PR_NUMBER" --squash --delete-branch
    ```
-3. Cleanup worktree if applicable
+4. Cleanup worktree if applicable
 
 ---
 
@@ -191,9 +193,11 @@ When feedback-stage returns CLEAR:
 
 | From | To | Trigger | Max |
 |------|----|---------|-----|
-| Acceptance | Implement | Bug still reproduces or new bugs | 3 |
-| Acceptance | Debug | Fix didn't address root cause (2 failed implementations) | 1 |
-| PR | Implement | Review feedback requires code changes | 2 |
+| Acceptance | Implement | Code bug — fix didn't work | 3 |
+| Acceptance | Debug | Wrong approach (after 3 failed implementations) | 1 |
+| FeedbackStage | Implement | Code issue in feedback | 3 |
+| FeedbackStage | Debug | Approach issue in feedback | 2 |
+| FeedbackStage | Acceptance | Functional issue in feedback | 2 |
 
 Each backward transition:
 1. **Announce** the transition with reason
@@ -210,9 +214,9 @@ The orchestrator **stops and waits for the user** at:
 - Profile confirmation (Phase 0.3)
 - Bug not reproducible (need more info)
 - Debug escalation (architectural issue, needs decision)
-- Human PR review
+- Feedback-stage waiting for human review (session-stop)
 - PARTIAL acceptance verdict
-- Merge confirmation
+- Merge confirmation (Phase 4.3 — always, no exceptions)
 
 ---
 
