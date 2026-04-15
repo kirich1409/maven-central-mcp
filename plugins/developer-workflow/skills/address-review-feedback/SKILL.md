@@ -303,6 +303,13 @@ and surrounding logic). Reply directly in the thread.
 After fixes are committed, post responses. For declined suggestions, respond immediately
 (no commit needed).
 
+**Language matching.** Detect the language of the reviewer's comment body. Write your response
+in that same language — if the reviewer wrote in Russian, reply in Russian; if in English,
+reply in English. When a thread contains multiple comments in different languages, use the
+language of the first (root) comment in the thread. Technical terms, code identifiers,
+file paths, commit hashes, and code snippets always stay in their original form regardless
+of the response language.
+
 **Response rules — no performative agreement.** Never write "Great point!", "You're right!",
 "Thanks for catching that!". State what changed and why, or state disagreement with evidence.
 
@@ -387,5 +394,10 @@ all questions ready.
 **Scope discipline.** OUT_OF_SCOPE comments are valid concerns — don't dismiss them.
 Surface them clearly to the user with a recommendation (decline with note, or log as
 a follow-up issue). The user decides; you execute that decision.
+
+**Language matching.** Always respond in the language the reviewer used. If a reviewer
+commented in Russian — reply in Russian; if in English — reply in English. Never switch
+languages mid-response. Technical terms, code identifiers, file paths, and commit hashes
+always stay in their original form.
 
 **Tools priority:** CLI (gh / glab) → REST API → MCP.
