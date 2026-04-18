@@ -52,12 +52,10 @@ jobs:
         run: bash scripts/validate.sh
 
       - name: Build maven-mcp
-        working-directory: plugins/maven-mcp
         run: |
-          npm ci
-          npm run lint
-          npm test
-          npm run build
+          npm --workspace plugins/maven-mcp run lint
+          npm --workspace plugins/maven-mcp run test
+          npm --workspace plugins/maven-mcp run build
 
       - name: Create Version PR or publish via Changesets
         id: changesets
