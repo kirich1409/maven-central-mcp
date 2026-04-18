@@ -7,6 +7,13 @@
   },
   "homepage": "https://github.com/kirich1409/krozov-ai-tools",
   "category": "development",
-  "keywords": ["agents", "code-review", "architecture", "security", "performance", "ux"],
+  "keywords": [
+    "agents",
+    "code-review",
+    "architecture",
+    "security",
+    "performance",
+    "ux"
+  ],
   "agents": "../agents"
 }
