@@ -39,7 +39,71 @@ The specification defines what "correct" looks like. Accept any combination of:
 Read all provided spec sources. If neither a spec nor a test plan is provided, ask the user
 for at least one before proceeding.
 
-### 1.2 Test Plan (optional if spec is provided)
+### 1.2 Test Plan — Source Priority
+
+Select the test-plan source by walking the four branches below in order. The first branch
+whose condition holds is the one used; record which branch fired so the verification report
+can set `test_plan_source` accordingly.
+
+#### Branch 1 — Receipt present (`test_plan_source: receipt`)
+
+**Condition:** `swarm-report/<slug>-test-plan.md` exists (produced by `generate-test-plan`
+when invoked from the orchestrator).
+
+**Actions:**
+1. Read the receipt's YAML frontmatter and load `permanent_path`.
+2. Read `review_verdict`:
+   - `PASS` — proceed.
+   - `WARN` — proceed; carry WARN findings forward into the verification report as context.
+   - `FAIL` — do not execute. Stop and escalate back to `feature-flow`: the plan must be
+     revised via `plan-review` before acceptance runs.
+   - `pending` — treat as not-yet-reviewed; escalate to `feature-flow` to run plan-review
+     first instead of proceeding blindly.
+3. Pass the **permanent file** (resolved via `permanent_path`, not the receipt itself) to
+   the `manual-tester` agent as the primary test-plan source.
+4. In the verification report set `test_plan_source: receipt`.
+
+#### Branch 2 — Permanent file exists without receipt (`test_plan_source: mounted`)
+
+**Condition:** Branch 1 did not fire **and** `docs/testplans/<slug>-test-plan.md` exists on
+disk without a matching receipt in `swarm-report/`.
+
+**Actions:** mount the existing test plan as-is. The file pre-dates the orchestration
+integration, so do not regenerate or re-review it.
+
+1. Create a new receipt at `swarm-report/<slug>-test-plan.md` with `status: Mounted` and
+   `review_verdict: skipped` using the template below.
+2. Pass the **permanent file** to the `manual-tester` agent as the primary test-plan source.
+3. In the verification report set `test_plan_source: mounted`.
+
+Mount-as-existing receipt template:
+
+```markdown
+---
+name: test-plan-receipt
+description: Mounted existing test plan for <slug>
+slug: <slug>
+type: test-plan-receipt
+status: Mounted
+permanent_path: docs/testplans/<slug>-test-plan.md
+source_spec: existing (pre-orchestration)
+review_verdict: skipped
+phase_coverage: []
+created: <date when mounted>
+updated: <same>
+---
+
+# Test Plan Receipt: <slug> (mounted)
+
+Existing permanent test plan mounted without regeneration.
+Review was skipped because the file pre-dates orchestration integration.
+```
+
+#### Branch 3 — On-the-fly generation from available inputs (`test_plan_source: on-the-fly`)
+
+**Condition:** Branches 1 and 2 did not fire **and** the invocation provides a test plan
+inline, a spec source, or both. This branch preserves the pre-orchestration behavior
+verbatim — the three modes below are the original Step 1.2 logic retained unchanged.
 
 The test plan defines what to check. Three modes:
 
@@ -57,6 +121,17 @@ user decide.
 3. Write test cases in the manual-tester format (TC-prefixed, with tiers, steps, expected results)
 4. Present the generated plan to the user for approval before executing
 5. Adjust based on their feedback
+
+In the verification report set `test_plan_source: on-the-fly`.
+
+#### Branch 4 — Nothing available (`test_plan_source: absent`)
+
+**Condition:** no receipt, no permanent file, no inline test plan, and no spec source.
+
+**Actions:** stop and ask the user for at least one of a spec source or a test plan before
+proceeding. In the verification report (only populated if the user provides something and
+the flow restarts) set `test_plan_source: absent` only if acceptance exits without running
+any test cases.
 
 ---
 
@@ -185,6 +260,7 @@ the PR stage. `create-pr` references it for the PR description.
 **Type:** Feature / Bug fix
 **Spec source:** [what was used — requirements, debug.md reproduction steps, etc.]
 **Test plan:** [user-provided / generated from spec]
+**test_plan_source:** receipt | mounted | on-the-fly | absent
 **Context artifacts:** [paths to research.md, debug.md, implement.md used as input]
 
 ## Summary
