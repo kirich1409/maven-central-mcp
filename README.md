@@ -23,7 +23,6 @@ Install a plugin:
 /plugin install developer-workflow-experts@krozov-ai-tools
 /plugin install developer-workflow-kotlin@krozov-ai-tools
 /plugin install developer-workflow-swift@krozov-ai-tools
-/plugin install extend@krozov-ai-tools
 ```
 
 Installing any of `developer-workflow`, `developer-workflow-kotlin`, or `developer-workflow-swift` automatically pulls in their dependencies (`developer-workflow-experts` and — for the platform plugins — `developer-workflow` core).
@@ -106,15 +105,6 @@ Swift, iOS, and macOS specialization.
 **Depends on:** `developer-workflow`, `developer-workflow-experts`
 
 See [`plugins/developer-workflow-swift/`](plugins/developer-workflow-swift/).
-
-### extend
-
-Extend Claude Code built-in features with review and optimization tools.
-
-**Skills:**
-- `/agent-reviewer` — audit and improve Claude Code agent files: frontmatter, system prompt quality, tool selection, trigger accuracy
-
-See [`plugins/extend/`](plugins/extend/) for full documentation.
 
 ## License
 
