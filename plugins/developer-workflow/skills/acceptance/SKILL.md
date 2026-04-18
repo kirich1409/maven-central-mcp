@@ -175,8 +175,7 @@ The result is one of three states:
 ### Verification Report
 
 Save the report to `swarm-report/<slug>-acceptance.md` — this artifact is the receipt for
-the PR stage. Later stages (`create-pr`, `pr-drive-to-merge`) reference it for PR description
-and merge readiness.
+the PR stage. `create-pr` references it for the PR description.
 
 ```
 # Acceptance: <slug>

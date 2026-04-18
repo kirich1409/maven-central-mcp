@@ -155,12 +155,15 @@ Wait for `swarm-report/<slug>-acceptance.md`.
 
 Invoke `developer-workflow:create-pr`.
 
-### 4.2 Drive to merge
+### 4.2 Hand-off to user
 
-Invoke `developer-workflow:pr-drive-to-merge`.
+The orchestrator stops after `create-pr` finishes. CI monitoring and merge
+execution are outside this pipeline.
 
-When it stops for human review — **this orchestrator also stops**.
-Resume when the user says to continue.
+When review feedback arrives, the user invokes
+`developer-workflow:triage-feedback` to categorize and prioritize it. The
+resulting report becomes the input for a new Implement cycle if FIXABLE items
+exist.
 
 ---
 
@@ -187,15 +190,16 @@ The orchestrator **stops and waits for the user** at:
 - Profile confirmation (Phase 0.3)
 - Bug not reproducible (need more info)
 - Debug escalation (architectural issue, needs decision)
-- Human PR review
 - PARTIAL acceptance verdict
-- Merge confirmation
+- After `create-pr` — hand-off to user. User runs `triage-feedback` when review
+  feedback arrives and decides whether to resume at `implement` with FIXABLE items;
+  CI monitoring and merge execution are outside this pipeline.
 
 ---
 
 ## Report
 
-After Done (merge complete) or Stop (escalation), save a report to
+After Done (PR created) or Stop (escalation), save a report to
 `swarm-report/<slug>-YYYY-MM-DD.md` with:
 - Bug description and source
 - Reproduction steps (from debug)

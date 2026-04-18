@@ -60,8 +60,7 @@ Developer workflow skills and expert agents for the full development cycle — f
 
 **Skills:**
 - `/create-pr` — create a draft or ready PR with auto-generated title, description, labels, and reviewer suggestions
-- `/pr-drive-to-merge` — drive an existing PR/MR to merge: CI monitoring, multi-round review handling, branch updates, and merge
-- `/address-review-feedback` — analyze PR review comments, categorize by priority, plan and coordinate fixes, respond to reviewers
+- `/triage-feedback` — analyze feedback (PR/MR comments or user-pasted text): categorize, prioritize, detect patterns, and write a structured action plan — no code changes or replies
 - `/code-migration` — safe in-place or parallel migration of any technology in Gradle/Android/Kotlin projects
 - `/kmp-migration` — full Kotlin Multiplatform migration for Android modules
 - `/migrate-to-compose` — migrate View-based Android UI (Activity, Fragment, custom View) to Jetpack Compose
@@ -69,8 +68,8 @@ Developer workflow skills and expert agents for the full development cycle — f
 - `/acceptance` — verify a feature against its specification on a live app
 - `/bug-hunt` — undirected bug hunting and QA exploration on a running app
 - `/plan-review` — multi-agent review of implementation plans using PoLL consensus protocol
-- `/feature-flow` — end-to-end feature orchestrator: research → decompose → implement → acceptance → PR → merge
-- `/bugfix-flow` — end-to-end bug fix orchestrator: debug → implement → acceptance → PR → merge
+- `/feature-flow` — end-to-end feature orchestrator: research → decompose → implement → acceptance → create PR
+- `/bugfix-flow` — end-to-end bug fix orchestrator: debug → implement → acceptance → create PR
 - `/implement` — standalone implementation stage: code → simplify → quality loop → artifacts
 
 **Agents (10):** architecture-expert, build-engineer, business-analyst, compose-developer, devops-expert, kotlin-engineer, manual-tester, performance-expert, security-expert, ux-expert
