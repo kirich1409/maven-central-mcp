@@ -10,9 +10,11 @@ on:
   push:
     branches: [main]
     paths-ignore:
-      - '**/*.md'
+      # Doc-only top-level files (e.g. root README.md) still trigger the
+      # workflow — changesets/action no-ops fast when there are no pending
+      # `.changeset/*.md` content files. We deliberately do NOT match `**/*.md`
+      # because that would also swallow `.changeset/*.md`, which MUST trigger.
       - 'docs/**'
-      # README only; .changeset/*.md content files MUST trigger.
       - '.changeset/README.md'
 
 # Queue concurrent runs, do NOT cancel — mid-publish cancellation is the
