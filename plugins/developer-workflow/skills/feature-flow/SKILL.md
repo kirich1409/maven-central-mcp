@@ -31,27 +31,36 @@ It only manages transitions, passes context between stages, and reports summarie
 ### Allowed transitions
 
 ```
-Setup      -> Research         (unknown APIs, libraries, or architectural decisions)
-Setup      -> Implement        (trivial/simple task — skip research/planning)
-Research   -> Decompose        (large feature — split into tasks)
-Research   -> PlanReview       (complex single-task — needs plan review)
-Research   -> Implement        (simple single-task — research was enough)
-Decompose  -> PlanReview       (complex decomposition — needs review)
-Decompose  -> Implement        (straightforward tasks — skip review)
-PlanReview -> Implement
-PlanReview -> Research         (FAIL — knowledge gaps)
-Implement  -> Acceptance
-Acceptance -> PR               (VERIFIED)
-Acceptance -> Implement        (FAILED — bugs to fix)
-Acceptance -> Debug            (FAILED — unclear root cause)
-PR         -> Merge
-PR         -> Implement        (review feedback requires code changes)
+Setup          -> Research         (unknown APIs, libraries, or architectural decisions)
+Setup          -> Implement        (trivial/simple task — skip research/planning)
+Research       -> Decompose        (large feature — split into tasks)
+Research       -> PlanReview       (complex single-task — needs plan review)
+Research       -> TestPlan         (simple single-task, test-plan stage not skipped)
+Research       -> Implement        (simple single-task, test-plan stage skipped)
+Decompose      -> PlanReview       (complex decomposition — needs review)
+Decompose      -> TestPlan         (straightforward tasks, test-plan stage not skipped)
+Decompose      -> Implement        (straightforward tasks, test-plan stage skipped)
+PlanReview     -> TestPlan         (test-plan stage not skipped)
+PlanReview     -> Implement        (test-plan stage skipped)
+PlanReview     -> Research         (FAIL — knowledge gaps)
+TestPlan       -> TestPlanReview
+TestPlanReview -> Implement        (PASS or WARN)
+TestPlanReview -> TestPlan         (FAIL — revise loop, max 3 cycles)
+TestPlanReview -> escalate         (after 3 failed revise cycles)
+Implement      -> Acceptance
+Acceptance     -> PR               (VERIFIED)
+Acceptance     -> Implement        (FAILED — bugs to fix)
+Acceptance     -> TestPlan         (FAILED — add Regression TC for new bugs)
+Acceptance     -> Debug            (FAILED — unclear root cause)
+PR             -> Merge
+PR             -> Implement        (review feedback requires code changes)
 ```
 
 **Decision criteria for skipping stages:**
 - **Skip Research:** task is well-understood, no external APIs, no unfamiliar libraries
 - **Skip Decompose:** task is a single logical unit, no independent sub-parts
 - **Skip PlanReview:** change is straightforward, touches 1-3 files, no architectural impact
+- **Skip TestPlan (+ TestPlanReview):** see [TestPlan Stage Skip Detection](#testplan-stage-skip-detection) — default-on stage, skipped only when a detector condition fires.
 
 **ALL other transitions are FORBIDDEN.** Before every transition, announce:
 
@@ -118,6 +127,128 @@ If `swarm-report/<slug>-plan.md` or `swarm-report/<slug>-decomposition.md` was p
 - If CONDITIONAL → proceed with noted concerns
 - If PASS → proceed
 
+### 1.5 TestPlan (default-on)
+
+Generate the test plan for the feature before implementation starts. Default-on stage:
+runs unless the skip detector or the `--skip-test-plan` override fires (see
+[TestPlan Stage Skip Detection](#testplan-stage-skip-detection) and
+[Override: --skip-test-plan](#override---skip-test-plan)).
+
+**Pre-check — mount existing permanent test plan:** before invoking
+`generate-test-plan`, check whether a pre-orchestration test plan already exists. If
+`docs/testplans/<slug>-test-plan.md` exists AND `swarm-report/<slug>-test-plan.md`
+receipt does NOT exist — this is a user-authored plan. Do NOT regenerate. The
+orchestrator owns this write: emit a mount-receipt following the canonical format from
+`generate-test-plan/SKILL.md` §Receipt (field overrides: `status: Mounted`,
+`review_verdict: skipped`, `source_spec: existing (pre-orchestration)`). Skip both
+TestPlan and TestPlanReview; announce **Stage: \<current\> → Implement (test plan mounted
+from existing)**, where `<current>` is whichever stage actually routed here (PlanReview,
+Decompose, or Research — any of these can feed Phase 1.5 when later stages were skipped).
+To regenerate, the user must re-invoke with `--regenerate-test-plan`.
+
+Otherwise, invoke `developer-workflow:generate-test-plan` with the feature slug and
+paths to the available artifacts (`research.md`, `decomposition.md`, `plan.md`, any spec
+document). Wait for the permanent test plan at `docs/testplans/<slug>-test-plan.md` and
+the receipt at `swarm-report/<slug>-test-plan.md` (receipt `status: Draft`,
+`review_verdict: pending`). Announce: **Stage: PlanReview → TestPlan** (or from Research
+/ Decompose when earlier stages were skipped).
+
+### 1.6 TestPlanReview (default-on)
+
+Review the generated test plan via the test-plan branch of `plan-review`.
+
+- Invoke `developer-workflow:plan-review` with the permanent test-plan file
+  (`docs/testplans/<slug>-test-plan.md`) as input — its detector auto-classifies the input
+  as `type: test-plan` and runs the test-plan branch (PASS / WARN / FAIL verdicts).
+- Route by verdict — see [TestPlanReview Verdict Handling](#testplanreview-verdict-handling).
+- On completion (PASS or WARN) the receipt is updated with `review_verdict` and
+  `status: Ready`; the pipeline transitions to Implement.
+
+---
+
+## TestPlan Stage Skip Detection
+
+The TestPlan stage (and its paired TestPlanReview) is **default-on**. It is skipped if
+**any one** of the following conditions holds (boolean OR):
+
+1. **Single-file change without behavior change** — the planned change touches exactly one
+   file (per `git diff` stats or the decomposition artifact) AND the spec/task introduces
+   **no** new Acceptance Criteria (AC delta = 0 vs. prior state).
+2. **Pure refactor** — the task commit prefix is `refactor:`, OR the spec contains no new
+   AC and only lists technical / structural changes (no observable behavior change).
+3. **Internal utility without external contract change** — every affected file is internal:
+   not exported from the module's public API surface (not under `exports/` or equivalent,
+   not a `public` class/function in the module manifest, not an HTTP/RPC endpoint, not
+   a published library symbol).
+4. **Single-task decompose with low complexity** — `decompose-feature` produced ≤ 2 tasks
+   AND every task is complexity `S` (small). Taken straight from the decomposition
+   artifact's complexity column.
+
+(Bug profiles route to `bugfix-flow` at Phase 0.2 and never reach this gate, so they do
+not need a dedicated skip condition here.)
+
+When the detector triggers, announce the reason on the stage transition, e.g.:
+
+> **Stage: PlanReview → Implement. Reason: TestPlan skipped — single-file change with no
+> new AC (skip condition #1).**
+
+## Override: --skip-test-plan
+
+The user can force the TestPlan stage off via a slash-argument on the `feature-flow` call:
+
+```
+/feature-flow --skip-test-plan "task description"
+```
+
+Semantics: **force-off**. Even if the skip detector would return `false` (TestPlan would
+normally run), the stage is **not** executed — neither TestPlan nor TestPlanReview. The
+orchestrator transitions directly to Implement.
+
+Use case: rare cases where the user is certain test-plan effort is not justified —
+experimental prototype, throwaway demo feature, exploratory spike. Announce it explicitly:
+
+> **Stage: PlanReview → Implement. Reason: TestPlan skipped — `--skip-test-plan` override.**
+
+## Test Plan Regeneration
+
+The permanent artifact `docs/testplans/<slug>-test-plan.md` can be modified after the
+initial TestPlan stage in two scenarios:
+
+**On rollback Acceptance → Implement (bugs discovered):**
+- Whenever a fix is undertaken — regardless of P0/P1/P2/P3 severity — append a new
+  `## Regression TC` section to the permanent file covering the new bugs.
+- The receipt keeps its existing `review_verdict` (no re-review required for appended
+  regression TCs); only the `updated` timestamp is refreshed.
+
+**On spec change (full regeneration):**
+- Full regeneration happens only through an **explicit** re-invocation of `/feature-flow`
+  with a `--regenerate-test-plan` flag. The orchestrator does NOT regenerate silently.
+- Before overwriting, the previous permanent file is renamed to
+  `docs/testplans/<slug>-test-plan.md.prev` for fast diff.
+- The receipt is rewritten with `status: Draft`, `review_verdict: pending`, and updated
+  `source_spec` / `phase_coverage` / `updated` fields. The next TestPlanReview run sets a
+  fresh verdict.
+
+## TestPlanReview Verdict Handling
+
+The TestPlanReview stage maps `plan-review` verdicts (test-plan branch — see
+`plugins/developer-workflow/skills/plan-review/SKILL.md` §Test-Plan Review Branch) to
+pipeline transitions:
+
+- **PASS** — all five checklist items satisfied. Unconditional transition to Implement.
+  Receipt: `review_verdict: PASS`, `status: Ready`.
+- **WARN** — items (a)–(c) satisfied, but (d) or (e) violated. **Does not block.**
+  Transition to Implement. Receipt: `review_verdict: WARN`, warnings list enumerating the
+  violated items — preserved for downstream review and acceptance context. No revise-loop.
+- **FAIL** — any of (a), (b), (c) violated. Run the revise-loop: **TestPlan ← TestPlanReview**
+  up to 3 cycles. Each cycle patches the permanent test-plan file, re-reviews with the
+  same agents, and appends to the plan-review state file's `Verdict History` (see
+  `plan-review/SKILL.md` §Persistence — the receipt itself carries only the latest
+  `review_verdict`, not the per-cycle history). After 3 failed cycles →
+  **escalate to the user** with three options: (a) accept WARN manually and proceed,
+  (b) revise the spec and restart the pipeline, (c) use `--skip-test-plan` to bypass the
+  stage for this run.
+
 ---
 
 ## Phase 2: Implement and Verify (per task)
@@ -144,6 +275,11 @@ Wait for `swarm-report/<slug>-implement.md` + `swarm-report/<slug>-quality.md`.
 Invoke `developer-workflow:acceptance` with:
 - Spec source: requirements from the task / plan / decomposition
 - The running app
+- Test-plan receipt path (when TestPlan stage ran): `swarm-report/<slug>-test-plan.md` —
+  the acceptance skill reads `permanent_path` from the receipt and feeds the permanent
+  test plan to `manual-tester` as the primary source (see `acceptance/SKILL.md` Step 1).
+  When the TestPlan stage was skipped and no receipt exists, acceptance falls back to its
+  existing mount-as-existing or on-the-fly generation logic.
 
 The acceptance skill saves an E2E scenario to `swarm-report/<slug>-e2e-scenario.md`.
 This file uses checkboxes for each verification step — completed steps (`[x]`) survive
@@ -155,6 +291,9 @@ Wait for `swarm-report/<slug>-acceptance.md`.
 - VERIFIED → **Stage: Acceptance → PR**
 - FAILED (P0/P1, obvious cause) → **Stage: Acceptance → Implement.** Max 3 round-trips.
 - FAILED (P0/P1, unclear cause) → **Stage: Acceptance → Debug.** Then Implement.
+- FAILED (P0/P1, new bugs need test coverage) → **Stage: Acceptance → TestPlan.** Append
+  `## Regression TC` to the permanent test plan (see
+  [Test Plan Regeneration](#test-plan-regeneration)), then continue with Implement.
 - PARTIAL (P2/P3) → ask user: fix now or ship as-is
 - Out-of-scope bugs → create issues, don't block
 
@@ -188,7 +327,9 @@ Implement on the user's instruction.
 | From | To | Trigger | Max |
 |------|----|---------|-----|
 | PlanReview | Research | FAIL — knowledge gaps | 2 |
+| TestPlanReview | TestPlan | FAIL — test-plan revise loop | 3 |
 | Acceptance | Implement | FAILED bugs | 3 |
+| Acceptance | TestPlan | FAILED — append Regression TC for new bugs | 3 |
 | Acceptance | Debug | P0/P1 with unclear cause | 1 |
 | PR | Implement | Significant code changes requested | 2 |
 
@@ -209,4 +350,6 @@ The orchestrator **stops and waits for the user** at:
   feedback arrives and decides whether to resume at `implement` with FIXABLE items;
   CI monitoring and merge execution are outside this pipeline.
 - PARTIAL acceptance verdict (user decides: fix or ship)
+- TestPlanReview FAIL after 3 revise cycles — user picks: accept WARN manually, revise
+  spec, or rerun with `--skip-test-plan`.
 - Escalation (scope explosion, repeated failures, architectural decision needed)

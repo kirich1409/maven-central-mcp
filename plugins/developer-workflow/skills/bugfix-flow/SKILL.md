@@ -128,6 +128,15 @@ Wait for `swarm-report/<slug>-implement.md` + `swarm-report/<slug>-quality.md`.
 
 ## Phase 3: Acceptance
 
+Bugfix-flow has no formal TestPlan stage — reproduction steps in `debug.md` act as the
+implicit test case. For bugs in critical flows that need a formal structured plan
+(regression protection, external QA handoff), run `/generate-test-plan` manually **before**
+`/bugfix-flow`, using the **same slug** as the bugfix so the saved file lands at
+`docs/testplans/<slug>-test-plan.md`. `acceptance` Branch 2 mounts by exact slug match; if
+the plan was generated under a different filename, rename it to
+`docs/testplans/<slug>-test-plan.md` before running `/bugfix-flow` (see
+`acceptance/SKILL.md` §1.2 Branch 2).
+
 Invoke `developer-workflow:acceptance` with:
 - Spec source: `swarm-report/<slug>-debug.md` (reproduction steps = acceptance criteria)
 - The running app

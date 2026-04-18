@@ -25,11 +25,102 @@ for a human QA engineer or the `manual-tester` agent to pick up later.
 Save every test plan to the repository:
 
 ```
-docs/testplans/<feature-name>-test-plan.md
+docs/testplans/<slug>-test-plan.md
 ```
 
-Create the `docs/testplans/` directory if it doesn't exist. Use kebab-case for the feature name.
-Examples: `user-authentication-test-plan.md`, `cart-checkout-test-plan.md`.
+Create the `docs/testplans/` directory if it doesn't exist. The slug is the canonical
+filename anchor — downstream stages (`feature-flow` Phase 1.5, `acceptance` Branch 2)
+mount by exact slug match, so the filename must be slug-based regardless of invocation
+mode.
+
+Slug resolution rules (apply in order):
+
+1. **Orchestrator invocation** — when this skill is invoked from `feature-flow`, a
+   `slug` argument is passed explicitly. Use it as-is.
+2. **Standalone invocation, slug provided inline** — the user or caller may supply
+   a slug directly (e.g. `"slug: login-flow"`). Use it as-is.
+3. **Standalone invocation, no slug** — derive one from the feature name with the
+   stable kebab-case convention used elsewhere in workflow docs: lowercase the
+   name, replace runs of spaces or punctuation with `-`, trim leading/trailing `-`.
+
+Examples of derivation (rule 3): `"User authentication"` → `user-authentication`,
+`"Cart & checkout"` → `cart-checkout`, `"Token refresh (auth)"` → `token-refresh-auth`.
+The resulting filename is then `docs/testplans/<slug>-test-plan.md` (for example,
+`docs/testplans/user-authentication-test-plan.md`).
+
+### Receipt (when invoked from orchestrator with a slug)
+
+When this skill is invoked from the `feature-flow` orchestrator, a `slug` argument is passed
+explicitly. In that case, in addition to the permanent document above, produce a **receipt**
+at `swarm-report/<slug>-test-plan.md` that the orchestrator and downstream stages
+(`plan-review`, `acceptance`) can consume for receipt-based gating.
+
+The permanent file remains the source of truth. The receipt is metadata + pointer.
+
+Receipt format:
+
+```markdown
+---
+name: test-plan-receipt
+description: Test plan artifact for <slug>
+slug: <slug>
+type: test-plan-receipt
+status: Draft | Ready | Approved | Mounted
+permanent_path: docs/testplans/<slug>-test-plan.md
+source_spec: <path to spec if any, or "inline spec">
+review_verdict: pending | PASS | WARN | FAIL | skipped
+review_warnings: []            # populated by plan-review on WARN — list of short strings
+review_blockers: []            # populated by plan-review on FAIL — list of short strings
+phase_coverage: [Phase 1, Phase 2, ...]
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+---
+
+# Test Plan Receipt: <slug>
+
+**Status:** <status>
+**Permanent artifact:** [`docs/testplans/<slug>-test-plan.md`](../docs/testplans/<slug>-test-plan.md)
+**Source spec:** <path or description>
+**Review verdict:** <verdict>
+```
+
+Field conventions:
+- `status`: `Draft` right after generation; `Ready` after plan-review returns PASS/WARN;
+  `Approved` when the user explicitly signs off; `Mounted` when a user-authored permanent
+  file is adopted without regeneration (see `feature-flow/SKILL.md` §1.5 Pre-check).
+- `review_verdict`: `pending` at creation; updated by `plan-review` to
+  `PASS | WARN | FAIL`; `skipped` on mount (no review occurs).
+- `review_warnings` / `review_blockers`: arrays of short strings populated by `plan-review`.
+  `review_warnings` is written on WARN verdicts (items d or e of the checklist violated —
+  non-blocking); `review_blockers` is written on FAIL (items a, b, or c violated —
+  blocks transition to Implement). Both remain empty arrays on PASS / pending / skipped.
+  Frontmatter is the single source of truth for review findings — the receipt body does
+  not re-list them, keeping downstream YAML parsers authoritative.
+- `phase_coverage`: list of phase labels present in the permanent file. Empty list if the
+  feature has no phase segmentation.
+- `created` / `updated`: ISO dates (`YYYY-MM-DD`). `updated` must change whenever either the
+  permanent file or any receipt field is modified.
+- Relative path in the markdown link assumes the conventional `swarm-report/` ↔ `docs/`
+  sibling layout at the repo root.
+
+### Backward compatibility — standalone invocation without slug
+
+When a user invokes this skill directly (e.g. "create a test plan for X") without the
+orchestrator passing a `slug`, the receipt is **not** produced. The permanent file is
+still saved under the canonical slug-based filename:
+
+- Permanent file generated at `docs/testplans/<slug>-test-plan.md`, where `<slug>` is
+  either provided inline or derived from the feature name per the Slug resolution rules
+  above. If the plan may later be consumed by another workflow that mounts an existing
+  plan (e.g. `bugfix-flow` → `acceptance` Branch 2), use the eventual orchestrator slug
+  at creation time so the file is deterministically mountable without renaming.
+- No `swarm-report/<slug>-test-plan.md` receipt is written.
+- No `phase_coverage` or receipt metadata tracked elsewhere.
+
+Standalone callers continue to work: the slug-based filename is the single canonical
+artifact. Pre-existing `docs/testplans/*-test-plan.md` files authored before this
+convention are not auto-migrated — they remain readable by humans, but mount logic
+matches only on the exact `<slug>-test-plan.md` path.
 
 ## Input Discovery
 
@@ -72,6 +163,27 @@ Often the user provides more than one source. Cross-reference them:
 - Design shows a state the spec doesn't mention → note it, write a test case
 - Code handles an edge case not in the spec → include it with `[inferred from code]`
 
+### Non-UI detector — when to use the lightweight template
+
+Not every feature has a user interface. Pure backend services, CLI tools, internal libraries,
+and data pipelines should use a reduced TC format where the full Steps / Expected Result
+columns add noise without signal — the behavior is fully captured by Given/When/Then.
+
+**Detector (all must hold to trigger lightweight mode):**
+- The spec or input contains **no** references to any of: mockups, wireframes, Figma frames,
+  screens, screen states, UI components, Jetpack Compose composables, SwiftUI views, React /
+  Vue / Svelte / HTML components, CSS selectors, navigation flows, or visible user actions
+  (tap, click, scroll, swipe, type in field).
+- The feature surface is API / library / CLI / background job / data transformation.
+- No `ux-expert` or front-end agent was consulted during research.
+
+If any one of the signals above **is** present, use the standard Test Plan Format
+(with full Steps and Expected Result). Mixed features (backend + thin UI) default to the
+standard format.
+
+When the detector triggers, note it in the Findings section of the permanent file:
+`**Lightweight template applied** — no UI surface detected; TCs use Given/When/Then only.`
+
 ## Analysis
 
 Before writing test cases, identify:
@@ -91,6 +203,12 @@ Before writing test cases, identify:
 Every generated test plan must follow this exact structure:
 
 ```markdown
+---
+type: test-plan
+slug: <feature-slug>
+generated: YYYY-MM-DD
+---
+
 # Test Plan: [Feature Name]
 
 | Field | Value |
@@ -99,6 +217,10 @@ Every generated test plan must follow this exact structure:
 | **Generated** | [YYYY-MM-DD] |
 | **Scope** | [one-line summary of what is covered] |
 | **Status** | Draft / Ready for Review / Approved |
+
+The `type: test-plan` frontmatter lets `plan-review` and `acceptance` identify the
+artifact deterministically (Signal #1 of the classifier). `slug` matches the receipt and
+any decomposition artifact for the same feature.
 
 ---
 
@@ -168,6 +290,94 @@ Test cases that are good candidates for automated testing.
 
 > Omit this section if no test cases are suitable for automation.
 ```
+
+### Phase Segmentation
+
+When the feature reaches this skill via `decompose-feature` with phases (e.g. T-1..T-3 in
+Phase 1, T-4..T-6 in Phase 2), the permanent file splits the `## Test Cases` section by
+phase so each phase can ship and be re-verified independently. One permanent document per
+feature remains the rule — phases are sections inside it, not separate files.
+
+Apply segmentation when the decomposition artifact contains two or more phases **and** test
+cases can be grouped by which phase introduces the behavior they cover. Otherwise keep a
+single flat `## Test Cases` section.
+
+Example for a feature with two phases:
+
+```markdown
+## Test Cases
+
+### Phase 1 (T-1..T-3) — Core login flow
+
+#### TC-1: Successful login with valid credentials
+| Field | Value |
+|-------|-------|
+| **Priority** | P0 Critical |
+| **Tier** | Smoke |
+| **Preconditions** | User account exists, email is verified |
+| **Steps** | 1. Open login screen  2. Enter email  3. Enter password  4. Tap Login |
+| **Expected Result** | Home screen is shown, session token stored |
+| **Source** | Spec §2.1 |
+
+#### TC-2: Invalid password shows inline error
+...
+
+#### TC-3: Rate-limit after 5 failed attempts
+...
+
+### Phase 2 (T-4..T-6) — Password reset flow
+
+#### TC-4: Request reset email from login screen
+| Field | Value |
+|-------|-------|
+| **Priority** | P0 Critical |
+| **Tier** | Feature |
+| **Preconditions** | User account exists |
+| **Steps** | 1. Tap "Forgot password?"  2. Enter email  3. Submit |
+| **Expected Result** | Confirmation screen shown, reset email dispatched |
+| **Source** | Spec §3.2 |
+
+#### TC-5: Reset link expires after 15 minutes
+...
+
+#### TC-6: Reset flow rejects reused link
+...
+```
+
+When segmentation is applied, the receipt's `phase_coverage` field lists the phase labels
+present (e.g. `[Phase 1, Phase 2]`), and the TC ranges covered by each phase appear in the
+receipt's Phase Coverage section.
+
+### Lightweight template (non-UI features)
+
+When the non-UI detector triggers (see Input Discovery), use this reduced TC format in place
+of the standard one. The entire behavior of each TC is captured in Given/When/Then — no
+numbered Steps, no separate Expected Result field, since both collapse into the Then clause
+for non-interactive surfaces.
+
+```markdown
+#### TC-[N]: [Short title]
+| **Priority** | P0/P1/P2/P3 |
+| **Tier** | Smoke/Feature/Regression |
+| **Preconditions** | [state] |
+| **Scenario (Given/When/Then)** | Given X, When Y, Then Z |
+| **Source** | [Spec §section / inferred from code] |
+```
+
+Example:
+
+```markdown
+#### TC-3: Token refresh succeeds before expiry
+| **Priority** | P0 Critical |
+| **Tier** | Feature |
+| **Preconditions** | Valid refresh token stored, access token within 60s of expiry |
+| **Scenario (Given/When/Then)** | Given an access token with <60s TTL, When the client calls `refresh()`, Then a new access token is returned with the original refresh-token scope preserved |
+| **Source** | `src/auth/TokenManager.kt:142` |
+```
+
+All other sections of the Test Plan Format (front-matter table, Findings, Risk Areas,
+Coverage Matrix, Suggested Automation Candidates, Phase Segmentation when applicable) are
+used unchanged — only the TC blocks switch to this reduced form.
 
 ## Field Definitions
 

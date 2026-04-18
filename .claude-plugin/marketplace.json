@@ -8,11 +8,11 @@
   "plugins": [
     {
       "name": "maven-mcp",
-      "description": "Maven dependency intelligence — auto-registers MCP server, provides /check-deps, /latest-version, and /dependency-changes skills",
+      "description": "Maven dependency intelligence \u2014 auto-registers MCP server, provides /check-deps, /latest-version, and /dependency-changes skills",
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.9.1",
+      "version": "0.10.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/maven-mcp/plugin"
@@ -23,51 +23,51 @@
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.9.1",
+      "version": "0.10.0",
       "category": "security",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/sensitive-guard"
     },
     {
       "name": "developer-workflow",
-      "description": "Developer workflow pipeline — research, decomposition, specification, plan review, implementation, debugging, QA (test plans, acceptance, bug hunt, retroactive tests), PR creation and review-feedback triage, feature-flow and bugfix-flow orchestrators. Platform-neutral; platform-specific engineers live in developer-workflow-kotlin and developer-workflow-swift.",
+      "description": "Developer workflow pipeline \u2014 research, decomposition, specification, plan review, implementation, debugging, QA (test plans, acceptance, bug hunt, retroactive tests), PR creation and review-feedback triage, feature-flow and bugfix-flow orchestrators. Platform-neutral; platform-specific engineers live in developer-workflow-kotlin and developer-workflow-swift.",
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.9.1",
+      "version": "0.10.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/developer-workflow"
     },
     {
       "name": "developer-workflow-experts",
-      "description": "Reusable expert agents for code review, architecture, security, performance, UX, build, DevOps, business analysis, and debugging. Safe to install standalone — no skills, no hooks, no MCP servers.",
+      "description": "Reusable expert agents for code review, architecture, security, performance, UX, build, DevOps, business analysis, and debugging. Safe to install standalone \u2014 no skills, no hooks, no MCP servers.",
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.9.1",
+      "version": "0.10.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/developer-workflow-experts"
     },
     {
       "name": "developer-workflow-kotlin",
-      "description": "Kotlin, Android, and KMP specialist agents and migration skills — kotlin-engineer, compose-developer, code-migration, kmp-migration, migrate-to-compose. Extends developer-workflow for Kotlin/Android projects.",
+      "description": "Kotlin, Android, and KMP specialist agents and migration skills \u2014 kotlin-engineer, compose-developer, code-migration, kmp-migration, migrate-to-compose. Extends developer-workflow for Kotlin/Android projects.",
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.9.1",
+      "version": "0.10.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/developer-workflow-kotlin"
     },
     {
       "name": "developer-workflow-swift",
-      "description": "Swift, iOS, and macOS specialist agents — swift-engineer and swiftui-developer, with references covering Swift concurrency, testing, and SwiftUI patterns/state/performance. Extends developer-workflow for Apple platforms.",
+      "description": "Swift, iOS, and macOS specialist agents \u2014 swift-engineer and swiftui-developer, with references covering Swift concurrency, testing, and SwiftUI patterns/state/performance. Extends developer-workflow for Apple platforms.",
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.9.1",
+      "version": "0.10.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/developer-workflow-swift"

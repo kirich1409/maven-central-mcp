@@ -39,7 +39,64 @@ The specification defines what "correct" looks like. Accept any combination of:
 Read all provided spec sources. If neither a spec nor a test plan is provided, ask the user
 for at least one before proceeding.
 
-### 1.2 Test Plan (optional if spec is provided)
+### 1.2 Test Plan — Source Priority
+
+Select the test-plan source by walking the four branches below in order. The first branch
+whose condition holds is the one used; record which branch fired so the verification report
+can set `test_plan_source` accordingly.
+
+#### Branch 1 — Receipt present (`test_plan_source: receipt`)
+
+**Condition:** `swarm-report/<slug>-test-plan.md` exists (produced by `generate-test-plan`
+when invoked from the orchestrator).
+
+**Actions:**
+1. Read the receipt's YAML frontmatter and load `permanent_path`.
+2. Read `review_verdict`:
+   - `PASS` — proceed.
+   - `WARN` — proceed; carry WARN findings forward into the verification report as context.
+   - `skipped` — proceed. The receipt was written as a mount (pre-orchestration permanent
+     file adopted without regeneration — see `feature-flow/SKILL.md` §1.5 Pre-check or
+     Branch 2 below). No review was performed; treat the plan as user-authored and
+     authoritative.
+   - `FAIL` — do not execute. Stop and escalate back to `feature-flow`: the plan must be
+     revised via `plan-review` before acceptance runs.
+   - `pending` — treat as not-yet-reviewed; escalate to `feature-flow` to run plan-review
+     first instead of proceeding blindly.
+3. Pass the **permanent file** (resolved via `permanent_path`, not the receipt itself) to
+   the `manual-tester` agent as the primary test-plan source.
+4. In the verification report set `test_plan_source: receipt`.
+
+#### Branch 2 — Permanent file exists without receipt (`test_plan_source: mounted`)
+
+**Condition:** Branch 1 did not fire **and** `docs/testplans/<slug>-test-plan.md` exists on
+disk without a matching receipt in `swarm-report/`.
+
+**Ownership:** the `feature-flow` orchestrator normally emits the mount-receipt in its
+Phase 1.5 Pre-check. This branch runs only when `acceptance` is invoked outside of
+`feature-flow` (standalone QA session, `bugfix-flow`, user-triggered mid-flow), so the
+receipt has not been produced yet.
+
+**Actions:**
+
+1. Emit a mount-receipt at `swarm-report/<slug>-test-plan.md` following the canonical
+   format in `plugins/developer-workflow/skills/generate-test-plan/SKILL.md` §Receipt
+   with the mount overrides: `status: Mounted`, `review_verdict: skipped`,
+   `source_spec: existing (pre-orchestration)`, and `phase_coverage` derived from the
+   permanent file's phase labels when present (scan for `### Phase N ...` headings
+   under `## Test Cases`). Do **not** hardcode `phase_coverage: []`; use the empty
+   list only when the permanent file genuinely has no phase segmentation. When phase
+   coverage cannot be determined reliably from the permanent file (malformed headings,
+   mixed conventions), omit the `phase_coverage` field entirely rather than recording
+   an incorrect value.
+2. Pass the **permanent file** to the `manual-tester` agent as the primary test-plan source.
+3. In the verification report set `test_plan_source: mounted`.
+
+#### Branch 3 — On-the-fly generation from available inputs (`test_plan_source: on-the-fly`)
+
+**Condition:** Branches 1 and 2 did not fire **and** the invocation provides a test plan
+inline, a spec source, or both. This branch preserves the pre-orchestration behavior
+verbatim — the three modes below are the original Step 1.2 logic retained unchanged.
 
 The test plan defines what to check. Three modes:
 
@@ -57,6 +114,17 @@ user decide.
 3. Write test cases in the manual-tester format (TC-prefixed, with tiers, steps, expected results)
 4. Present the generated plan to the user for approval before executing
 5. Adjust based on their feedback
+
+In the verification report set `test_plan_source: on-the-fly`.
+
+#### Branch 4 — Nothing available (`test_plan_source: absent`)
+
+**Condition:** no receipt, no permanent file, no inline test plan, and no spec source.
+
+**Actions:** stop and ask the user for at least one of a spec source or a test plan before
+proceeding. In the verification report (only populated if the user provides something and
+the flow restarts) set `test_plan_source: absent` only if acceptance exits without running
+any test cases.
 
 ---
 
@@ -184,7 +252,8 @@ the PR stage. `create-pr` references it for the PR description.
 **Date:** <date>
 **Type:** Feature / Bug fix
 **Spec source:** [what was used — requirements, debug.md reproduction steps, etc.]
-**Test plan:** [user-provided / generated from spec]
+**Test plan:** [resolved permanent path if sourced via receipt or mounted receipt | generated on-the-fly from spec | none]
+**test_plan_source:** receipt | mounted | on-the-fly | absent
 **Context artifacts:** [paths to research.md, debug.md, implement.md used as input]
 
 ## Summary

@@ -75,6 +75,7 @@ Review       → Synthesize
 Synthesize   → Verdict
 Verdict:PASS → Done
 Verdict:COND → Fix Plan
+Verdict:WARN → Done          (test-plan branch only — see Test-Plan Review Branch)
 Verdict:FAIL → Fix Plan
 Fix Plan     → Re-review (back to Parallel Review with same agents)
 Re-review    → Synthesize → Verdict (same cycle)
@@ -97,6 +98,7 @@ context compaction. Use `./swarm-report/plan-review-state.md` with this structur
 ```markdown
 # Plan Review State
 Source: {plan_mode | file:<path> | conversation}
+Review type: {implementation-plan | test-plan}
 Cycle: {1 | 2 | 3} of 3
 Status: {discovering | reviewing | synthesizing | fixing | done}
 
@@ -112,12 +114,17 @@ Status: {discovering | reviewing | synthesizing | fixing | done}
 - [ ] {agent2} — pending
 
 ## Verdict History
-### Cycle 1: {PASS | CONDITIONAL | FAIL}
+### Cycle 1: {PASS | CONDITIONAL | FAIL | WARN}
 - Blockers: {list}
 - Improvements: {list}
 
 ### Cycle 2: ...
 ```
+
+The `Review type` field records which protocol branch applies:
+- `implementation-plan` — default behavior (Steps 1–5 below, verdicts PASS/CONDITIONAL/FAIL)
+- `test-plan` — test-plan branch (see [Test-Plan Review Branch](#test-plan-review-branch)),
+  verdicts PASS/WARN/FAIL
 
 **Rules:**
 - Create this file at the start of Step 2 (after plan is read and source is tracked)
@@ -143,6 +150,25 @@ Extract from the plan:
 - **Scope** — which modules, layers, or systems are affected
 - **Key decisions** — architectural choices made in the plan
 
+### Classify the plan — implementation-plan vs test-plan
+
+Before moving to Step 2, determine whether the input is a **test-plan** artifact. Two signals,
+combined with OR — any one is enough:
+
+1. **YAML frontmatter type field** — the document starts with frontmatter that declares
+   `type: test-plan` (the permanent artifact at `docs/testplans/<slug>-test-plan.md`) or
+   `type: test-plan-receipt` (the receipt at `swarm-report/<slug>-test-plan.md`).
+2. **Structural signature** — the document contains a `## Test Cases` section AND discrete
+   TC blocks identifiable by TC-ID at any heading level (regex `^#{1,6}\s+TC-[\w-]+`, e.g.
+   `### TC-1`, `#### TC-042`, `## TC-auth-01`) AND explicit priority labels from the set
+   `P0` / `P1` / `P2` / `P3`. All three structural markers must be present to count this
+   signal.
+
+If either signal fires → the plan is a **test-plan**. Record `Review type: test-plan` in the
+state file and follow the [Test-Plan Review Branch](#test-plan-review-branch) instead of the
+default flow. Otherwise record `Review type: implementation-plan` and proceed with Step 2
+unchanged.
+
 ## Step 2 — Discover and Select Agents
 
 ### Discovery
@@ -165,6 +191,23 @@ Score each discovered agent's relevance **to the specific content of this plan**
 - **Gap coverage** — does this agent cover a blind spot that the other recommended agents miss?
 
 Mark the top-scoring agents as `recommended`. Prefer 2–3 agents, but quality over quantity — if only 1 agent is genuinely relevant, recommend just 1. Do not pad recommendations to reach a number. `general-purpose` is a fallback only when no specialist covers a genuine gap.
+
+### Recommended agents for test-plan input
+
+When `Review type: test-plan` was set in Step 1, pre-select these agents by default (they
+replace the usual technology-based pre-selection heuristic because test-plan relevance is
+driven by coverage/requirements logic, not by the tech stack):
+
+- **`business-analyst`** (recommended) — primary reviewer for test-plan artifacts. Validates
+  that every Acceptance Criterion from the spec is reflected in ≥1 Test Case, flags
+  ambiguous or missing AC coverage, and catches requirement drift between spec and plan.
+- **Domain specialist** (optional) — add at most one if the feature genuinely touches a
+  specialist's domain: `security-expert` when spec mentions auth/encryption/tokens/PII,
+  `performance-expert` when spec defines SLA/latency budget, `ux-expert` when spec covers
+  a11y or user-facing flows. Do not pad — only if the spec concretely invokes that domain.
+
+The orchestrator still uses `AskUserQuestion` to confirm the selection; the user can
+override. If the user explicitly named agents, use theirs instead (same rule as default flow).
 
 ### Present Agent Selection
 
@@ -328,3 +371,86 @@ Confirm the plan is ready. Say so explicitly and proceed to implementation.
 6. If still FAIL after 3 cycles — stop and tell the user: "The plan has failed review {N} times.
    The remaining issues may require a fundamentally different approach. Let's discuss before
    another iteration."
+
+## Test-Plan Review Branch
+
+This branch activates **only** when Step 1's detector classified the input as a test-plan
+(`Review type: test-plan`). For implementation plans the branch is inert — the default flow
+(Steps 2–5 above) runs unchanged. This preserves backward compatibility: nothing changes for
+existing implementation-plan reviews.
+
+### Scope
+
+When this branch is active:
+- Step 2's agent pre-selection uses the test-plan roster (see [Recommended agents for
+  test-plan input](#recommended-agents-for-test-plan-input)) instead of the tech-stack
+  heuristic.
+- Step 3's review prompt is augmented with the checklist below — each agent must answer
+  every checklist item in addition to its own perspective.
+- Step 4's synthesis uses PASS / WARN / FAIL verdicts (see [Verdict policy](#verdict-policy-test-plan))
+  instead of PASS / CONDITIONAL / FAIL.
+- Step 5 routes the receipt update accordingly and drives the revise-loop on FAIL.
+
+### Inline Checklist (5 items)
+
+Every agent reviewing a test-plan MUST evaluate the document against these five items and
+report the status of each one explicitly in their response. Copy the items verbatim into the
+review prompt so findings are comparable across agents:
+
+- **(a) AC coverage** — every Acceptance Criterion from the linked spec has ≥1 Test Case
+  that verifies it. Missing or weak mapping is a violation.
+- **(b) Negative balance** — every happy-path (positive) TC has ≥2 unhappy/negative TCs
+  covering the same flow (invalid input, error states, boundary violations, concurrent or
+  race conditions). A plan that is mostly happy paths violates this item.
+- **(c) Edge cases present** — at least one TC is explicitly tagged as an edge case
+  (boundary value, empty/null, maximum size, timezone/locale boundaries, concurrency,
+  resource exhaustion, etc.). If the plan has no edge-case TC at all, this item is
+  violated.
+- **(d) Non-functional scenarios where applicable** — if the linked spec mentions any of
+  {SLA, latency budget, throughput, a11y, auth, encryption, PII, resource limits, rate
+  limits}, there must be ≥1 non-functional TC covering that concern (performance,
+  accessibility, security). Applicability is driven by spec content — if the spec mentions
+  none of these triggers, this item is trivially satisfied.
+- **(e) Priority-risk alignment** — priorities (P0–P3) are consistent with risk assessment:
+  any high-risk flow (data loss, auth, payment, destructive actions) is at P0–P1; any
+  user-facing critical path is at P0–P1; trivial/informational cases are at P2–P3.
+  Mismatch between stated risk and assigned priority violates this item.
+
+### Verdict policy (test-plan)
+
+| Verdict | Trigger | Exit condition |
+|---------|---------|----------------|
+| **FAIL** (blocker) | Any of items **(a)**, **(b)**, **(c)** is violated | Plan MUST be revised. Drive the revise-loop up to 3 cycles. After 3 cycles still FAIL → escalate to the user (same wording as default flow). Pipeline is blocked. |
+| **WARN** (non-blocking) | Items (a)–(c) all satisfied, but **(d)** or **(e)** is violated | Pipeline continues. Record `review_verdict: WARN` in the receipt along with the explicit list of violated items. No revise-loop required. |
+| **PASS** (clean) | All five items satisfied | Pipeline continues unconditionally. Record `review_verdict: PASS` in the receipt. |
+
+**Severity mapping inside a single agent's output:**
+- A violated item from {(a), (b), (c)} surfaces as `severity: critical`
+- A violated item from {(d), (e)} surfaces as `severity: major`
+
+The orchestrator derives the overall verdict from the aggregated severities using the table
+above. A single critical from any agent with medium-or-higher confidence is enough to
+trigger FAIL, matching the Aggregation Rules in Step 4.
+
+### Receipt integration
+
+After Step 4 synthesis, the orchestrator updates the test-plan receipt at
+`swarm-report/<slug>-test-plan.md` with:
+
+- `review_verdict: PASS | WARN | FAIL`
+- On WARN: a `review_warnings:` list enumerating the violated items (e.g. `(d)`, `(e)`)
+  with one-line rationale each
+- On FAIL: a `review_blockers:` list enumerating the violated items from (a)–(c) with the
+  blocking finding and suggested fix (same payload as the default `## Issues to Resolve`
+  section)
+
+The receipt format itself is owned by the `generate-test-plan` skill — this skill only
+writes the three fields above.
+
+### Revise-loop (FAIL only)
+
+Same state machine as the default flow: Verdict:FAIL → Fix Plan → Re-review, max 3 cycles.
+The "Fix Plan" action edits the permanent test-plan file (the source is always the `file:`
+variant for test-plan — it lives at `docs/testplans/<slug>-test-plan.md`). Each cycle
+appends to `Verdict History` in the state file with the new verdict and the remaining
+blockers.
