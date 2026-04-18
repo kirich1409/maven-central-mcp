@@ -201,7 +201,7 @@ Assign exactly one category per item.
 
 | Category | When to assign |
 |----------|---------------|
-| `BLOCKING` | Security vulnerability, critical correctness bug, compliance violation, data loss risk, crash on a main code path |
+| `BLOCKING` | Security vulnerability, critical correctness bug, compliance violation, data loss risk, crash on a main code path, or inaccurate data sent to reporting / regulated / financial pipelines even when the user-facing symptom looks cosmetic (wrong currency in emails, miscoded locale in audit logs, etc.) |
 | `IMPORTANT` | Non-critical bug, missing error handling, logic error, missing test for a broken case, incorrect behavior on edge cases |
 | `SUGGESTION` | Refactor, architectural improvement, alternative approach — no correctness risk if left as-is |
 | `NIT` | Naming, formatting, style, minor preferences with no functional impact |
