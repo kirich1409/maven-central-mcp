@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Monorepo for Claude Code plugins by krozov. Contains seven plugins:
+Monorepo for Claude Code plugins by krozov. Contains six plugins:
 
 | Plugin | Directory | Description |
 |--------|-----------|-------------|
@@ -14,7 +14,6 @@ Monorepo for Claude Code plugins by krozov. Contains seven plugins:
 | developer-workflow-experts | `plugins/developer-workflow-experts/` | 9 reusable review/consult agents (code-reviewer, architecture-expert, security-expert, …) — safe standalone |
 | developer-workflow-kotlin | `plugins/developer-workflow-kotlin/` | Kotlin/Android/KMP specialists and migration skills |
 | developer-workflow-swift | `plugins/developer-workflow-swift/` | Swift/iOS/macOS specialists and Swift/SwiftUI references |
-| extend | `plugins/extend/` | Extend Claude Code built-in features: agent review, skill optimization, configuration audit |
 
 ## Structure
 
@@ -26,7 +25,6 @@ plugins/
   developer-workflow-experts/   # 9 reusable expert agents (library)
   developer-workflow-kotlin/    # Kotlin/Android/KMP specialists and migrations
   developer-workflow-swift/     # Swift/iOS specialists and references
-  extend/                       # Meta-tools for improving Claude Code setup
 ```
 
 The `developer-workflow-*` plugins form a family connected through `dependencies` in plugin.json: core depends on `-experts`; `-kotlin` and `-swift` depend on core and `-experts`. Installing any of them automatically pulls the rest of the chain.
@@ -38,7 +36,7 @@ See each plugin's own `CLAUDE.md` for plugin-specific instructions.
 All plugins must comply with [`docs/PLUGIN-STANDARDS.md`](docs/PLUGIN-STANDARDS.md). Before every release:
 
 1. Run `bash scripts/validate.sh` — must be green
-2. Run `plugin-dev:plugin-validator` agent on each of the 7 plugins listed in `.claude-plugin/marketplace.json` — must be PASS or only Minor findings
+2. Run `plugin-dev:plugin-validator` agent on each of the 6 plugins listed in `.claude-plugin/marketplace.json` — must be PASS or only Minor findings
 3. Go through the pre-release checklist in `docs/PLUGIN-STANDARDS.md` section 10
 
 Any Critical or Major violations block the release — fix first, release later.
@@ -62,8 +60,7 @@ To release a new version:
    - `plugins/developer-workflow-experts/.claude-plugin/plugin.json`
    - `plugins/developer-workflow-kotlin/.claude-plugin/plugin.json`
    - `plugins/developer-workflow-swift/.claude-plugin/plugin.json`
-   - `plugins/extend/.claude-plugin/plugin.json`
-   - `.claude-plugin/marketplace.json` (all 7 plugin entries)
+   - `.claude-plugin/marketplace.json` (all 6 plugin entries)
 2. Inside the `developer-workflow-*` family, also bump the semver ranges in each `dependencies` array if the range needs to widen (usually `^MAJOR.MINOR.0` is stable).
 3. Merge to `main`.
 4. Push a git tag matching the version: `git tag v0.9.0 && git push origin v0.9.0`.
