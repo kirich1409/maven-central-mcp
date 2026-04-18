@@ -170,14 +170,16 @@ Invoke `developer-workflow:create-pr`.
 - Independent tasks → one PR per task (invoke create-pr after each task's acceptance)
 - Tightly coupled tasks → bundled PR after all tasks pass acceptance
 
-### 3.2 Drive to merge
+### 3.2 Hand-off to user
 
-Invoke `developer-workflow:pr-drive-to-merge`.
+The orchestrator stops after `create-pr` finishes. CI monitoring and merge
+execution are outside this pipeline.
 
-This skill handles CI monitoring, bot review polling, and review feedback.
-When it stops for human review — **this orchestrator also stops**.
-
-Resume when the user says to continue.
+When review feedback arrives (bot or human), the user invokes
+`developer-workflow:triage-feedback` to categorize and prioritize it. The
+resulting `swarm-report/<slug>-triage.md` becomes the input for a new
+Implement cycle if FIXABLE items exist — the orchestrator resumes at
+Implement on the user's instruction.
 
 ---
 
@@ -203,7 +205,7 @@ Each backward transition:
 
 The orchestrator **stops and waits for the user** at:
 - Profile confirmation (Phase 0.3)
-- Human PR review (via pr-drive-to-merge)
+- After create-pr (pipeline hands off; resume when review feedback is triaged)
 - PARTIAL acceptance verdict (user decides: fix or ship)
 - Escalation (scope explosion, repeated failures, architectural decision needed)
 - Merge confirmation

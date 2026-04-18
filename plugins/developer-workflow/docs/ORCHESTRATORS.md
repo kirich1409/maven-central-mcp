@@ -48,12 +48,10 @@ flowchart TD
     next_task -->|Yes| impl
     next_task -->|No| create_pr
 
-    create_pr[/create-pr/] --> drive[/pr-drive-to-merge/]
-    drive -->|Bot checks| drive
-    drive -->|"Human review (STOP)"| wait_review([Wait for user])
-    wait_review --> drive
-    drive -->|Review needs code changes| impl
-    drive -->|Approved| merge([Merged ✓])
+    create_pr[/create-pr/] --> handoff([Hand-off to user])
+    handoff --> triage[/triage-feedback/]
+    triage -->|FIXABLE items| impl
+    triage -->|Nothing actionable| done([PR in user's hands])
 
     style research fill:#e1f5fe
     style decompose fill:#e1f5fe
@@ -61,9 +59,9 @@ flowchart TD
     style impl fill:#e8f5e9
     style acceptance fill:#fff3e0
     style create_pr fill:#f3e5f5
-    style drive fill:#f3e5f5
-    style wait_review fill:#ffcdd2
-    style merge fill:#c8e6c9
+    style triage fill:#f3e5f5
+    style handoff fill:#ffcdd2
+    style done fill:#c8e6c9
     style redirect_bug fill:#ffcdd2
 ```
 
@@ -73,9 +71,8 @@ flowchart TD
 |------|-------------|
 | Profile confirmation | Ask user to confirm feature profile |
 | PARTIAL acceptance | User decides: fix now or ship as-is |
-| Human PR review | Stop, report status, resume on user command |
+| After `create-pr` | Orchestrator stops; user runs `triage-feedback` when review feedback arrives and decides whether to resume at `implement` |
 | Escalation | Scope explosion, 3× same failure, architectural decision needed |
-| Merge confirmation | Ask before merging |
 
 ### Backward transition limits
 
@@ -121,26 +118,20 @@ flowchart TD
     user_decision -->|Fix| impl
     user_decision -->|Ship| create_pr
 
-    create_pr[/create-pr/] --> drive[/pr-drive-to-merge/]
-    drive -->|Bot checks| drive
-    drive -->|"Human review (STOP)"| wait_review([Wait for user])
-    wait_review --> drive
-    drive -->|Review needs code changes| impl
-    drive -->|Approved| merge([Merged ✓])
-
-    report[Report] --> done([Done])
-    merge --> report
+    create_pr[/create-pr/] --> handoff([Hand-off to user])
+    handoff --> triage[/triage-feedback/]
+    triage -->|FIXABLE items| impl
+    triage -->|Nothing actionable| done([PR in user's hands])
 
     style debug fill:#e1f5fe
     style plan fill:#e1f5fe
     style impl fill:#e8f5e9
     style acceptance fill:#fff3e0
     style create_pr fill:#f3e5f5
-    style drive fill:#f3e5f5
-    style wait_review fill:#ffcdd2
+    style triage fill:#f3e5f5
+    style handoff fill:#ffcdd2
     style stop_nr fill:#ffcdd2
     style stop_esc fill:#ffcdd2
-    style merge fill:#c8e6c9
     style done fill:#c8e6c9
     style redirect_feat fill:#ffcdd2
 ```
@@ -153,8 +144,7 @@ flowchart TD
 | Bug not reproducible | Stop, ask for more info |
 | Debug escalation | Architectural issue or needs user decision |
 | PARTIAL acceptance | User decides: fix now or ship as-is |
-| Human PR review | Stop, report status, resume on user command |
-| Merge confirmation | Ask before merging |
+| After `create-pr` | Orchestrator stops; user runs `triage-feedback` when review feedback arrives and decides whether to resume at `implement` |
 
 ### Backward transition limits
 

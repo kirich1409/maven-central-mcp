@@ -55,12 +55,10 @@ IDEA / FEATURE REQUEST
   |   |── FAILED? back to implement ───────────────┘
   |   v
   | [create-pr] ---- PR per task or bundled
-  |   v
-  | [pr-drive-to-merge] ---- CI + review + merge
   |   │
   └───┘ next task
   v
-MERGED (all tasks)
+PR CREATED (all tasks) ---- hand-off to user; triage-feedback triages review comments when they arrive
 ```
 
 **PR granularity** is decided by the orchestrator:
@@ -86,9 +84,7 @@ BUG REPORT / ISSUE
 [create-pr] ---- Draft PR -> Ready for Review
   |                Artifact: swarm-report/<slug>-pr.md
   v
-[pr-drive-to-merge] ---- CI monitoring -> Review handling -> Merge
-  v
-MERGED
+PR CREATED ---- hand-off to user; triage-feedback triages review comments when they arrive
 ```
 
 
@@ -96,11 +92,11 @@ MERGED
 
 | Profile | Pipeline | Signals | Skips |
 |---------|----------|---------|-------|
-| **Feature** | Research -> Decompose -> Plan Review -> [Implement -> Acceptance] per task -> PR -> Merge | "add", "implement", "build", "create" | Decompose optional for single-task features |
-| **Bug Fix** | Debug -> Implement -> Acceptance -> PR -> Merge | "fix", "broken", "crash", "regression" | Research, Plan |
-| **Migration** | Research -> Snapshot -> Migrate -> Acceptance -> PR -> Merge | "migrate", "replace", "switch to" | Plan (delegates to `code-migration`) |
-| **Research** | Research -> Report | "investigate", "compare", "evaluate" | Implement, Acceptance, PR, Merge |
-| **Trivial** | Implement -> PR -> Merge | Single-file change, config tweak | Research, Plan, Debug, Acceptance |
+| **Feature** | Research -> Decompose -> Plan Review -> [Implement -> Acceptance] per task -> Create PR | "add", "implement", "build", "create" | Decompose optional for single-task features |
+| **Bug Fix** | Debug -> Implement -> Acceptance -> Create PR | "fix", "broken", "crash", "regression" | Research, Plan |
+| **Migration** | Research -> Snapshot -> Migrate -> Acceptance -> Create PR | "migrate", "replace", "switch to" | Plan (delegates to `code-migration`) |
+| **Research** | Research -> Report | "investigate", "compare", "evaluate" | Implement, Acceptance, PR |
+| **Trivial** | Implement -> Create PR | Single-file change, config tweak | Research, Plan, Debug, Acceptance |
 
 Auto-detection is based on keywords and context. When ambiguous — ask the user to confirm
 before starting work.
@@ -326,7 +322,7 @@ artifact required.
 | Implement | `implement` | Task + optional artifacts (`research.md`, `debug.md`, `plan.md`) | `<slug>-implement.md`: changes summary, files, decisions + `<slug>-quality.md`: gate results |
 | Acceptance | `acceptance` | Spec source (requirements / `debug.md` reproduction steps) + running app | `<slug>-acceptance.md`: VERIFIED / FAILED / PARTIAL with bug list |
 | PR | `create-pr` | Branch with commits | PR URL |
-| Merge | `pr-drive-to-merge` | Existing PR | Merged PR |
+| Triage | `triage-feedback` | PR comments / pasted text | `<slug>-triage.md`: categorized, prioritized, grouped action plan |
 
 ### Pipeline Cycles
 
@@ -335,7 +331,7 @@ The pipeline is **not linear** — stages form feedback loops when issues are fo
 ```
                          ┌────── FAILED ──────┐
                          │                    v
-research/debug ──→ implement ──→ acceptance ──→ create-pr ──→ merge
+research/debug ──→ implement ──→ acceptance ──→ create-pr ──→ (user merges)
                      ^  │            │
                      │  │            │ PARTIAL: user decides
                      │  │            │   fix → back to implement
@@ -345,7 +341,7 @@ research/debug ──→ implement ──→ acceptance ──→ create-pr ─�
                      │    (build/lint/
                      │     tests/review)
                      │
-                     └── review feedback (from pr-drive-to-merge)
+                     └── review feedback (triage-feedback → FIXABLE items → implement)
 ```
 
 **Acceptance → Implement loop:**
@@ -360,8 +356,10 @@ research/debug ──→ implement ──→ acceptance ──→ create-pr ─�
 - If not converging → escalate to user
 
 **PR review loop:**
-- `pr-drive-to-merge` handles review feedback via `address-review-feedback`
+- `triage-feedback` categorizes and prioritizes the reviewer comments into a
+  structured report. FIXABLE items feed back into `implement` on user's call.
 - If review requires significant code changes → back to `implement` → `acceptance` → update PR
+- CI monitoring and merge execution are done by the user outside this pipeline.
 
 **Loop limits:**
 - Acceptance → Implement: max 3 round-trips. After that → escalate
@@ -385,8 +383,8 @@ Each artifact includes:
 
 | Skill | Pipeline stage | Description |
 |-------|---------------|-------------|
-| **`feature-flow`** | **Orchestrator** | **Thin orchestrator: research → decompose → implement → acceptance → PR → merge** |
-| **`bugfix-flow`** | **Orchestrator** | **Thin orchestrator: debug → implement → acceptance → PR → merge** |
+| **`feature-flow`** | **Orchestrator** | **Thin orchestrator: research → decompose → implement → acceptance → create-pr** |
+| **`bugfix-flow`** | **Orchestrator** | **Thin orchestrator: debug → implement → acceptance → create-pr** |
 | `research` | Research | Research Consortium — up to 5 parallel experts, synthesis, auto-review |
 | `debug` | Debug | Systematic root cause investigation — stops at diagnosis |
 | `plan-review` | Plan | PoLL review of the plan by multiple agents |
@@ -395,8 +393,7 @@ Each artifact includes:
 | `kmp-migration` | Implement (Migration) | Module migration to Kotlin Multiplatform |
 | `migrate-to-compose` | Implement (Migration) | View -> Compose migration with visual baseline |
 | `create-pr` | PR | PR/MR creation: title, description, labels, reviewers |
-| `pr-drive-to-merge` | Merge | CI monitoring, review handling, drive to merge |
-| `address-review-feedback` | Merge (sub-skill) | Analysis and handling of reviewer comments |
+| `triage-feedback` | Post-PR | Analyze, categorize, and prioritize feedback (PR comments or pasted text). Produces action plan; no code changes |
 | `generate-test-plan` | Plan / Verify | Structured test plan from specification |
 | `acceptance` | Verify | Acceptance verification on live app — features and bug fixes |
 | `bug-hunt` | Verify | Undirected bug hunting without a specification |

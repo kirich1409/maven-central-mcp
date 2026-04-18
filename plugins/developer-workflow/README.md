@@ -67,26 +67,21 @@ Examples: Java Date → Kotlin Date, XML layouts → Jetpack Compose, data bindi
 
 Use when migrating code from one technology to another within an existing project.
 
-### `pr-drive-to-merge`
+### `triage-feedback`
 
-Drives an existing PR/MR from its current state to a successful merge:
-- Monitors CI/CD pipelines, investigates failures, and auto-fixes issues caused by PR changes
-- Handles multi-round code review by delegating to `address-review-feedback`
-- Undrafts the PR when CI passes, updates the branch when behind base
-- Merges with user confirmation (squash + delete branch)
-- Persists state for compaction resilience across long-running merge cycles
+Analyzes feedback without acting on it. Works on two source types: an open PR/MR
+(review comments, review summaries, PR-level comments) and user-provided text
+pasted in the chat (bug reports, stacktraces, CI logs, free-form feedback).
+Auto-detects the source; asks when ambiguous.
 
-Use when a PR already exists and needs to be driven through CI, review, and merge.
+- Normalizes items from any source into a common shape
+- Categorizes (BLOCKING / IMPORTANT / SUGGESTION / NIT / QUESTION / PRAISE / OUT_OF_SCOPE)
+- Assesses actionability (FIXABLE / NEEDS_CLARIFICATION / DISCUSSION / NO_ACTION)
+- Verifies suggestions against the diff; detects pattern matches in other locations
+- Groups and dedups; writes a structured report to `swarm-report/<slug>-triage.md`
 
-### `address-review-feedback`
-
-Handles reviewer comments on an existing PR/MR:
-- Analyzes and categorizes all open review comments (BLOCKING / IMPORTANT / SUGGESTION / NIT / QUESTION / PRAISE / OUT_OF_SCOPE)
-- Produces follow-up tasks for actionable comments; delegates code changes to implementation agents
-- Responds to reviewers and resolves comment threads
-- Asks user for decisions on out-of-scope or architectural concerns
-
-Use after receiving reviewer feedback on a PR.
+Never edits code, replies, resolves threads, or merges. The report is consumed
+by the user or by downstream skills (`implement-task`, `debug`, `decompose-feature`).
 
 ### `kmp-migration`
 

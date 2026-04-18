@@ -252,4 +252,4 @@ Print the PR/MR URL immediately after creation.
 
 **Ready-for-review PR:**
 > PR created: \<url\>
-> Monitor CI/CD via the platform UI. When reviewer feedback arrives, run `address-review-feedback` to handle review comments.
+> Monitor CI/CD via the platform UI. When reviewer feedback arrives, run `triage-feedback` to categorize and prioritize the comments; then decide what to act on based on the produced triage report.
