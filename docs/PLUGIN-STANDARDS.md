@@ -138,6 +138,8 @@ Frontmatter:
 - [ ] Пути в `plugin.json` начинаются с `./` и не содержат `../` (`skills`, `agents`, `commands`, `hooks`, `mcpServers`, `outputStyles`, `monitors`, `lspServers`). Для стандартных директорий в корне плагина — предпочтительно auto-discovery (поле не указывать)
 - [ ] Все referenced файлы существуют
 
+> Per-plugin GitHub Releases пока не создаются — текущий релизный артефакт это per-plugin git-теги `{plugin-name}--v{version}`, которые ставит `scripts/changesets-publish.mjs`. Подвязка GitHub Releases к ним — follow-up enhancement.
+
 ## 11. Что автоматизируется (`validate.sh`)
 
 Автоматически проверяется:

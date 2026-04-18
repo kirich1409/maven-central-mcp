@@ -1,3 +1,9 @@
+# TODO(github-releases): per-plugin GitHub Releases are intentionally deferred.
+# `softprops/action-gh-release@v2` requires a tag input; on `push: branches: [main]`
+# it falls back to `github.ref_name` (= `main`), which is not a release tag.
+# Per-plugin git tags (`{plugin-name}--v{version}`) are still created by
+# scripts/changesets-publish.mjs and serve as the public release artifact.
+# Wiring up per-plugin Releases that pick the right tag(s) is a follow-up.
 name: Release
 
 on:
@@ -64,20 +70,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-  github-release:
-    needs: release
-    if: needs.release.outputs.published == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Create combined GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          make_latest: true
