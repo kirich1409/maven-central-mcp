@@ -2,6 +2,11 @@
   "name": "developer-workflow",
   "version": "0.8.0",
   "description": "Developer workflow skills — full task implementation cycle, View→Compose and UIKit→SwiftUI migration, safe code migration, test plan generation, exploratory QA testing, feature verification, PR preparation, PR creation (draft or ready), and review feedback analysis with triage and response",
+  "author": {
+    "name": "kirich1409"
+  },
+  "homepage": "https://github.com/kirich1409/krozov-ai-tools",
+  "keywords": ["developer-workflow", "kotlin", "compose", "swift", "swiftui", "migration", "qa", "pr-review"],
   "skills": "../skills",
   "agents": "../agents"
 }

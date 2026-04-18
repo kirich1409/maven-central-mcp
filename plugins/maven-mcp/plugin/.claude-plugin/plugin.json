@@ -2,6 +2,12 @@
   "name": "maven-mcp",
   "version": "0.8.0",
   "description": "Maven dependency intelligence — auto-registers MCP server, provides /check-deps, /latest-version, and /dependency-changes skills",
+  "author": {
+    "name": "kirich1409"
+  },
+  "homepage": "https://github.com/kirich1409/krozov-ai-tools",
+  "category": "development",
+  "keywords": ["maven", "gradle", "dependencies", "mcp", "android"],
   "mcpServers": {
     "maven-mcp": {
       "command": "npx",

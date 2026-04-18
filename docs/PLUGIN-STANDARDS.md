@@ -33,10 +33,10 @@
 
 ## 2. Paths
 
-- Пути к компонентам (`skills`, `agents`, `commands`, `hooks` и т.д.) в `plugin.json` — **относительно корня плагина**, не от `.claude-plugin/`. Использование `../skills` резолвится в `plugins/<other>/skills` — обычно баг.
-- Если директория лежит в корне плагина со стандартным именем (`skills/`, `agents/`, `commands/`, `hooks/`) — поле можно **не указывать** вообще, автодискавер работает.
+- Пути к компонентам (`skills`, `agents`, `commands`, `hooks` и т.д.) в `plugin.json` **резолвятся относительно `.claude-plugin/` директории**, не от корня плагина. Чтобы указать на `<plugin-root>/skills`, нужно писать `"../skills"`. См. PR #78 для контекста.
+- Если директория лежит в корне плагина со стандартным именем (`skills/`, `agents/`, `commands/`, `hooks/`) — поле **можно не указывать вообще**, автодискавер работает. Это предпочтительнее явного `"../skills"`.
 - В скриптах хуков и в references используй `${CLAUDE_PLUGIN_ROOT}` вместо абсолютных или `dirname $0`. Это кросс-платформенно и стабильно при symlink-резолюции.
-- В SKILL.md и агентах ссылайся на `references/` относительно корня плагина: `${CLAUDE_PLUGIN_ROOT}/agents/references/foo.md`.
+- В SKILL.md и агентах ссылайся на `references/` через `${CLAUDE_PLUGIN_ROOT}/agents/references/foo.md`.
 
 ## 3. Skills (`SKILL.md`)
 
