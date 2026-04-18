@@ -39,7 +39,7 @@ IDEA / FEATURE REQUEST
 [plan-review] ---- PoLL review of the plan (optional)
   |                  Artifact: plan review verdict
   v
-[test-plan] ---- Generate test plan (default-on, skip on 5 conditions or --skip-test-plan)
+[test-plan] ---- Generate test plan (default-on, skip per detector conditions or --skip-test-plan)
   |                Artifacts: docs/testplans/<slug>-test-plan.md (permanent)
   |                           swarm-report/<slug>-test-plan.md (receipt)
   v
@@ -254,8 +254,8 @@ Research --> Decompose --> Plan Review --> Test Plan --> Test Plan Review --> Im
                                                           '-- Regression TC (Acceptance → Test Plan)
 ```
 
-Test Plan + Test Plan Review are **default-on**. They are skipped when one of the five
-skip-detector conditions holds (see `feature-flow` SKILL §TestPlan Stage Skip Detection)
+Test Plan + Test Plan Review are **default-on**. They are skipped when the skip-detector
+conditions hold (see [`feature-flow` SKILL §TestPlan Stage Skip Detection](../skills/feature-flow/SKILL.md#testplan-stage-skip-detection))
 or when the user passes the `--skip-test-plan` override — in both cases the pipeline
 transitions directly from Plan Review to Implement.
 
