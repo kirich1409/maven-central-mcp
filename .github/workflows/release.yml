@@ -48,9 +48,14 @@ jobs:
           VERSION="${TAG#v}"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # actions/checkout fetches only the tag that triggered the workflow,
+          # so sibling per-plugin tags from previous releases won't be known
+          # locally. Fetch all tags before the idempotency check to avoid a
+          # local "not found" / remote "already exists" mismatch.
+          git fetch --tags --quiet origin
           # Claude Code resolves plugin dependencies through tags of the form
-          # {plugin-name}--v{version}. Create each tag locally, then push all
-          # new tags in a single network round-trip.
+          # {plugin-name}--v{version}. Create each missing tag locally, then
+          # push all new tags in a single network round-trip.
           tags_to_push=()
           while IFS= read -r plugin; do
             per_plugin_tag="${plugin}--${TAG}"

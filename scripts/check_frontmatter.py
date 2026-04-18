@@ -36,32 +36,52 @@ DESCRIPTION_LIMIT = 1024
 SKILL_LINE_WARN = 500
 
 
-def load_frontmatter(path: Path) -> tuple[dict[str, object] | None, int]:
-    """Return (frontmatter_dict, line_count). frontmatter_dict is None if absent."""
+def load_frontmatter(path: Path) -> tuple[dict[str, object] | None, int, bool]:
+    """Parse the YAML frontmatter block at the top of path.
+
+    Returns (frontmatter_dict, line_count, error_already_reported).
+    - frontmatter_dict is None on any failure; callers should stop processing.
+    - line_count is the total number of lines in the file (for SKILL.md size warnings).
+    - error_already_reported is True when this function printed its own specific
+      ERROR line (unreadable file, missing closing ---, YAML parse error).
+      Callers must NOT emit a generic "has no YAML frontmatter" message in that
+      case; the specific error is authoritative.
+
+    The caller is responsible for the "has no YAML frontmatter" message when
+    the file genuinely has no opening --- delimiter (error_already_reported is False).
+    """
     try:
         text = path.read_text(encoding="utf-8")
     except Exception as e:
         print(f"ERROR: cannot read {path}: {e}")
-        return None, 0
+        return None, 0, True
 
-    # Normalize line endings and strip BOM for robust parsing
     text = text.lstrip("\ufeff").replace("\r\n", "\n")
     line_count = len(text.splitlines())
 
     if not text.startswith("---"):
-        return None, line_count
+        return None, line_count, False  # caller emits generic missing-frontmatter message
 
     lines = text.split("\n")
     in_fm = False
+    closed = False
     fm_lines: list[str] = []
     for line in lines:
         if line.strip() == "---":
             if not in_fm:
                 in_fm = True
                 continue
+            closed = True
             break
         if in_fm:
             fm_lines.append(line)
+
+    if not closed:
+        print(
+            f"ERROR: {path}: frontmatter opens with '---' but the closing delimiter "
+            f"is missing — treat the block as invalid"
+        )
+        return None, line_count, True
 
     fm_text = "\n".join(fm_lines)
     if HAS_YAML:
@@ -69,10 +89,10 @@ def load_frontmatter(path: Path) -> tuple[dict[str, object] | None, int]:
             data = yaml.safe_load(fm_text)
         except yaml.YAMLError as e:
             print(f"ERROR: {path}: YAML parse error — {e}")
-            return None, line_count
-        return (data if isinstance(data, dict) else {}), line_count
+            return None, line_count, True
+        return (data if isinstance(data, dict) else {}), line_count, False
 
-    return _parse_simple_yaml(fm_text), line_count
+    return _parse_simple_yaml(fm_text), line_count, False
 
 
 def _parse_simple_yaml(text: str) -> dict[str, str]:
@@ -140,9 +160,10 @@ def _check_frontmatter_common(
     path: Path, plugin_id: str, expected_name: str,
 ) -> tuple[dict[str, object], int] | None:
     """Shared checks. Returns (fm, line_count) on success; prints + returns None on failure."""
-    fm, line_count = load_frontmatter(path)
+    fm, line_count, err_reported = load_frontmatter(path)
     if fm is None:
-        print(f"ERROR: '{plugin_id}': {path.name} has no YAML frontmatter")
+        if not err_reported:
+            print(f"ERROR: '{plugin_id}': {path.name} has no YAML frontmatter")
         return None
 
     name = str(fm.get("name", "")).strip()
