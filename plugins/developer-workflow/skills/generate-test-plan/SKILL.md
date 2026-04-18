@@ -31,6 +31,73 @@ docs/testplans/<feature-name>-test-plan.md
 Create the `docs/testplans/` directory if it doesn't exist. Use kebab-case for the feature name.
 Examples: `user-authentication-test-plan.md`, `cart-checkout-test-plan.md`.
 
+### Receipt (when invoked from orchestrator with a slug)
+
+When this skill is invoked from the `feature-flow` orchestrator, a `slug` argument is passed
+explicitly. In that case, in addition to the permanent document above, produce a **receipt**
+at `swarm-report/<slug>-test-plan.md` that the orchestrator and downstream stages
+(`plan-review`, `acceptance`) can consume for receipt-based gating.
+
+The permanent file remains the source of truth. The receipt is metadata + pointer.
+
+Receipt format:
+
+```markdown
+---
+name: test-plan-receipt
+description: Test plan artifact for <slug>
+slug: <slug>
+type: test-plan-receipt
+status: Draft | Ready | Approved
+permanent_path: docs/testplans/<slug>-test-plan.md
+source_spec: <path to spec if any, or "inline spec">
+review_verdict: pending | PASS | WARN | FAIL
+phase_coverage: [Phase 1, Phase 2, ...]
+created: YYYY-MM-DD
+updated: YYYY-MM-DD
+---
+
+# Test Plan Receipt: <slug>
+
+**Status:** <status>
+**Permanent artifact:** [`docs/testplans/<slug>-test-plan.md`](../docs/testplans/<slug>-test-plan.md)
+**Source spec:** <path or description>
+**Review verdict:** <verdict>
+
+## Phase Coverage
+- Phase 1 — TCs covered: TC-1..TC-N
+- Phase 2 — TCs covered: TC-N+1..TC-M
+
+## Review Findings
+(populated by plan-review stage; WARN items listed here)
+```
+
+Field conventions:
+- `status`: `Draft` right after generation; `Ready` after plan-review returns PASS/WARN;
+  `Approved` when the user explicitly signs off.
+- `review_verdict`: `pending` at creation. Updated by `plan-review` to `PASS | WARN | FAIL`.
+- `phase_coverage`: list of phase labels present in the permanent file. Empty list if the
+  feature has no phase segmentation.
+- `created` / `updated`: ISO dates (`YYYY-MM-DD`). `updated` must change whenever either the
+  permanent file or any receipt field is modified.
+- Relative path in the markdown link assumes the conventional `swarm-report/` ↔ `docs/`
+  sibling layout at the repo root.
+
+### Backward compatibility — standalone invocation without slug
+
+When a user invokes this skill directly (e.g. "create a test plan for X") without the
+orchestrator passing a `slug`, the receipt is **not** produced. Behavior matches the
+pre-orchestration flow exactly:
+
+- Permanent file generated at `docs/testplans/<feature-name>-test-plan.md` as described above.
+- No `swarm-report/<slug>-test-plan.md` is written.
+- No `phase_coverage` or receipt metadata tracked elsewhere.
+
+The `slug` parameter is therefore **mandatory only when invoked from the `feature-flow`
+orchestrator**. Standalone usage continues to work unchanged — existing callers,
+documentation references, and QA workflows that treat `docs/testplans/*-test-plan.md` as
+the single artifact are not broken by this change.
+
 ## Input Discovery
 
 Determine what the user has provided and gather context accordingly.
@@ -71,6 +138,27 @@ Often the user provides more than one source. Cross-reference them:
 - Spec says X, but code implements Y → flag the discrepancy as a finding, write test cases for both
 - Design shows a state the spec doesn't mention → note it, write a test case
 - Code handles an edge case not in the spec → include it with `[inferred from code]`
+
+### Non-UI detector — when to use the lightweight template
+
+Not every feature has a user interface. Pure backend services, CLI tools, internal libraries,
+and data pipelines should use a reduced TC format where the full Steps / Expected Result
+columns add noise without signal — the behavior is fully captured by Given/When/Then.
+
+**Detector (all must hold to trigger lightweight mode):**
+- The spec or input contains **no** references to any of: mockups, wireframes, Figma frames,
+  screens, screen states, UI components, Jetpack Compose composables, SwiftUI views, React /
+  Vue / Svelte / HTML components, CSS selectors, navigation flows, or visible user actions
+  (tap, click, scroll, swipe, type in field).
+- The feature surface is API / library / CLI / background job / data transformation.
+- No `ux-expert` or front-end agent was consulted during research.
+
+If any one of the signals above **is** present, use the standard Test Plan Format
+(with full Steps and Expected Result). Mixed features (backend + thin UI) default to the
+standard format.
+
+When the detector triggers, note it in the Findings section of the permanent file:
+`**Lightweight template applied** — no UI surface detected; TCs use Given/When/Then only.`
 
 ## Analysis
 
@@ -168,6 +256,94 @@ Test cases that are good candidates for automated testing.
 
 > Omit this section if no test cases are suitable for automation.
 ```
+
+### Phase Segmentation
+
+When the feature reaches this skill via `decompose-feature` with phases (e.g. T-1..T-3 in
+Phase 1, T-4..T-6 in Phase 2), the permanent file splits the `## Test Cases` section by
+phase so each phase can ship and be re-verified independently. One permanent document per
+feature remains the rule — phases are sections inside it, not separate files.
+
+Apply segmentation when the decomposition artifact contains two or more phases **and** test
+cases can be grouped by which phase introduces the behavior they cover. Otherwise keep a
+single flat `## Test Cases` section.
+
+Example for a feature with two phases:
+
+```markdown
+## Test Cases
+
+### Phase 1 (T-1..T-3) — Core login flow
+
+#### TC-1: Successful login with valid credentials
+| Field | Value |
+|-------|-------|
+| **Priority** | P0 Critical |
+| **Tier** | Smoke |
+| **Preconditions** | User account exists, email is verified |
+| **Steps** | 1. Open login screen  2. Enter email  3. Enter password  4. Tap Login |
+| **Expected Result** | Home screen is shown, session token stored |
+| **Source** | Spec §2.1 |
+
+#### TC-2: Invalid password shows inline error
+...
+
+#### TC-3: Rate-limit after 5 failed attempts
+...
+
+### Phase 2 (T-4..T-6) — Password reset flow
+
+#### TC-4: Request reset email from login screen
+| Field | Value |
+|-------|-------|
+| **Priority** | P0 Critical |
+| **Tier** | Feature |
+| **Preconditions** | User account exists |
+| **Steps** | 1. Tap "Forgot password?"  2. Enter email  3. Submit |
+| **Expected Result** | Confirmation screen shown, reset email dispatched |
+| **Source** | Spec §3.2 |
+
+#### TC-5: Reset link expires after 15 minutes
+...
+
+#### TC-6: Reset flow rejects reused link
+...
+```
+
+When segmentation is applied, the receipt's `phase_coverage` field lists the phase labels
+present (e.g. `[Phase 1, Phase 2]`), and the TC ranges covered by each phase appear in the
+receipt's Phase Coverage section.
+
+### Lightweight template (non-UI features)
+
+When the non-UI detector triggers (see Input Discovery), use this reduced TC format in place
+of the standard one. The entire behavior of each TC is captured in Given/When/Then — no
+numbered Steps, no separate Expected Result field, since both collapse into the Then clause
+for non-interactive surfaces.
+
+```markdown
+#### TC-[N]: [Short title]
+| **Priority** | P0/P1/P2/P3 |
+| **Tier** | Smoke/Feature/Regression |
+| **Preconditions** | [state] |
+| **Scenario (Given/When/Then)** | Given X, When Y, Then Z |
+| **Source** | [Spec §section / inferred from code] |
+```
+
+Example:
+
+```markdown
+#### TC-3: Token refresh succeeds before expiry
+| **Priority** | P0 Critical |
+| **Tier** | Feature |
+| **Preconditions** | Valid refresh token stored, access token within 60s of expiry |
+| **Scenario (Given/When/Then)** | Given an access token with <60s TTL, When the client calls `refresh()`, Then a new access token is returned with the original refresh-token scope preserved |
+| **Source** | `src/auth/TokenManager.kt:142` |
+```
+
+All other sections of the Test Plan Format (front-matter table, Findings, Risk Areas,
+Coverage Matrix, Suggested Automation Candidates, Phase Segmentation when applicable) are
+used unchanged — only the TC blocks switch to this reduced form.
 
 ## Field Definitions
 
