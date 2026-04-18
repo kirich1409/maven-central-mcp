@@ -169,6 +169,14 @@ When decomposition produced multiple tasks:
 - Between waves: wait for the previous wave to complete before starting the next
 - Each task runs its own Implement → Acceptance cycle independently
 
+**Per-task artifact naming:** use `<slug>-<task-id>` as the artifact prefix for each task
+(e.g. `<slug>-T1-implement.md`, `<slug>-T1-acceptance.md`, `<slug>-T2-implement.md`).
+This prevents artifacts from overwriting each other when tasks run in parallel.
+
+**Isolation:** parallel tasks within a wave share the same worktree and branch.
+They must not edit the same files — if the decomposition placed tasks in the same file,
+treat them as sequential (run in dependency order, not in parallel).
+
 ### 2.1 Implement (per task)
 
 **Context passing (MANDATORY):** when invoking the implement skill, pass:
@@ -295,6 +303,7 @@ The orchestrator stops and waits for the user **only** at:
 | Profile confirmation | Phase 0.2 (always) |
 | Consolidated approval | Phase 1.5 (unless user said "start immediately") |
 | PARTIAL acceptance verdict | User decides: fix or ship |
+| Slow feedback / human review | `feedback-stage` is waiting for human review (session-stop) |
 | Merge confirmation | Phase 3.3 (always — no exceptions) |
 | Escalation | See Escalation section below |
 

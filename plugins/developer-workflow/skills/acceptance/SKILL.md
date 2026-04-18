@@ -186,7 +186,7 @@ and merge readiness.
 **Date:** <date>
 **Type:** Feature / Bug fix
 **Spec source:** [what was used — requirements, test-plan.md, debug.md reproduction steps, etc.]
-**Test plan:** swarm-report/<slug>-test-plan.md
+**Test plan:** [actual source used — path if available (e.g. `swarm-report/<slug>-test-plan.md`), otherwise `generated from spec` or `not provided`]
 **Context artifacts:** [paths to research.md, debug.md, implement.md used as input]
 
 ## Summary
@@ -212,9 +212,13 @@ and merge readiness.
 Before producing the final verdict, verify that the implementation matches the original intent:
 
 1. Re-read the original task description (verbatim)
-2. Re-read `swarm-report/<slug>-test-plan.md` — the pre-agreed acceptance contract
+2. Re-read the acceptance contract used for this run:
+   - `swarm-report/<slug>-test-plan.md` when a pipeline test plan exists, or
+   - otherwise, the spec/debug artifact that drove the executed checks (e.g. PRD, mockup,
+     acceptance criteria, issue, PR description, or `debug.md` reproduction steps)
 3. Re-read `swarm-report/<slug>-implement.md` — what was actually built
-4. Check: does the implementation address the original task, not a misinterpretation of it?
+4. Check: does the implementation address the original task and the acceptance contract used
+   for this run, rather than a misinterpretation of either?
 
 If drift is detected — classify it:
 - **Minor drift** (e.g. a missing edge case) → treat as a test failure, include in bug list

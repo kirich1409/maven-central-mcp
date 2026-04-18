@@ -36,8 +36,13 @@ This skill accepts feedback in any format. The orchestrator provides:
 |-------|----------|-------------|
 | PR reference | Yes (if PR exists) | PR URL or number to monitor |
 | Git diff | Yes | Full diff of all changes (`git diff main...HEAD`) |
-| Artifacts | Yes | Paths to `research.md`, `test-plan.md`, `implement.md`, `acceptance.md` |
+| Artifacts | Optional / Conditional | Paths to any available workflow artifacts, including `research.md`, `test-plan.md`, `debug.md`, `plan.md`, `implement.md`, and `acceptance.md` |
 | Feedback (direct) | Optional | Pre-collected feedback text, file, or report |
+
+Artifact availability depends on the active workflow. Feature-flow commonly provides
+`research.md` and `test-plan.md`; bugfix-flow commonly provides `debug.md` and `plan.md`.
+Consume whichever of these artifacts are present, along with `implement.md` and `acceptance.md`
+when available.
 
 If feedback is not yet available — enter monitoring mode (see Step 1).
 
@@ -112,17 +117,17 @@ For each feedback item, determine:
 
 ### 3.1 Issue type
 
-| Type | Description | Route to |
-|------|-------------|---------|
-| **CI failure** | Build error, test failure, lint violation | Implement |
-| **Code quality** | Style, naming, complexity, duplication | Implement |
-| **Logic error** | Wrong behavior, edge case missed | Implement |
-| **Design / architecture** | Wrong abstraction, bad dependency direction, API shape | Research or PlanReview |
-| **Approach** | Fundamentally wrong solution direction | Research |
-| **Functional** | Feature doesn't work as specified, regression | Acceptance |
-| **Security** | Vulnerability, unsafe pattern | Implement (+ security-expert if needed) |
-| **Performance** | Inefficient pattern identified | Implement |
-| **Scope / product** | Feature scope question, product decision needed | Escalate to user |
+| Type | Description | Handling intent |
+|------|-------------|----------------|
+| **CI failure** | Build error, test failure, lint violation | Code fix — orchestrator routes to implementation/debugging stage |
+| **Code quality** | Style, naming, complexity, duplication | Code fix — orchestrator routes to implementation stage |
+| **Logic error** | Wrong behavior, edge case missed | Code fix — orchestrator routes to implementation/debugging stage |
+| **Design / architecture** | Wrong abstraction, bad dependency direction, API shape | Design correction — orchestrator routes to planning/review/research stage |
+| **Approach** | Fundamentally wrong solution direction | Approach correction — orchestrator routes to debug/research/planning stage for this workflow |
+| **Functional** | Feature doesn't work as specified, regression | Behaviour verification — orchestrator routes to acceptance and/or implementation stage |
+| **Security** | Vulnerability, unsafe pattern | Security-sensitive code fix — orchestrator routes to implementation stage (+ security review if needed) |
+| **Performance** | Inefficient pattern identified | Performance fix — orchestrator routes to implementation stage |
+| **Scope / product** | Feature scope question, product decision needed | Product clarification — escalate to user |
 
 ### 3.2 Affected scope
 

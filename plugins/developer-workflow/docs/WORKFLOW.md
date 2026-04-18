@@ -467,7 +467,7 @@ Each artifact includes:
 | `acceptance` | Verify | Execute pre-built test plan, verify requirements, classify failure type |
 | `feedback-stage` | Feedback | Source-agnostic feedback: read, generalize, classify, route to the right stage |
 | `create-pr` | PR | PR/MR creation: title, description, labels, reviewers |
-| ~~`pr-drive-to-merge`~~ | — | **Removed** — merge mechanics now live inside `feedback-stage` |
+| ~~`pr-drive-to-merge`~~ | — | **Removed** — feedback handling was absorbed into `feedback-stage`; merge execution remains with the orchestrator after a CLEAR verdict and user confirmation |
 | `bug-hunt` | Verify | Undirected bug hunting without a specification |
 | `decompose-feature` | Research / Plan | Feature decomposition into tasks with waves |
 | `write-tests` | Implement | Retroactive test writing |

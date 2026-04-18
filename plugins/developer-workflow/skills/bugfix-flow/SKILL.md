@@ -194,7 +194,7 @@ When feedback-stage returns CLEAR:
 | From | To | Trigger | Max |
 |------|----|---------|-----|
 | Acceptance | Implement | Code bug — fix didn't work | 3 |
-| Acceptance | Debug | Wrong approach (after 3 failed implementations) | 1 |
+| Acceptance | Debug | Wrong approach — determined by failure_type | 1 |
 | FeedbackStage | Implement | Code issue in feedback | 3 |
 | FeedbackStage | Debug | Approach issue in feedback | 2 |
 | FeedbackStage | Acceptance | Functional issue in feedback | 2 |
