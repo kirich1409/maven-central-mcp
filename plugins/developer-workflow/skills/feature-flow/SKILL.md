@@ -205,7 +205,8 @@ Each backward transition:
 
 The orchestrator **stops and waits for the user** at:
 - Profile confirmation (Phase 0.3)
-- After create-pr (pipeline hands off; resume when review feedback is triaged)
+- After `create-pr` — hand-off to user. User runs `triage-feedback` when review
+  feedback arrives and decides whether to resume at `implement` with FIXABLE items;
+  CI monitoring and merge execution are outside this pipeline.
 - PARTIAL acceptance verdict (user decides: fix or ship)
 - Escalation (scope explosion, repeated failures, architectural decision needed)
-- Merge confirmation

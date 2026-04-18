@@ -300,7 +300,11 @@ user-text source and no git repo), use `feedback-YYYYMMDD-HHMM`.
 
 **Path:** `swarm-report/<slug>-triage.md`
 
-Ensure `swarm-report/` is gitignored before writing (add the line if missing).
+Assume `swarm-report/` is already gitignored — most projects in the
+developer-workflow ecosystem ignore it by convention. Do NOT modify
+`.gitignore` from this skill; the only side effect of triage is the report
+file. If you notice `swarm-report/` is not ignored, warn the user and still
+write the report; let the user decide whether to update `.gitignore`.
 
 Report template:
 
@@ -415,7 +419,12 @@ stop and ask. Do not guess or fabricate items.
 
 ## Tool priority
 
-`gh` / `glab` CLI → REST API via `gh api` / `glab api` → MCP as last resort.
+Prefer `gh` / `glab` CLI when available → REST API via `gh api` / `glab api`
+when available → MCP as last resort.
 
-The skill requires `gh` or `glab` only when the source is a PR/MR. User-text
-source has no CLI dependency.
+For PR/MR sources, `gh` / `glab` are optional capabilities, not hard
+requirements. If neither CLI is installed or authenticated, do not dead-end:
+ask the user to provide the PR/MR URL together with the relevant review
+comments, review summaries, and diff/context pasted into the chat — then
+treat it as a user-text source. User-text source has no CLI dependency at
+all.

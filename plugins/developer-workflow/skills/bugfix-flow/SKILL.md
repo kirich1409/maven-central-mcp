@@ -190,15 +190,16 @@ The orchestrator **stops and waits for the user** at:
 - Profile confirmation (Phase 0.3)
 - Bug not reproducible (need more info)
 - Debug escalation (architectural issue, needs decision)
-- Human PR review
 - PARTIAL acceptance verdict
-- Merge confirmation
+- After `create-pr` — hand-off to user. User runs `triage-feedback` when review
+  feedback arrives and decides whether to resume at `implement` with FIXABLE items;
+  CI monitoring and merge execution are outside this pipeline.
 
 ---
 
 ## Report
 
-After Done (merge complete) or Stop (escalation), save a report to
+After Done (PR created) or Stop (escalation), save a report to
 `swarm-report/<slug>-YYYY-MM-DD.md` with:
 - Bug description and source
 - Reproduction steps (from debug)
