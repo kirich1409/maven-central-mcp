@@ -25,11 +25,27 @@ for a human QA engineer or the `manual-tester` agent to pick up later.
 Save every test plan to the repository:
 
 ```
-docs/testplans/<feature-name>-test-plan.md
+docs/testplans/<slug>-test-plan.md
 ```
 
-Create the `docs/testplans/` directory if it doesn't exist. Use kebab-case for the feature name.
-Examples: `user-authentication-test-plan.md`, `cart-checkout-test-plan.md`.
+Create the `docs/testplans/` directory if it doesn't exist. The slug is the canonical
+filename anchor — downstream stages (`feature-flow` Phase 1.5, `acceptance` Branch 2)
+mount by exact slug match, so the filename must be slug-based regardless of invocation
+mode.
+
+Slug resolution rules (apply in order):
+
+1. **Orchestrator invocation** — when this skill is invoked from `feature-flow`, a
+   `slug` argument is passed explicitly. Use it as-is.
+2. **Standalone invocation, slug provided inline** — the user or caller may supply
+   a slug directly (e.g. `"slug: login-flow"`). Use it as-is.
+3. **Standalone invocation, no slug** — derive one from the feature name with the
+   stable kebab-case convention used elsewhere in workflow docs: lowercase the
+   name, replace runs of spaces or punctuation with `-`, trim leading/trailing `-`.
+
+Examples of derivation (rule 3): `"User authentication"` → `user-authentication-test-plan.md`,
+`"Cart & checkout"` → `cart-checkout-test-plan.md`, `"Token refresh (auth)"` →
+`token-refresh-auth-test-plan.md`.
 
 ### Receipt (when invoked from orchestrator with a slug)
 
@@ -89,17 +105,21 @@ Field conventions:
 ### Backward compatibility — standalone invocation without slug
 
 When a user invokes this skill directly (e.g. "create a test plan for X") without the
-orchestrator passing a `slug`, the receipt is **not** produced. Behavior matches the
-pre-orchestration flow exactly:
+orchestrator passing a `slug`, the receipt is **not** produced. The permanent file is
+still saved under the canonical slug-based filename:
 
-- Permanent file generated at `docs/testplans/<feature-name>-test-plan.md` as described above.
-- No `swarm-report/<slug>-test-plan.md` is written.
+- Permanent file generated at `docs/testplans/<slug>-test-plan.md`, where `<slug>` is
+  either provided inline or derived from the feature name per the Slug resolution rules
+  above. If the plan may later be consumed by another workflow that mounts an existing
+  plan (e.g. `bugfix-flow` → `acceptance` Branch 2), use the eventual orchestrator slug
+  at creation time so the file is deterministically mountable without renaming.
+- No `swarm-report/<slug>-test-plan.md` receipt is written.
 - No `phase_coverage` or receipt metadata tracked elsewhere.
 
-The `slug` parameter is therefore **mandatory only when invoked from the `feature-flow`
-orchestrator**. Standalone usage continues to work unchanged — existing callers,
-documentation references, and QA workflows that treat `docs/testplans/*-test-plan.md` as
-the single artifact are not broken by this change.
+Standalone callers continue to work: the slug-based filename is the single canonical
+artifact. Pre-existing `docs/testplans/*-test-plan.md` files authored before this
+convention are not auto-migrated — they remain readable by humans, but mount logic
+matches only on the exact `<slug>-test-plan.md` path.
 
 ## Input Discovery
 
