@@ -31,8 +31,8 @@ Skills in this plugin delegate to engineer agents (kotlin-engineer / compose-dev
 - Skills use YAML frontmatter: `name`, `description` (≤ 1024 chars), optionally `disable-model-invocation`.
 - `code-reviewer` (in `developer-workflow-experts`) is read-only — no Edit, Write, NotebookEdit, or Bash tools.
 - Workspace directories (`*-workspace/`) are runtime artifacts, not skills. Gitignored.
-- Pipeline orchestration rules live at `~/.claude/rules/dev-workflow-orchestration.md` (user-global, not in this repo).
-- Quality Loop gates are defined in orchestration rules, not in any skill.
+- Pipeline orchestration rules (task profiling, Research Consortium, Quality Loop gates, State Machine, receipt-based gating) ship with this plugin at [`docs/ORCHESTRATION.md`](docs/ORCHESTRATION.md) — skills and the core feature-flow/bugfix-flow orchestrators read from there.
+- Quality Loop gates are defined in `docs/ORCHESTRATION.md`, not in any individual skill.
 
 ## Skills roster (14)
 

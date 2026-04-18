@@ -88,10 +88,9 @@ Skills invoke these by short name. If a platform plugin is not installed and you
 ## Pipeline documentation
 
 Full pipeline with diagrams and gate-level detail:
-- [`docs/WORKFLOW.md`](docs/WORKFLOW.md)
+- [`docs/WORKFLOW.md`](docs/WORKFLOW.md) — stages, artifacts, decision points
 - [`docs/ORCHESTRATORS.md`](docs/ORCHESTRATORS.md) — feature-flow and bugfix-flow state diagrams
-
-Pipeline orchestration rules (re-anchoring, receipts, Quality Loop) live at `~/.claude/rules/dev-workflow-orchestration.md` — user-global, not shipped with this plugin.
+- [`docs/ORCHESTRATION.md`](docs/ORCHESTRATION.md) — task profiling, Research Consortium, re-anchoring, State Machine, Receipt-Based Gating, Quality Loop gates
 
 ## License
 
