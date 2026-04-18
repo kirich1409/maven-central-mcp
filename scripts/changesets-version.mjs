@@ -37,7 +37,20 @@ async function readJson(relPath) {
 async function writeJson(relPath, obj) {
   const abs = path.join(cwd, relPath);
   // Match existing files: 2-space indent, trailing newline.
-  await writeFile(abs, JSON.stringify(obj, null, 2) + "\n");
+  const next = JSON.stringify(obj, null, 2) + "\n";
+  // Skip write when the current file already represents the same JSON content
+  // (compared after normalising both sides through parse+stringify, so source
+  // `\u2014` escapes that JSON.stringify always emits as literal em-dashes
+  // don't count as a diff). Prevents unbumped plugin manifests from being
+  // rewritten on every Version Packages PR.
+  try {
+    const currentRaw = await readFile(abs, "utf8");
+    const currentNormalised = JSON.stringify(JSON.parse(currentRaw), null, 2) + "\n";
+    if (currentNormalised === next) return;
+  } catch {
+    // File missing or unparseable — fall through to write.
+  }
+  await writeFile(abs, next);
 }
 
 // 1. Run the standard version command. spawnSync with array args (no shell).
