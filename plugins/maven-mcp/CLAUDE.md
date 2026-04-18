@@ -20,6 +20,8 @@ npm run lint           # ESLint
 npm run dev            # Watch mode (tsc --watch)
 ```
 
+**Workspace gotcha:** This package is part of the root npm workspace. Running `npm ci` from `plugins/maven-mcp/` will wipe root devDeps (`@changesets/cli`, `@manypkg/get-packages`, etc.) due to workspace hoisting. Run `npm ci` from the repo root instead, or `npm install` at root afterwards to recover.
+
 ## Architecture
 
 ```
