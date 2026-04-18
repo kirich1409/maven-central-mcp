@@ -2,10 +2,17 @@
 # Validates marketplace and plugin configurations.
 #
 # Usage:
-#   bash scripts/validate.sh                    # full validation
-#   bash scripts/validate.sh --check-tag 1.2.3  # + verify all versions match tag
+#   bash scripts/validate.sh
 #
 # Exit code: 0 if all checks pass, 1 if any error found.
+#
+# Per-plugin three-way version invariant (replaces old unified-version check):
+#   For every plugin: workspace package.json:version
+#                  == .claude-plugin/plugin.json:version
+#                  == marketplace.json plugin entry version
+# Plugins are NOT required to share a version with each other (Changesets bumps
+# each plugin independently). The driving table below mirrors PLUGIN_MAP in
+# scripts/plugin-map.mjs — keep them in sync when adding a plugin.
 set -uo pipefail
 
 # Require jq
@@ -19,6 +26,19 @@ ERRORS=0
 
 fail() { echo "ERROR: $*" >&2; ERRORS=$((ERRORS + 1)); }
 ok()   { echo "OK: $*"; }
+
+# ---------- Plugin map ----------
+# Format: plugin_name<TAB>workspace_dir<TAB>manifest_path
+# MUST mirror scripts/plugin-map.mjs.
+PLUGIN_MAP_TSV="$(cat <<'EOF'
+maven-mcp	plugins/maven-mcp	plugins/maven-mcp/plugin/.claude-plugin/plugin.json
+sensitive-guard	plugins/sensitive-guard	plugins/sensitive-guard/.claude-plugin/plugin.json
+developer-workflow	plugins/developer-workflow	plugins/developer-workflow/.claude-plugin/plugin.json
+developer-workflow-experts	plugins/developer-workflow-experts	plugins/developer-workflow-experts/.claude-plugin/plugin.json
+developer-workflow-kotlin	plugins/developer-workflow-kotlin	plugins/developer-workflow-kotlin/.claude-plugin/plugin.json
+developer-workflow-swift	plugins/developer-workflow-swift	plugins/developer-workflow-swift/.claude-plugin/plugin.json
+EOF
+)"
 
 # ---------- L1: JSON syntax ----------
 
@@ -109,23 +129,38 @@ check_name_consistency() {
   done < <(jq -r '.plugins[] | [.name, .source] | @tsv' "$MARKETPLACE")
 }
 
-# ---------- L4: Unified versioning ----------
+# ---------- L4: Per-plugin three-way version invariant ----------
 
-check_version_consistency() {
-  echo "--- L4: Versions consistent (marketplace.json ↔ plugin.json) ---"
-  while IFS=$'\t' read -r name version source; do
-    plugin_json="${source}/.claude-plugin/plugin.json"
-    if [ ! -f "$plugin_json" ]; then
-      fail "'$name' plugin.json not found — cannot check version"
+check_three_way_version_consistency() {
+  echo "--- L4: Per-plugin version consistency (workspace ↔ plugin.json ↔ marketplace) ---"
+  while IFS=$'\t' read -r plugin_name workspace_dir manifest_path; do
+    [ -n "$plugin_name" ] || continue
+
+    workspace_pkg="${workspace_dir}/package.json"
+    if [ ! -f "$workspace_pkg" ]; then
+      fail "'$plugin_name' workspace package.json not found at $workspace_pkg"
       continue
     fi
-    plugin_version=$(jq -r '.version' "$plugin_json")
-    if [ "$version" != "$plugin_version" ]; then
-      fail "'$name' version mismatch: marketplace.json=$version, plugin.json=$plugin_version"
-    else
-      ok "'$name' version $version"
+    if [ ! -f "$manifest_path" ]; then
+      fail "'$plugin_name' plugin.json not found at $manifest_path"
+      continue
     fi
-  done < <(jq -r '.plugins[] | [.name, .version, .source] | @tsv' "$MARKETPLACE")
+
+    pkg_version=$(jq -r '.version' "$workspace_pkg")
+    manifest_version=$(jq -r '.version' "$manifest_path")
+    market_version=$(jq -r --arg n "$plugin_name" '.plugins[] | select(.name == $n) | .version' "$MARKETPLACE")
+
+    if [ -z "$market_version" ] || [ "$market_version" = "null" ]; then
+      fail "'$plugin_name' missing from marketplace.json"
+      continue
+    fi
+
+    if [ "$pkg_version" = "$manifest_version" ] && [ "$manifest_version" = "$market_version" ]; then
+      ok "'$plugin_name' version $pkg_version (workspace ↔ plugin.json ↔ marketplace)"
+    else
+      fail "'$plugin_name' version mismatch: workspace=$pkg_version, plugin.json=$manifest_version, marketplace=$market_version"
+    fi
+  done <<< "$PLUGIN_MAP_TSV"
 }
 
 check_semver() {
@@ -143,51 +178,6 @@ check_semver() {
       fi
     fi
   done < <(jq -r '.plugins[] | [.name, .version, .source] | @tsv' "$MARKETPLACE")
-}
-
-check_tag_versions() {
-  local version="$1"
-  echo "--- L4: All versions match tag v${version} ---"
-  SEMVER='^[0-9]+\.[0-9]+\.[0-9]+$'
-  if ! echo "$version" | grep -qE "$SEMVER"; then
-    fail "Tag version is not semver: $version"
-    return
-  fi
-
-  # maven-mcp: also check package.json (npm package)
-  PKG_JSON="plugins/maven-mcp/package.json"
-  if [ -f "$PKG_JSON" ]; then
-    pkg_version=$(jq -r '.version' "$PKG_JSON")
-    if [ "$pkg_version" != "$version" ]; then
-      fail "$PKG_JSON version \"$pkg_version\" does not match tag v${version}"
-    else
-      ok "$PKG_JSON version $pkg_version"
-    fi
-  fi
-
-  # All plugin.json files — data-driven from marketplace.json
-  while IFS=$'\t' read -r name source; do
-    plugin_json="${source}/.claude-plugin/plugin.json"
-    if [ ! -f "$plugin_json" ]; then
-      fail "'$name' plugin.json not found at $plugin_json"
-      continue
-    fi
-    plugin_version=$(jq -r '.version' "$plugin_json")
-    if [ "$plugin_version" != "$version" ]; then
-      fail "'$name' plugin.json version \"$plugin_version\" does not match tag v${version}"
-    else
-      ok "'$name' plugin.json version $plugin_version"
-    fi
-  done < <(jq -r '.plugins[] | [.name, .source] | @tsv' "$MARKETPLACE")
-
-  # marketplace.json plugin versions
-  while IFS=$'\t' read -r name mkt_version; do
-    if [ "$mkt_version" != "$version" ]; then
-      fail "marketplace.json plugin '$name' version \"$mkt_version\" does not match tag v${version}"
-    else
-      ok "marketplace.json '$name' version $mkt_version"
-    fi
-  done < <(jq -r '.plugins[] | [.name, .version] | @tsv' "$MARKETPLACE")
 }
 
 # ---------- L5: plugin.json component paths ----------
@@ -291,15 +281,6 @@ check_frontmatter() {
 # ---------- Entry point ----------
 
 main() {
-  CHECK_TAG=""
-  if [ "${1-}" = "--check-tag" ]; then
-    CHECK_TAG="${2-}"
-    if [ -z "$CHECK_TAG" ]; then
-      echo "Usage: $0 --check-tag VERSION" >&2
-      exit 1
-    fi
-  fi
-
   echo "=== Marketplace & Plugin Validation ==="
   echo "Marketplace: $MARKETPLACE"
 
@@ -309,15 +290,11 @@ main() {
   check_marketplace_entries_have_dirs
   check_source_paths_and_plugin_json
   check_name_consistency
-  check_version_consistency
+  check_three_way_version_consistency
   check_semver
   check_component_paths
   check_hook_scripts
   check_frontmatter
-
-  if [ -n "$CHECK_TAG" ]; then
-    check_tag_versions "$CHECK_TAG"
-  fi
 
   echo ""
   if [ "$ERRORS" -eq 0 ]; then
