@@ -2,78 +2,81 @@ name: Release
 
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      # README only; .changeset/*.md content files MUST trigger.
+      - '.changeset/README.md'
+
+# Queue concurrent runs, do NOT cancel — mid-publish cancellation is the
+# worst-case state (npm publish may have succeeded but tags not pushed).
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
-    environment: NPM Publishing
-    defaults:
-      run:
-        working-directory: plugins/maven-mcp
-
-    permissions:
-      contents: write
-
+    outputs:
+      published: ${{ steps.changesets.outputs.published }}
+      publishedPackages: ${{ steps.changesets.outputs.publishedPackages }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history needed so the per-plugin tag idempotency check in
+          # scripts/changesets-publish.mjs sees prior tags.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: plugins/maven-mcp/package-lock.json
+          cache-dependency-path: package-lock.json
           registry-url: https://registry.npmjs.org
 
-      - name: Verify all versions match tag
-        working-directory: .
-        run: bash scripts/validate.sh --check-tag "${GITHUB_REF_NAME#v}"
-
       - run: npm ci
-      - run: npm run lint
-      - run: npm test
-      - run: npm run build
 
-      - run: npm publish --access public
+      - name: Validate marketplace and plugin configurations
+        run: bash scripts/validate.sh
+
+      - name: Build maven-mcp
+        working-directory: plugins/maven-mcp
+        run: |
+          npm ci
+          npm run lint
+          npm test
+          npm run build
+
+      - name: Create Version PR or publish via Changesets
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          version: node scripts/changesets-version.mjs
+          publish: node scripts/changesets-publish.mjs
+          commit: "Version Packages"
+          title: "Version Packages"
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
-      - name: Publish per-plugin tags for plugin dependency resolution
-        working-directory: .
-        env:
-          TAG: ${{ github.ref_name }}
-        run: |
-          set -euo pipefail
-          VERSION="${TAG#v}"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # actions/checkout fetches only the tag that triggered the workflow,
-          # so sibling per-plugin tags from previous releases won't be known
-          # locally. Fetch all tags before the idempotency check to avoid a
-          # local "not found" / remote "already exists" mismatch.
-          git fetch --tags --quiet origin
-          # Claude Code resolves plugin dependencies through tags of the form
-          # {plugin-name}--v{version}. Create each missing tag locally, then
-          # push all new tags in a single network round-trip.
-          tags_to_push=()
-          while IFS= read -r plugin; do
-            per_plugin_tag="${plugin}--${TAG}"
-            if git rev-parse -q --verify "refs/tags/${per_plugin_tag}" >/dev/null; then
-              echo "Tag ${per_plugin_tag} already exists, skipping"
-              continue
-            fi
-            git tag -a "${per_plugin_tag}" -m "Release ${plugin} ${VERSION} (unified release ${TAG})"
-            tags_to_push+=("${per_plugin_tag}")
-          done < <(jq -r '.plugins[].name' .claude-plugin/marketplace.json)
-          if [ ${#tags_to_push[@]} -gt 0 ]; then
-            git push origin "${tags_to_push[@]}"
-            printf 'Pushed %s\n' "${tags_to_push[@]}"
-          else
-            echo "No new per-plugin tags to push"
-          fi
+  github-release:
+    needs: release
+    if: needs.release.outputs.published == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Create GitHub Release
+      - name: Create combined GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
