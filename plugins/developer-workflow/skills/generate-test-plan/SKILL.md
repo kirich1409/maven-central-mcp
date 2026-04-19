@@ -72,6 +72,10 @@ review_verdict: pending | PASS | WARN | FAIL | skipped
 review_warnings: []            # populated by plan-review on WARN — list of short strings
 review_blockers: []            # populated by plan-review on FAIL — list of short strings
 phase_coverage: [Phase 1, Phase 2, ...]
+platform: []                   # optional; inherited from the source spec's `platform:` field when present.
+                               # Drives platform-aware TC generation and downstream acceptance checks (e.g.,
+                               # skip mobile-only TCs on a backend-only target). Leave empty when the spec
+                               # did not set it; acceptance falls back to its project-type heuristic.
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 ---
@@ -133,6 +137,13 @@ Read the document. Extract:
 - Non-functional requirements (performance, accessibility, security constraints)
 - Acceptance criteria (explicit pass/fail conditions)
 - User roles and permissions mentioned
+
+**Spec frontmatter (when the source is a file with YAML frontmatter).** Read the frontmatter
+block first. If it contains a `platform:` list, copy that list verbatim into the receipt's
+`platform:` field (same canonical values as `write-spec` and ORCHESTRATION.md §Project type
+detection). When the orchestrator invokes this skill without a file-based spec, or the spec
+has no frontmatter, leave `platform:` empty in the receipt — `acceptance` will fall back to
+its project-type heuristic.
 
 ### 2. Figma mockup
 
