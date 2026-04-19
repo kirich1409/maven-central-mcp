@@ -1,19 +1,19 @@
 ---
-name: plan-review
+name: multiexpert-review
 description: >-
-  Multi-agent review of an implementation plan using the PoLL (Panel of LLM Evaluators) consensus
-  protocol. The plan can come from any source — Plan Mode output, a file, or conversation context.
-  Use this skill when the user asks to "review the plan", "get feedback on the plan",
-  "check the plan", "validate the approach", "review with different perspectives", "multi-agent
-  review", "план ревью", "проверь план", "оцени план", or after exiting Plan Mode and wanting
-  independent expert evaluation before implementation. Also invoke when the user says "is this
-  plan good?", "what did I miss?", "sanity check this", "review this before I start", "check my
-  approach", or wants multiple viewpoints on an implementation strategy — even if the plan is
-  described inline in the message or referenced as a file. Do NOT invoke for code review (use
-  code-reviewer agent instead) or PR review.
+  Review documentation artifacts (plan, spec, test-plan) with a panel of independent expert
+  agents before commit. Use when asked to review a plan, spec, test-plan, or similar
+  documentation artifact. Uses the PoLL (Panel of LLM Evaluators) consensus protocol.
+  Invoke on phrases: "review the plan", "review the spec", "check the plan", "validate the
+  approach", "multi-expert review", "panel review", "план ревью", "проверь план", "оцени план",
+  "check the spec", or after exiting Plan Mode and wanting independent expert evaluation before
+  implementation. Also invoke when the user says "is this plan good?", "what did I miss?",
+  "sanity check this", "review this before I start", "check my approach", or wants multiple
+  viewpoints on an implementation strategy. Do NOT invoke for code review (use code-reviewer
+  agent instead) or PR review.
 ---
 
-# Plan Review
+# Multi-Expert Review
 
 Multi-agent independent review of an implementation plan, followed by consensus synthesis.
 
@@ -75,7 +75,7 @@ Review       → Synthesize
 Synthesize   → Verdict
 Verdict:PASS → Done
 Verdict:COND → Fix Plan
-Verdict:WARN → Done          (test-plan branch only — see Test-Plan Review Branch)
+Verdict:WARN → Done          (test-plan branch only — see Test-Plan Branch)
 Verdict:FAIL → Fix Plan
 Fix Plan     → Re-review (back to Parallel Review with same agents)
 Re-review    → Synthesize → Verdict (same cycle)
@@ -93,10 +93,10 @@ different approach rather than incremental fixes.
 ## Persistence (compaction resilience)
 
 For long reviews (multiple agents, re-review cycles), save state to a file so work survives
-context compaction. Use `./swarm-report/plan-review-state.md` with this structure:
+context compaction. Use `./swarm-report/multiexpert-review-state.md` with this structure:
 
 ```markdown
-# Plan Review State
+# Multi-Expert Review State
 Source: {plan_mode | file:<path> | conversation}
 Review type: {implementation-plan | test-plan}
 Cycle: {1 | 2 | 3} of 3
@@ -123,7 +123,7 @@ Status: {discovering | reviewing | synthesizing | fixing | done}
 
 The `Review type` field records which protocol branch applies:
 - `implementation-plan` — default behavior (Steps 1–5 below, verdicts PASS/CONDITIONAL/FAIL)
-- `test-plan` — test-plan branch (see [Test-Plan Review Branch](#test-plan-review-branch)),
+- `test-plan` — test-plan branch (see [Test-Plan Branch](#test-plan-branch)),
   verdicts PASS/WARN/FAIL
 
 **Rules:**
@@ -165,7 +165,7 @@ combined with OR — any one is enough:
    signal.
 
 If either signal fires → the plan is a **test-plan**. Record `Review type: test-plan` in the
-state file and follow the [Test-Plan Review Branch](#test-plan-review-branch) instead of the
+state file and follow the [Test-Plan Branch](#test-plan-branch) instead of the
 default flow. Otherwise record `Review type: implementation-plan` and proceed with Step 2
 unchanged.
 
@@ -307,7 +307,7 @@ Call these out explicitly in the verdict.
 Present the synthesized result:
 
 ```
-## Plan Review Verdict: {PASS | CONDITIONAL | FAIL}
+## Multi-Expert Review Verdict: {PASS | CONDITIONAL | FAIL}
 
 ### Blockers (must fix before implementing)
 - {issue} — raised by {agent(s)}, severity: critical
@@ -372,12 +372,12 @@ Confirm the plan is ready. Say so explicitly and proceed to implementation.
    The remaining issues may require a fundamentally different approach. Let's discuss before
    another iteration."
 
-## Test-Plan Review Branch
+## Test-Plan Branch
 
 This branch activates **only** when Step 1's detector classified the input as a test-plan
 (`Review type: test-plan`). For implementation plans the branch is inert — the default flow
 (Steps 2–5 above) runs unchanged. This preserves backward compatibility: nothing changes for
-existing implementation-plan reviews.
+existing implementation-plan runs.
 
 ### Scope
 

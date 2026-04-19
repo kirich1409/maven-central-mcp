@@ -102,9 +102,10 @@ selected branch as `test_plan_source` in the receipt.
 
 Read the receipt's YAML frontmatter and load `permanent_path`. Interpret `review_verdict` per
 the canonical definition in `generate-test-plan/SKILL.md` §Receipt: treat `PASS` / `WARN` /
-`skipped` as proceed; `FAIL` and `pending` as blockers that escalate back to the orchestrator.
-Pass the **permanent file** to `manual-tester` as the primary test-plan source. If the
-receipt has a `platform:` field, use it as an additional input to Step 0's override policy.
+`skipped` as proceed; `FAIL` and `pending` as blockers that escalate back to `feature-flow`
+for revision via `multiexpert-review` before acceptance runs. Pass the **permanent file** to
+`manual-tester` as the primary test-plan source. If the receipt has a `platform:` field, use
+it as an additional input to Step 0's override policy.
 
 #### Branch 2 — Permanent file exists without receipt (`test_plan_source: mounted`)
 
