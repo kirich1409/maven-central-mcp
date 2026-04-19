@@ -132,10 +132,10 @@ Between creating a plan and reviewing it, optionally insert a `design-options` s
 
 If any trigger fires, invoke `developer-workflow:design-options` with:
 - Slug
-- Spec artifact path (`swarm-report/<slug>-spec.md` or `<slug>-plan.md`)
-- Research artifact path (optional)
+- Spec / plan artifact path — any of `docs/specs/<YYYY-MM-DD>-<slug>.md` (from `write-spec`), `swarm-report/<slug>-plan.md`, or `swarm-report/<slug>-decomposition.md`
+- Research artifact path (optional) — `swarm-report/<slug>-research.md`
 
-The skill launches 2-3 `architecture-expert` agents in parallel under distinct style constraints (Minimal / Clean / Pragmatic), presents the options as `swarm-report/<slug>-design-options.md`, and waits for the user's choice. Final selected option is persisted to `swarm-report/<slug>-design.md`, which feeds Plan Review.
+The skill launches 2–3 `architecture-expert` agents in parallel under distinct style constraints (Minimal / Clean / Pragmatic), presents the options as `swarm-report/<slug>-design-options.md`, and waits for the user's choice. The chosen option is persisted to `swarm-report/<slug>-design.md`. When this stage ran, pass that path to Plan Review as additional context alongside the plan/decomposition artifact.
 
 **Skip** for tasks where a single approach is obvious, bug fixes with a pre-determined fix direction, or single-file changes — overhead not justified.
 
