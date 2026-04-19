@@ -14,7 +14,7 @@ Captured manually via direct agent invocation on the fixtures in this directory.
 - No engine error prefix (normal review path)
 - No receipt written (profile has no `receipt:` section)
 
-**Sample observed findings:** 6 issues total (2 major, 3 minor, 1 major). Touched: cache invalidation coverage, multi-instance consistency contract, write ordering, domain/infra boundary, fallback contract specificity, latency-budget decomposition. All architecture-domain findings — consistent with invoked agent specialty.
+**Sample observed findings:** 6 issues total (3 major, 3 minor). Touched: cache invalidation coverage, multi-instance consistency contract, write ordering, domain/infra boundary, fallback contract specificity, latency-budget decomposition. All architecture-domain findings — consistent with invoked agent specialty.
 
 ## Fixture: `test-plan.md` (test-plan profile)
 
