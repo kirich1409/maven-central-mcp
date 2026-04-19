@@ -205,13 +205,9 @@ Available sections (include only those that apply):
 
 ### 7.3 Detect visual changes
 
-Look at changed file paths for:
-- Android/Compose: `*Screen.kt`, `*Composable.kt`, `res/layout/`, `res/drawable/`
-- Compose Multiplatform: Kotlin UI patterns + `commonMain` UI dirs
-- Web: `*.tsx`, `*.jsx`, `*.css`, `*.scss`, `*.html`
-- iOS: `*.swift` (SwiftUI), `*.xib`, `*.storyboard`
+Scan `git diff --name-only $BASE...HEAD` for UI file patterns (Android/Compose, Compose Multiplatform, Web, iOS). On a match, include the "Screenshots / demo" section and prompt the user for attachments in `--draft`, `--promote`, and default modes; `--refresh` preserves the existing Screenshots content untouched. Omit the section entirely when no UI files changed.
 
-If visual changes detected — include "Screenshots / demo" section and prompt the user (in `--draft` and `--promote` modes) for attachments. `--refresh` preserves existing Screenshots content.
+Full per-stack file-path patterns and mode-by-mode behaviour — see `references/visual-change-detection.md`.
 
 ### 7.4 Preserve user edits on refresh/promote
 
@@ -335,18 +331,16 @@ Output differs by status (see "Output templates" below).
 
 ## Lifecycle integration (informational)
 
-Orchestrators (`feature-flow`, `bugfix-flow`) invoke this skill at these milestones:
+`feature-flow` and `bugfix-flow` call `/create-pr --draft` after `implement` and `/create-pr --promote` after `acceptance` passes. Mid-flow `--refresh` is not currently wired in — invoke it manually when the PR body should reflect intermediate progress. The orchestrator owns *when* to invoke; this skill owns *how*.
 
-```
-implement first pass → push → /create-pr --draft
-finalize (runs after implement, before acceptance — multi-round code-quality loop)
-acceptance
-all local checks PASS → /create-pr --promote
-```
+Pipeline milestone diagram and wiring details — see `references/lifecycle-integration.md`.
 
-Both orchestrators (`feature-flow`, `bugfix-flow`) call `/create-pr --draft` after `implement` and `/create-pr --promote` after `acceptance` passes. Mid-flow `--refresh` calls (e.g., after each finalize round, after fix loops) are not currently wired in — user or orchestrator can invoke `/create-pr --refresh` manually if the PR body should reflect intermediate progress.
+---
 
-The orchestrator owns deciding *when* to invoke; this skill owns *how*.
+## Additional resources
+
+- `references/visual-change-detection.md` — per-stack file-path patterns that mark a PR as visual, plus mode-by-mode Screenshots section behaviour.
+- `references/lifecycle-integration.md` — orchestrator pipeline milestones and current wiring.
 
 ---
 
