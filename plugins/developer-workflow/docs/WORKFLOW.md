@@ -48,9 +48,9 @@ IDEA / FEATURE REQUEST
   |                Artifacts: docs/testplans/<slug>-test-plan.md (permanent)
   |                           swarm-report/<slug>-test-plan.md (receipt)
   v
-[test-multiexpert-review] ---- multiexpert-review with test-plan profile (PASS / WARN / FAIL)
-  |                      FAIL → revise loop back to [test-plan] (max 3 cycles)
-  |                      Artifact: receipt review_verdict updated
+[test-plan-review] ---- multiexpert-review with test-plan profile (PASS / WARN / FAIL)
+  |                 FAIL → revise loop back to [test-plan] (max 3 cycles)
+  |                 Artifact: receipt review_verdict updated
   v
   |   ┌────────────── for each task ──────────────┐
   |   │                                            │
