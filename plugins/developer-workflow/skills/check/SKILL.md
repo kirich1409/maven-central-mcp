@@ -1,19 +1,21 @@
 ---
 name: check
 description: >-
-  Run all mechanical verification checks on the project — build, static analysis (lint),
-  tests, and typecheck — in a single command. Reusable utility called by any stage that
+  This skill should be used when the user asks to "check the project", "run tests",
+  "verify build", "does it build?", "smoke check", "make sure nothing is broken",
+  "validate the branch", "after I edited X run checks", "проверь проект",
+  "запусти проверки", "собери проект", "прогони тесты", "все ли чисто",
+  "ничего не сломал?", or when a pipeline stage needs to confirm that code
+  modifications did not break anything.
+
+  Runs mechanical verification checks — build, static analysis (lint), tests, and
+  typecheck — in a single command. Auto-detects project tooling (Gradle, npm/pnpm/yarn,
+  cargo, Swift SPM, Xcode, Python, Go, Makefile) and runs the appropriate commands.
+  Does NOT modify code — it only verifies. Reusable utility called by any stage that
   modifies code: implement, finalize, migration skills, or directly by the user.
 
-  Auto-detects project tooling (Gradle, npm/pnpm/yarn, cargo, Swift SPM, Xcode, Python,
-  Go, Makefile) and runs the appropriate commands. Does NOT modify code — it only verifies.
-
-  Use when: "check the project", "run tests", "verify build", "does it build?", "smoke check",
-  "make sure nothing is broken", "validate the branch", "after I edited X run checks",
-  "проверь проект", "запусти проверки", "собери проект", "прогони тесты", "все ли чисто",
-  "ничего не сломал?", or when a pipeline stage needs to confirm that code modifications
-  did not break anything. Do NOT use for code review (that is finalize Phase A), functional
-  acceptance testing (use acceptance), or exploratory QA (use bug-hunt).
+  Do NOT use for code review (that is finalize Phase A), functional acceptance testing
+  (use acceptance), or exploratory QA (use bug-hunt).
 ---
 
 # Check
@@ -119,7 +121,7 @@ Default behaviour: **sequential, fail-fast**. Run checks in this order (whicheve
 3. Typecheck
 4. Tests
 
-On the first failure — stop, report failure with stderr excerpt, let the caller decide. This matches the typical fix cycle: you cannot meaningfully review test output if the code does not compile.
+On the first failure — stop, report failure with stderr excerpt, let the caller decide. This matches the typical fix cycle: test output cannot be meaningfully reviewed if the code does not compile.
 
 ### Opt-in modes (via caller's input)
 
