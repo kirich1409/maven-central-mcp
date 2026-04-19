@@ -69,10 +69,11 @@ flowchart TD
     next_task -->|Yes| impl
     next_task -->|No| create_pr
 
-    create_pr[/create-pr --promote/] --> handoff([Hand-off to user])
-    handoff --> triage[/triage-feedback/]
-    triage -->|FIXABLE items| impl
-    triage -->|Nothing actionable| done([PR in user's hands])
+    create_pr[/create-pr --promote/] --> drive[/drive-to-merge/]
+    drive -->|CI failure / review| impl
+    drive -->|All green + approved| merge_gate{User: merge?}
+    merge_gate -->|Merge| done([Merged])
+    merge_gate -->|Stop| blocked([Blocker surfaced])
 
     style research fill:#e1f5fe
     style decompose fill:#e1f5fe
@@ -84,9 +85,10 @@ flowchart TD
     style draft_pr fill:#f3e5f5
     style acceptance fill:#fff3e0
     style create_pr fill:#f3e5f5
-    style triage fill:#f3e5f5
-    style handoff fill:#ffcdd2
+    style drive fill:#f3e5f5
+    style merge_gate fill:#ffcdd2
     style done fill:#c8e6c9
+    style blocked fill:#ffcdd2
     style redirect_bug fill:#ffcdd2
     style escalate_tp fill:#ffcdd2
 ```
@@ -98,7 +100,8 @@ flowchart TD
 | Profile confirmation | Ask user to confirm feature profile |
 | PARTIAL acceptance | User decides: fix now or ship as-is |
 | TestPlanReview FAIL after 3 revise cycles | User picks: accept WARN manually, revise spec, or rerun with `--skip-test-plan` |
-| After `create-pr` | Orchestrator stops; user runs `triage-feedback` when review feedback arrives and decides whether to resume at `implement` |
+| `drive-to-merge` merge gate | Final merge always requires explicit user confirmation (per memory) |
+| `drive-to-merge` blocker | True DISCUSSION on P0/P1, unresolvable rebase, 3× same-signature CI fail, integrity mismatch |
 | Escalation | Scope explosion, 3× same failure, architectural decision needed |
 
 ### Backward transition limits
@@ -153,10 +156,11 @@ flowchart TD
     user_decision -->|Fix| impl
     user_decision -->|Ship| create_pr
 
-    create_pr[/create-pr --promote/] --> handoff([Hand-off to user])
-    handoff --> triage[/triage-feedback/]
-    triage -->|FIXABLE items| impl
-    triage -->|Nothing actionable| done([PR in user's hands])
+    create_pr[/create-pr --promote/] --> drive[/drive-to-merge/]
+    drive -->|CI failure / review| impl
+    drive -->|All green + approved| merge_gate{User: merge?}
+    merge_gate -->|Merge| done([Merged])
+    merge_gate -->|Stop| blocked([Blocker surfaced])
 
     style debug fill:#e1f5fe
     style plan fill:#e1f5fe
@@ -165,8 +169,9 @@ flowchart TD
     style draft_pr fill:#f3e5f5
     style acceptance fill:#fff3e0
     style create_pr fill:#f3e5f5
-    style triage fill:#f3e5f5
-    style handoff fill:#ffcdd2
+    style drive fill:#f3e5f5
+    style merge_gate fill:#ffcdd2
+    style blocked fill:#ffcdd2
     style stop_nr fill:#ffcdd2
     style stop_esc fill:#ffcdd2
     style done fill:#c8e6c9
@@ -181,7 +186,8 @@ flowchart TD
 | Bug not reproducible | Stop, ask for more info |
 | Debug escalation | Architectural issue or needs user decision |
 | PARTIAL acceptance | User decides: fix now or ship as-is |
-| After `create-pr` | Orchestrator stops; user runs `triage-feedback` when review feedback arrives and decides whether to resume at `implement` |
+| `drive-to-merge` merge gate | Final merge always requires explicit user confirmation (per memory) |
+| `drive-to-merge` blocker | True DISCUSSION on P0/P1, unresolvable rebase, 3× same-signature CI fail, integrity mismatch |
 
 ### Backward transition limits
 

@@ -325,11 +325,11 @@ Output differs by status (see "Output templates" below).
 
 **Promoted (`--promote`):**
 > PR promoted to ready for review: `<url>`
-> Monitor CI and reviewer feedback. Use `/triage-feedback` on review comments when they arrive.
+> Next: invoke `/drive-to-merge` (or `/drive-to-merge --auto`) to autonomously monitor CI, handle review comments, and drive the PR to merge.
 
 **Default ready:**
 > PR created: `<url>`
-> Monitor CI. Use `/triage-feedback` on review comments when they arrive.
+> Next: invoke `/drive-to-merge` to autonomously monitor CI, handle review comments, and drive the PR to merge.
 
 ---
 

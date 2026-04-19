@@ -53,13 +53,13 @@ Installing this plugin automatically pulls `developer-workflow-experts`. Install
 | Skill | Purpose |
 |---|---|
 | `/create-pr` | Create a draft or ready GitHub PR / GitLab MR with generated metadata |
-| `/triage-feedback` | Analyze and prioritize review comments or pasted feedback; optional post-triage reply/resolve |
+| `/drive-to-merge` | Autonomous CI-monitor + review-handler + merge loop: categorize comments inline, propose concrete fixes, delegate, reply, resolve threads, re-request review (Copilot + humans), poll, confirm merge with user |
 
 ### Orchestrators
 | Skill | Purpose |
 |---|---|
-| `/feature-flow` | End-to-end feature pipeline: research → decompose → multiexpert-review → implement → acceptance → create-pr |
-| `/bugfix-flow` | End-to-end bug fix: debug → implement → acceptance → create-pr |
+| `/feature-flow` | End-to-end feature pipeline: research → decompose → multiexpert-review → implement → acceptance → create-pr → drive-to-merge |
+| `/bugfix-flow` | End-to-end bug fix: debug → implement → acceptance → create-pr → drive-to-merge |
 
 ## Agents (1)
 

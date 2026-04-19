@@ -199,15 +199,19 @@ Invoke `developer-workflow:create-pr` with the `--promote` argument.
 
 > Stage: Acceptance → PR (promoted to ready)
 
-### 4.2 Hand-off to user
+### 4.2 Drive to merge
 
-The orchestrator stops after `create-pr` finishes. CI monitoring and merge
-execution are outside this pipeline.
+After `create-pr` marks the PR ready, the orchestrator invokes
+`developer-workflow:drive-to-merge`. That skill autonomously monitors CI,
+handles review comments (categorize → propose concrete fixes → delegate →
+reply → resolve), re-requests review including Copilot, polls via
+`ScheduleWakeup`, and asks the user only for the final merge confirmation or
+when a true blocker arises.
 
-When review feedback arrives, the user invokes
-`developer-workflow:triage-feedback` to categorize and prioritize it. The
-resulting report becomes the input for a new Implement cycle if FIXABLE items
-exist.
+> Stage: PR (ready) → Drive to merge → Merged
+
+Use `drive-to-merge --auto` to skip the per-round approval gate; the merge
+gate always requires explicit confirmation.
 
 ---
 
@@ -236,9 +240,11 @@ The orchestrator **stops and waits for the user** at:
 - Bug not reproducible (need more info)
 - Debug escalation (architectural issue, needs decision)
 - PARTIAL acceptance verdict
-- After `create-pr` — hand-off to user. User runs `triage-feedback` when review
-  feedback arrives and decides whether to resume at `implement` with FIXABLE items;
-  CI monitoring and merge execution are outside this pipeline.
+- `drive-to-merge` merge gate — final `gh pr merge` / `glab mr merge` always requires
+  explicit user confirmation, regardless of mode.
+- `drive-to-merge` blockers — true DISCUSSION items on P0/P1, unresolvable rebase
+  conflicts, 3 consecutive CI failures with the same error signature, integrity
+  mismatch on a reply thread.
 
 ---
 

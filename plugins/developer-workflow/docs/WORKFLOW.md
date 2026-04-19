@@ -78,7 +78,7 @@ IDEA / FEATURE REQUEST
   |   │
   └───┘ next task
   v
-PR CREATED (all tasks) ---- hand-off to user; triage-feedback triages review comments when they arrive
+PR CREATED (all tasks) ---- drive-to-merge: autonomous CI + review loop; user confirms final merge
 ```
 
 **PR granularity** is decided by the orchestrator:
@@ -107,7 +107,7 @@ BUG REPORT / ISSUE
 [create-pr] ---- Draft PR -> Ready for Review
   |                Artifact: swarm-report/<slug>-pr.md
   v
-PR CREATED ---- hand-off to user; triage-feedback triages review comments when they arrive
+PR CREATED ---- drive-to-merge: autonomous CI + review loop; user confirms final merge
 ```
 
 
@@ -374,7 +374,7 @@ artifact required.
 | Implement | `implement` | Task + optional artifacts (`research.md`, `debug.md`, `plan.md`) | `<slug>-implement.md`: changes summary, files, decisions + `<slug>-quality.md`: gate results |
 | Acceptance | `acceptance` | Spec source (requirements / `debug.md` reproduction steps) + test-plan receipt (when available) + running app | `<slug>-acceptance.md`: VERIFIED / FAILED / PARTIAL with bug list; includes `test_plan_source: receipt / mounted / on-the-fly / absent` |
 | PR | `create-pr` | Branch with commits | PR URL |
-| Triage | `triage-feedback` | PR comments / pasted text | `<slug>-triage.md`: categorized, prioritized, grouped action plan |
+| Drive to merge | `drive-to-merge` | Open PR/MR | Autonomous CI + review loop; in-session decision tables; merged PR or surfaced blocker. State file: `<slug>-drive-state.md` (resumption only, not user-editable) |
 
 ### Pipeline Cycles
 
@@ -383,17 +383,18 @@ The pipeline is **not linear** — stages form feedback loops when issues are fo
 ```
                          ┌────── FAILED ──────┐
                          │                    v
-research/debug ──→ implement ──→ acceptance ──→ create-pr ──→ (user merges)
-                     ^  │            │
-                     │  │            │ PARTIAL: user decides
-                     │  │            │   fix → back to implement
-                     │  │            │   ship → proceed to create-pr
-                     │  └── inner ───┘
-                     │    quality loop
-                     │    (build/lint/
-                     │     tests/review)
-                     │
-                     └── review feedback (triage-feedback → FIXABLE items → implement)
+research/debug ──→ implement ──→ acceptance ──→ create-pr ──→ drive-to-merge ──→ merged
+                     ^  │            │                              │
+                     │  │            │ PARTIAL: user decides         │ CI fail / review fixes
+                     │  │            │   fix → back to implement     │
+                     │  │            │   ship → proceed to create-pr │
+                     │  └── inner ───┘                               │
+                     │    quality loop                               │
+                     │    (build/lint/                               │
+                     │     tests/review)                             │
+                     │                                               │
+                     └─────── drive-to-merge delegation ─────────────┘
+                              (FIXABLE items, CI-failure code-fixes)
 ```
 
 **Acceptance → Implement loop:**
@@ -413,12 +414,19 @@ research/debug ──→ implement ──→ acceptance ──→ create-pr ─�
 - `/check` invoked between fixes
 - Max 3 rounds; PASS when no BLOCK remains; ESCALATE otherwise
 
-**PR review loop:**
-- `triage-feedback` categorizes and prioritizes the reviewer comments into a
-  structured report. FIXABLE items feed back into `implement` on user's call.
+**PR drive-to-merge loop:**
+- `drive-to-merge` owns the round. It fetches comments, categorizes them inline,
+  proposes concrete fixes (edit snippets or delegation instructions), delegates
+  code changes to `implement` / `debug`, posts replies, resolves threads,
+  re-requests review (Copilot + humans), and polls for new activity.
+- The skill shows a decision table per round; by default it waits for `approve`,
+  with `--auto` it proceeds without waiting. The final merge step always asks.
 - If review requires significant code changes, the full quality path still applies:
-  `implement` → `finalize` → `acceptance` → update PR. Do not skip `finalize` on review-driven fixes; the code-quality gates apply to fix commits too.
-- CI monitoring and merge execution are done by the user outside this pipeline.
+  delegation goes through `implement` (which runs its quality loop) rather than
+  direct edits. `finalize` is re-invoked only when the change is large enough to
+  warrant another full code-quality pass — the orchestrator decides.
+- CI diagnosis, infra-flake retry, rebase-when-behind, and merge are all inside
+  `drive-to-merge`. The user is consulted only at merge or on surfaced blockers.
 
 **Loop limits:**
 - Acceptance → Implement: max 3 round-trips. After that → escalate
@@ -453,7 +461,7 @@ Each artifact includes:
 | `kmp-migration` | Implement (Migration) | Module migration to Kotlin Multiplatform |
 | `migrate-to-compose` | Implement (Migration) | View -> Compose migration with visual baseline |
 | `create-pr` | PR | PR/MR creation: title, description, labels, reviewers |
-| `triage-feedback` | Post-PR | Analyze, categorize, and prioritize feedback (PR comments or pasted text). Produces action plan. Optionally posts replies + resolves threads via an editable manifest on explicit apply trigger for terminal-verdict items (PRAISE / OUT_OF_SCOPE / NO_ACTION, plus NIT with NO_ACTION); never edits code |
+| `drive-to-merge` | Post-PR | Autonomous orchestrator: monitors CI, diagnoses failures, fetches and categorizes review comments inline, proposes concrete fixes, delegates to `implement` / `debug`, posts replies, resolves threads, re-requests review (Copilot + humans), polls for activity via `ScheduleWakeup`, loops until merged. In-session decision tables, no user-editable manifest. Final merge step always requires user confirmation. |
 | `generate-test-plan` | Plan / Acceptance | Structured test plan from specification |
 | `acceptance` | Acceptance | Acceptance verification on live app — features and bug fixes |
 | `bug-hunt` | Acceptance | Undirected bug hunting without a specification |

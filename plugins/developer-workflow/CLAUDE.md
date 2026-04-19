@@ -45,5 +45,5 @@ Skills in this plugin delegate to engineer agents (kotlin-engineer / compose-dev
 - Verification utility: `check` — reusable mechanical-check runner (build + lint + typecheck + tests), invoked by `implement`, `finalize`, and any code-modifying skill
 - Code-quality pass: `finalize` — multi-round review-and-fix loop (code-reviewer → /simplify → pr-review-toolkit trio → expert reviews) that runs between `implement` and `acceptance`
 - QA: `generate-test-plan`, `acceptance`, `bug-hunt`
-- PR: `create-pr`, `triage-feedback`
+- PR: `create-pr`, `drive-to-merge`
 - Orchestrators: `feature-flow`, `bugfix-flow`
