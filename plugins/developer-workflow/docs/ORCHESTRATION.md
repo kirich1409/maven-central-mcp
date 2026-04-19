@@ -171,16 +171,14 @@ default like `library`.
 
 | # | Gate | Action | Agent |
 |---|------|--------|-------|
-| 1 | Build | Compile the project, resolve all errors | Implementation agent |
-| 2 | Static analysis | Lint, formatting, unused imports — fix violations | Implementation agent |
-| 3 | Tests | Run unit + integration tests, fix failures | Implementation agent |
-| 4 | Semantic self-review | Compare original intent ↔ actual `git diff` | `code-reviewer` agent |
-| 5 | Expert reviews | Parallel domain-specific reviews (only when triggered) | Specialist agents |
-| 6 | Intent check | Re-read original task + plan, verify the diff addresses them | Orchestrator |
+| 1 | Mechanical checks | Invoke `/check` — detects project tooling and runs build + lint + typecheck + tests with fail-fast; fix reported issues, re-invoke until PASS | Implementation agent + `/check` skill |
+| 2 | Semantic self-review | Compare original intent ↔ actual `git diff` | `code-reviewer` agent |
+| 3 | Expert reviews | Parallel domain-specific reviews (only when triggered) | Specialist agents |
+| 4 | Intent check | Re-read original task + plan, verify the diff addresses them | Orchestrator |
 
 ### Separation of author and reviewer
 
-The agent that wrote the code must NOT perform the semantic self-review (gate 4). Launch the `code-reviewer` agent that receives only:
+The agent that wrote the code must NOT perform the semantic self-review (gate 2). Launch the `code-reviewer` agent that receives only:
 
 1. The original task description (verbatim)
 2. The plan artifact (`swarm-report/<slug>-plan.md`) — if exists
@@ -193,7 +191,7 @@ Questions the reviewer must answer:
 - Is there scope creep beyond the plan?
 - Are acceptance criteria from the plan met?
 
-### Invocation template for gate 4
+### Invocation template for gate 2
 
 The orchestrator prepares the diff before launching the agent:
 1. `git diff $(git merge-base origin/main HEAD)..HEAD > swarm-report/<slug>-diff.txt`
@@ -227,7 +225,7 @@ If no trigger matches — skip expert reviews entirely.
 ### Iteration cap
 
 - **Per gate:** max 3 fix attempts. If still failing after 3 — stop and escalate to user with the failure details and what was tried.
-- **Total quality loop:** max 5 full iterations (gate 1–6 cycles). If the loop does not converge — escalate. This prevents infinite fix-break-fix loops.
+- **Total quality loop:** max 5 full iterations (gate 1–4 cycles). If the loop does not converge — escalate. This prevents infinite fix-break-fix loops.
 
 ### Quality report artifact
 
@@ -241,13 +239,13 @@ After the loop completes (pass or escalation), save `swarm-report/<slug>-quality
 
 This artifact is the receipt for the Verify stage — Verify must not start without it.
 
-### Verdict handling (gate 4)
+### Verdict handling (gate 2)
 
 | Verdict | Orchestrator action |
 |---------|---------------------|
-| PASS | Proceed to gate 5 (expert reviews) |
+| PASS | Proceed to gate 3 (expert reviews) |
 | WARN | Proceed, but include major issues in `swarm-report/<slug>-quality.md` under "Acknowledged risks". If creating a PR, add these to the PR description. |
-| FAIL | Backward transition → Implement. Fix critical issues, re-run gate 4 (max 3 cycles). |
+| FAIL | Backward transition → Implement. Fix critical issues, re-run gate 1 (`/check`) after edits, then gate 2 (max 3 cycles). |
 
 ## Testing Strategy in Planning
 

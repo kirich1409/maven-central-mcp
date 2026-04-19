@@ -14,10 +14,12 @@ working independently in its own domain (codebase, web, documentation, dependenc
 architecture). Results are reviewed and validated by `business-analyst`.
 This ensures decisions are made based on data, not solely on the model's training data.
 
-Quality is enforced by the Quality Loop — six sequential gates from compilation to intent
-verification. Key principle: the author of the code never reviews their own code — gate 4
-launches a separate `code-reviewer` agent that receives only the task description, plan,
-and git diff, without any implementation context. Receipt-based gating ensures no stage
+Quality is enforced by the Quality Loop — four sequential gates from mechanical checks to
+intent verification. Key principle: the author of the code never reviews their own code —
+gate 2 launches a separate `code-reviewer` agent that receives only the task description,
+plan, and git diff, without any implementation context. Mechanical verification (build,
+lint, typecheck, tests) is delegated to the reusable `/check` skill, which auto-detects
+the project stack. Receipt-based gating ensures no stage
 starts without the previous stage's artifact. Re-anchoring at every stage transition prevents
 drift from the original intent.
 
@@ -52,7 +54,7 @@ IDEA / FEATURE REQUEST
   |   v                                            │
   | [implement] ---- Code + simplify + Quality Loop
   |   |  |-- specialist agents                     │
-  |   |  '-- Quality Loop (6 gates)                │
+  |   |  '-- Quality Loop (4 gates)                │
   |   |        Artifacts: <slug>-implement.md      │
   |   |                   <slug>-quality.md        │
   |   v                                            │
@@ -115,37 +117,34 @@ before starting work.
 ```
                               Iteration cap: max 5 full cycles
                               Per gate: max 3 fix attempts
-     ___________________________________________________________________
-    |                                                                   |
-    v                                                                   |
-+--------+    +---------+    +-------+    +-------------+    +--------+ |
-| Gate 1 |--->| Gate 2  |--->| Gate 3|--->|   Gate 4    |--->| Gate 5 | |
-| Build  |    | Static  |    | Tests |    | code-       |    | Expert | |
-|        |    | Analysis|    |       |    | reviewer    |    | Reviews| |
-+--------+    +---------+    +-------+    +-------------+    +--------+ |
-    |fail         |fail          |fail         |                  |     |
-    v             v              v             v                  v     |
- [fix]         [fix]          [fix]     PASS: gate 5        +--------+ |
-    |             |              |      WARN: gate 5 +      | Gate 6 | |
-    '-----.-------'-------.------'       acknowledged risks | Intent  | |
-          |               |             FAIL: --> Implement | Check   | |
-          '--------.------'                                 +--------+ |
-                   |                                           |       |
-                   '------- (fix cycle) -----------------------'-------'
+     _________________________________________________________
+    |                                                         |
+    v                                                         |
++------------+    +-------------+    +--------+    +--------+ |
+|  Gate 1    |--->|   Gate 2    |--->| Gate 3 |--->| Gate 4 | |
+| /check     |    | code-       |    | Expert |    | Intent | |
+| (mech.)    |    | reviewer    |    | Reviews|    | Check  | |
++------------+    +-------------+    +--------+    +--------+ |
+     |fail             |                  |            |      |
+     v                 v                  v            v      |
+  [fix cycle:      PASS: gate 3      (by trigger    [fix, if   |
+   re-invoke        WARN: gate 3 +    only)          drift]   |
+   /check]          acknowledged      fix -> /check   |        |
+     |              risks, gate 4                    v        |
+     |              FAIL: --> Implement        (loop closes)  |
+     '---------------------------------------------------------'
 ```
 
 ### Gates
 
 | # | Gate | Action | Executor |
 |---|------|--------|----------|
-| 1 | Build | Compile project, resolve all errors | Implementation agent |
-| 2 | Static Analysis | Lint, formatting, unused imports | Implementation agent |
-| 3 | Tests | Unit + integration tests, fix failures | Implementation agent |
-| 4 | Semantic Self-Review | Compare intent vs. `git diff` | `code-reviewer` agent |
-| 5 | Expert Reviews | Parallel domain-specific reviews (by trigger) | Specialist agents |
-| 6 | Intent Check | Re-read task + plan, verify correspondence | Orchestrator |
+| 1 | Mechanical checks | Invoke `/check` — build + lint + typecheck + tests (fail-fast); fix reported issues, re-invoke until PASS | Implementation agent + `/check` skill |
+| 2 | Semantic Self-Review | Compare intent vs. `git diff` | `code-reviewer` agent |
+| 3 | Expert Reviews | Parallel domain-specific reviews (by trigger) | Specialist agents |
+| 4 | Intent Check | Re-read task + plan, verify correspondence | Orchestrator |
 
-### Expert Review Triggers (gate 5)
+### Expert Review Triggers (gate 3)
 
 | Expert | Trigger — changed files touch any of: |
 |--------|---------------------------------------|
@@ -153,27 +152,19 @@ before starting work.
 | `performance-expert` | RecyclerView/LazyColumn, DB queries, image loading, hot loops |
 | `architecture-expert` | New modules, changed dependency direction, public API |
 
-If no trigger fired — gate 5 is skipped.
+If no trigger fired — gate 3 is skipped.
 
-### Verdict Handling (gate 4)
+### Verdict Handling (gate 2)
 
 | Verdict | Orchestrator action |
 |---------|---------------------|
-| **PASS** | Advance to gate 5 (expert reviews) |
-| **WARN** | Advance to gate 5; major issues recorded in `<slug>-quality.md` as "Acknowledged risks" |
-| **FAIL** | Backward transition -> Implement; fix critical issues, re-run gate 4 (max 3 cycles) |
+| **PASS** | Advance to gate 3 (expert reviews) |
+| **WARN** | Advance to gate 3; major issues recorded in `<slug>-quality.md` as "Acknowledged risks" |
+| **FAIL** | Backward transition -> Implement; fix critical issues, re-run gate 1 (`/check`) after edits, then gate 2 (max 3 cycles) |
 
 ### Build System Detection
 
-| Priority | File | Build | Lint | Test |
-|----------|------|-------|------|------|
-| 1 | `Makefile` | `make build` | `make lint` | `make test` |
-| 2 | `package.json` | `npm run build` | `npm run lint` | `npm test` |
-| 3 | `Cargo.toml` | `cargo build` | `cargo clippy` | `cargo test` |
-| 4 | `build.gradle(.kts)` | `./gradlew build` | `./gradlew lint` | `./gradlew test` |
-| 5 | `pom.xml` | `mvn package -q` | `mvn checkstyle:check` | `mvn test` |
-| 6 | `go.mod` | `go build ./...` | `golangci-lint run` | `go test ./...` |
-| 7 | `pyproject.toml` | `pip install -e .` | `ruff check .` | `pytest` |
+Handled by the `/check` skill — it auto-detects Gradle, Node (npm/pnpm/yarn), Cargo, Swift SPM, Python, Go, or Makefile markers and runs the appropriate commands. See [`skills/check/SKILL.md`](../skills/check/SKILL.md) for the full detection matrix and per-stack behaviour.
 
 
 ## 5. Research Consortium
@@ -375,7 +366,7 @@ research/debug ──→ implement ──→ acceptance ──→ create-pr ─�
 - PARTIAL (P2/P3 only) → orchestrator asks user: fix now or ship with known issues
 
 **Implement inner loop:**
-- Quality gates (build → lint → tests → code-reviewer) run inside `implement`
+- Quality gates (mechanical checks via `/check` → code-reviewer → expert reviews → intent check) run inside `implement`
 - Gate failure → fix → re-run gate (max 3 attempts per gate, max 5 full cycles)
 - If not converging → escalate to user
 
@@ -432,16 +423,16 @@ Each artifact includes:
 
 | Agent | Stage | Role |
 |-------|-------|------|
-| `code-reviewer` | Quality (gate 4) | Independent review: intent vs. diff |
+| `code-reviewer` | Quality (gate 2) | Independent review: intent vs. diff |
 | `kotlin-engineer` | Implement | Kotlin business logic, data/domain layer, ViewModel |
 | `compose-developer` | Implement | Compose UI: screens, components, themes, navigation |
-| `architecture-expert` | Research, Quality (gate 5) | Module structure, dependency direction, API design |
+| `architecture-expert` | Research, Quality (gate 3) | Module structure, dependency direction, API design |
 | `business-analyst` | Research (auto-review) | Completeness, product sense, practicality |
-| `security-expert` | Quality (gate 5) | Auth, encryption, token storage, OWASP |
-| `performance-expert` | Quality (gate 5) | N+1, memory leaks, UI jank, hot loops |
-| `build-engineer` | Quality (gate 5) | Gradle config, build performance, module structure |
+| `security-expert` | Quality (gate 3) | Auth, encryption, token storage, OWASP |
+| `performance-expert` | Quality (gate 3) | N+1, memory leaks, UI jank, hot loops |
+| `build-engineer` | Quality (gate 3) | Gradle config, build performance, module structure |
 | `manual-tester` | Verify | QA on live app: test cases, bug reports |
-| `ux-expert` | Quality (gate 5) | UX review, accessibility, platform conventions |
+| `ux-expert` | Quality (gate 3) | UX review, accessibility, platform conventions |
 | `devops-expert` | PR / Merge | CI/CD, deployment, release automation |
 
 
