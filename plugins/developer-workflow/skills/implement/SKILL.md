@@ -110,17 +110,17 @@ If simplify produces changes — commit them separately.
 
 Run quality gates sequentially. A failure triggers a fix cycle before advancing.
 
-### Gate 1: Build
-Compile the project. Fix all build errors.
+### Gate 1: Mechanical checks
+Invoke the `/check` skill. It auto-detects the project tooling (Gradle / Node / Cargo / Swift SPM / Python / Go / Makefile) and runs the appropriate build + lint + typecheck + tests in sequence with fail-fast.
 
-### Gate 2: Static analysis
-Lint, formatting, unused imports. Fix violations.
+Fix failures reported by `/check` — they fall into three buckets:
+- Build / typecheck errors — fix the code that broke compilation
+- Lint / static-analysis violations — fix per the tool's output
+- Test failures in scope of current changes — fix; pre-existing failures, note for the quality report but do not fix
 
-### Gate 3: Tests
-Run unit + integration tests. Fix failures that are in scope of current changes.
-Pre-existing failures — note for the report, don't fix.
+After each fix, re-invoke `/check`. Do not proceed to Gate 2 until `/check` returns PASS. If `/check` itself fails for non-code reasons (missing tooling, timeout, network), escalate — do not try to work around it.
 
-### Gate 4: Semantic self-review
+### Gate 2: Semantic self-review
 Launch the `code-reviewer` agent with:
 - Original task description (verbatim)
 - Plan artifact path (if exists)
@@ -131,11 +131,11 @@ Are acceptance criteria met?
 
 | Verdict | Action |
 |---------|--------|
-| PASS | Proceed to gate 5 |
+| PASS | Proceed to gate 3 |
 | WARN | Proceed, note issues in quality report |
-| FAIL | Fix critical issues, re-run gate 4 (max 3 cycles) |
+| FAIL | Fix critical issues, re-run gate 1 (`/check`) after edits, then gate 2 |
 
-### Gate 5: Expert reviews (conditional)
+### Gate 3: Expert reviews (conditional)
 
 Launch only when relevant, in parallel:
 
@@ -145,10 +145,10 @@ Launch only when relevant, in parallel:
 | `performance-expert` | Lists, DB queries, image loading, hot loops, large collections |
 | `architecture-expert` | New modules, dependency direction, public API changes |
 
-No triggers matched → skip.
+No triggers matched → skip. If any expert demands a code change, apply it, re-run gate 1 (`/check`), then proceed.
 
-### Gate 6: Intent check
-Re-read original task + plan. Verify the diff addresses them. If drift detected — fix or flag.
+### Gate 4: Intent check
+Re-read original task + plan. Verify the diff addresses them. If drift detected — fix or flag. Re-run gate 1 after any fix.
 
 ### Iteration limits
 
@@ -196,12 +196,10 @@ Save to `swarm-report/<slug>-quality.md`:
 ## Gates
 | # | Gate | Result | Attempts |
 |---|------|--------|----------|
-| 1 | Build | PASS/FAIL | N |
-| 2 | Static analysis | PASS/FAIL | N |
-| 3 | Tests | PASS/FAIL | N |
-| 4 | Semantic review | PASS/WARN/FAIL | N |
-| 5 | Expert reviews | PASS/SKIP | — |
-| 6 | Intent check | PASS/DRIFT | — |
+| 1 | Mechanical checks (`/check`) | PASS/FAIL | N |
+| 2 | Semantic review | PASS/WARN/FAIL | N |
+| 3 | Expert reviews | PASS/SKIP | — |
+| 4 | Intent check | PASS/DRIFT | — |
 
 ## Issues Found and Fixed
 - <issue> — <fix applied>
