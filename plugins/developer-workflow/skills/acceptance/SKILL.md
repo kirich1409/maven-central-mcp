@@ -229,7 +229,7 @@ before fan-out.
 Before issuing the Step 3 fan-out — but **after** the full check plan has been finalized
 (Step 3 intro resolves base + all conditional triggers) — save the plan and
 compaction-resilient progress to `swarm-report/<slug>-acceptance-state.md`. Symmetric to
-`plan-review`'s state file. This file carries the acceptance run across context compaction —
+`multiexpert-review`'s state file. This file carries the acceptance run across context compaction —
 it is never a receipt, just operational state.
 
 Step ordering: 2.5 dedup probe → Step 3 intro resolves conditional triggers → write the
@@ -578,8 +578,9 @@ canonical field for surfacing unresolved conditions per the per-check schema; no
 
 ### Aggregation — PoLL rules
 
-Acceptance uses the same aggregation protocol as `plan-review` (see `plan-review/SKILL.md`
-§"Aggregation Rules"). Input shape is per-check (not per-reviewer), reduction logic identical:
+Acceptance uses the same aggregation protocol as `multiexpert-review` (see
+`multiexpert-review/SKILL.md` §"Step 4 — Synthesize verdict"). Input shape is per-check
+(not per-reviewer), reduction logic identical:
 
 | Signal | Action |
 |---|---|

@@ -42,6 +42,7 @@ Authoritative grep (`git ls-files | xargs grep -l "plan-review\|plan review"`): 
 - [ ] **AC-R6 (audit final gate — union)** Финальный анти-регрессионный gate: `git ls-files | xargs grep -l "plan-review\|plan review"` возвращает только whitelisted файлы:
   - `docs/specs/2026-04-19-multiexpert-review.md` — эта спека (содержит historical context и AC-R6-правило со ссылками на legacy skill-id)
   - `plugins/developer-workflow/skills/multiexpert-review/SKILL.md` — load-bearing reference на legacy state filename `./swarm-report/plan-review-state.md` в секции «Persistence / Legacy read» (требуется для backward-compat graceful read старого state file в пользовательских worktree-ах)
+  - `plugins/developer-workflow/docs/WORKFLOW.md` — pipeline stage label `[test-plan-review]` в ASCII-диаграмме содержит substring `plan-review`. Это имя стадии оркестратора (State Machine state `TestPlanReview`), а не skill-id; семантически корректно и согласовано с mermaid node-id `test_plan_review` в `ORCHESTRATORS.md`.
   - Все остальные файлы — 0 матчей
 
 ### Engine + profiles (AC-E)

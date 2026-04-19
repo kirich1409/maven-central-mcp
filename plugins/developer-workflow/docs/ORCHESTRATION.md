@@ -291,7 +291,7 @@ Route implementation to the right specialist:
 | Module → KMP | `kmp-migration` skill |
 | Full autonomous feature cycle | `feature-flow` skill |
 | Full autonomous bug-fix cycle | `bugfix-flow` skill |
-| Architectural variability | `design-options` skill (optional pre-plan-review stage) |
+| Architectural variability | `design-options` skill (optional pre-multiexpert-review stage) |
 | Mechanical verification (build/lint/typecheck/tests) | `check` skill |
 | Code-quality pass (review + /simplify + pr-review-toolkit + experts) | `finalize` skill |
 | PR creation and lifecycle management | `create-pr` skill (`--draft` / `--refresh` / `--promote`) |
