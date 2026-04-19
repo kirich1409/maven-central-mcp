@@ -22,7 +22,7 @@ reviewer_roster:
     - when: "a11y|accessibility"
       agent: ux-expert
 
-allow_single_reviewer: false
+allow_single_reviewer: true
 
 verdicts: [PASS, WARN, FAIL]
 

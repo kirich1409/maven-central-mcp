@@ -75,8 +75,8 @@ Select       → Parallel Review
 Review       → Synthesize
 Synthesize   → Verdict
 Verdict:PASS → Done
-Verdict:COND → Fix Artifact   (implementation-plan profile)
-Verdict:WARN → Done           (test-plan profile)
+Verdict:COND → Fix Artifact   (profiles whose alphabet includes CONDITIONAL)
+Verdict:WARN → Done           (profiles whose alphabet includes WARN)
 Verdict:FAIL → Fix Artifact
 Fix Artifact → Re-review (back to Parallel Review with same agents + locked profile)
 Re-review    → Synthesize → Verdict (same cycle)
@@ -167,7 +167,7 @@ Use `profile.reviewer_roster`:
 ### Single-reviewer guard
 
 If exactly 1 agent ended up selected:
-- If `profile.allow_single_reviewer: true` — proceed. Final verdict will carry `## Review Mode: single-perspective` marker; if profile has a receipt, `review_mode: single` is added.
+- If `profile.allow_single_reviewer: true` — proceed. Final verdict carries a `## Review Mode: single-perspective` marker in the output text (not in any receipt — receipt schemas are profile-declared and do not include `review_mode`).
 - If `profile.allow_single_reviewer: false` — fail loud `[multiexpert-review ERROR] NO_REVIEWERS_AVAILABLE: profile <name> requires panel, only <agent> available`.
 
 If 0 agents — same `NO_REVIEWERS_AVAILABLE` error regardless of flag.
