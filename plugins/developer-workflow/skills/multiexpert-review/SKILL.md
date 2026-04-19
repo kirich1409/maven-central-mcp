@@ -1,16 +1,15 @@
 ---
 name: multiexpert-review
 description: >-
-  Review documentation artifacts (plan, spec, test-plan) with a panel of independent expert
-  agents before commit. Use when asked to review a plan, spec, test-plan, or similar
-  documentation artifact. Uses the PoLL (Panel of LLM Evaluators) consensus protocol.
-  Invoke on phrases: "review the plan", "review the spec", "check the plan", "validate the
-  approach", "multi-expert review", "panel review", "план ревью", "проверь план", "оцени план",
-  "check the spec", or after exiting Plan Mode and wanting independent expert evaluation before
-  implementation. Also invoke when the user says "is this plan good?", "what did I miss?",
-  "sanity check this", "review this before I start", "check my approach", or wants multiple
-  viewpoints on an implementation strategy. Do NOT invoke for code review (use code-reviewer
-  agent instead) or PR review.
+  This skill should be used when the user asks to "review the plan", "review the spec",
+  "check the plan", "check the spec", "validate the approach", "multi-expert review",
+  "panel review", "план ревью", "проверь план", "оцени план", "is this plan good?",
+  "what did I miss?", "sanity check this", "review this before I start", or
+  "check my approach" — or after exiting Plan Mode and wanting independent expert
+  evaluation of a plan, spec, or test-plan before implementation. Runs a panel of
+  independent expert agents against a documentation artifact using the PoLL
+  (Panel of LLM Evaluators) consensus protocol. Do NOT invoke for code review
+  (use the code-reviewer agent) or PR review.
 ---
 
 # Multi-Expert Review
@@ -88,48 +87,9 @@ Re-review    → Synthesize → Verdict (same cycle)
 
 ## Persistence (compaction resilience)
 
-Save state to `./swarm-report/multiexpert-review-<slug>-state.md` (or `multiexpert-review-<YYYYMMDD-HHMM>-state.md` if no slug known).
+Save state to `./swarm-report/multiexpert-review-<slug>-state.md` (fallback `multiexpert-review-<YYYYMMDD-HHMM>-state.md` when no slug is known). Update after each significant step; re-read before each action and skip completed steps.
 
-**Slug source** (in priority order):
-1. Explicit caller args (`slug:` field)
-2. Artifact frontmatter `slug:` field
-3. Artifact filename without extension
-4. Timestamp fallback
-
-**Legacy read:** if the slug-qualified file doesn't exist, try `./swarm-report/plan-review-state.md` (legacy from pre-rename era). If found, copy content into the new slug-qualified name and continue on the new file. Do not delete the legacy file — user decides.
-
-**Always write:** new slug-qualified name.
-
-State file structure:
-
-```markdown
-# Multi-Expert Review State
-Source: {plan_mode | file:<path> | conversation}
-Profile: {implementation-plan | test-plan | spec | ...}   # locked at cycle 1
-Profile source: {caller_hint | frontmatter | path | signature | user_prompt}
-Cycle: {1 | 2 | 3} of 3
-Status: {detecting | reviewing | synthesizing | fixing | done}
-
-## Artifact Summary
-{goal, technologies, scope — extracted in Step 1}
-
-## Selected Agents
-- {agent1} (recommended)
-- {agent2} (recommended)
-
-## Reviews Completed
-- [x] {agent1} — {severity counts: N critical, M major, K minor}
-- [ ] {agent2} — pending
-
-## Verdict History
-### Cycle 1: {PASS | CONDITIONAL | FAIL | WARN}
-- Blockers: {list}
-- Improvements: {list}
-
-### Cycle 2: ...
-```
-
-Update after each significant step. Re-read before each action — skip completed steps.
+Full state-file schema, slug precedence, and legacy-file migration — see `references/persistence.md`.
 
 ## Step 1 — Read artifact and detect profile
 
@@ -154,7 +114,7 @@ Cycle-locking, profile validation (negative-list), and inventory-mismatch checks
 
 Find real agents via `Glob("**/agents/*.md")` + built-in subagents from system prompt. Read each agent's frontmatter to confirm. Never invent phantom agents.
 
-**Short-name collision tie-break:** if the same agent short-name resolves to multiple files (e.g., two plugins define `security-expert`), prefer first match in this order: (1) same-plugin as the caller skill, (2) sibling `developer-workflow-*` plugin, (3) any other source. If still ambiguous, fail loud with the dedicated category: `[multiexpert-review ERROR] AMBIGUOUS_REVIEWER: short-name <name> resolves to <paths>`. Distinct from `NO_REVIEWERS_AVAILABLE` (which covers the "agents missing entirely" path) so consumers can branch on intent. In practice the `developer-workflow-*` family guarantees unique short-names — this guard only triggers on non-family plugin conflicts.
+**Short-name collision tie-break:** if the same agent short-name resolves to multiple files, resolve deterministically in this order: (1) same-plugin as the caller skill, (2) sibling `developer-workflow-*` plugin, (3) any other source. If still ambiguous, emit `AMBIGUOUS_REVIEWER`. See `references/error-semantics.md` for full details.
 
 ### Selection per profile
 
@@ -166,11 +126,7 @@ Use `profile.reviewer_roster`:
 
 ### Single-reviewer guard
 
-If exactly 1 agent ended up selected:
-- If `profile.allow_single_reviewer: true` — proceed. Final verdict carries a `## Review Mode: single-perspective` marker in the output text (not in any receipt — receipt schemas are profile-declared and do not include `review_mode`).
-- If `profile.allow_single_reviewer: false` — fail loud `[multiexpert-review ERROR] NO_REVIEWERS_AVAILABLE: profile <name> requires panel, only <agent> available`.
-
-If 0 agents — same `NO_REVIEWERS_AVAILABLE` error regardless of flag.
+If exactly 1 agent remains selected and `profile.allow_single_reviewer: true` — proceed; final verdict carries a `## Review Mode: single-perspective` marker. If `false`, or 0 agents — emit `NO_REVIEWERS_AVAILABLE`. See `references/error-semantics.md` for details.
 
 ### User confirmation
 
@@ -318,19 +274,18 @@ If `profile.receipt` is absent — skip receipt writing.
 
 ## Error semantics
 
-All engine errors produce exactly this prefix on the first line of output:
+All engine errors produce this prefix as the first line of output:
 
 ```
 [multiexpert-review ERROR] <CATEGORY>: <details>
 ```
 
-Categories:
+Consumers (`feature-flow`, `write-spec`, etc.) detect this prefix to distinguish engine errors from ordinary review FAIL verdicts. Full category list and triggering conditions — see `references/error-semantics.md`.
 
-- `UNKNOWN_PROFILE_HINT` — caller hint not in inventory
-- `FORBIDDEN_PROFILE_FIELD` — profile frontmatter contains forbidden field
-- `NO_REVIEWERS_AVAILABLE` — no agents remain after discovery/filtering, or panel required but single
-- `AMBIGUOUS_REVIEWER` — short-name resolves to multiple agent files after the family tie-break
-- `PROFILE_INVENTORY_MISMATCH` — README list vs. `profiles/*.md` presence disagree
-- `ROUTING_NOT_SUPPORTED` — engine reached Step 5 with a source the profile declared `N/A` in `source_routing`
+## Additional resources
 
-Consumers (`feature-flow`, `write-spec`, etc.) detect this prefix to distinguish engine errors from ordinary review FAIL verdicts.
+- `references/persistence.md` — state-file schema, slug precedence, legacy migration
+- `references/error-semantics.md` — engine error categories and tie-break details
+- `profiles/README.md` — profile contract, detection precedence, receipt semantics
+- `profiles/<name>.md` — per-artifact rubric, roster, verdict alphabet, source routing
+- `test-fixtures/` — smoke-test artifacts and baseline reviewer output
