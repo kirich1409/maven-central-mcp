@@ -319,7 +319,7 @@ Invoke `developer-workflow:create-pr` with the `--promote` argument.
 
 `--promote` will:
 1. Refresh the PR body with the final summary (what changed, how to test, artifacts, status table showing all stages PASS).
-2. Mark the PR ready for review (`gh pr ready` / `glab mr update --ready`).
+2. Mark the PR ready for review. The exact platform command (`gh pr ready`, version-specific `glab` flag, etc.) is `create-pr`'s responsibility — the orchestrator does not repeat it here.
 
 > Stage: Acceptance → PR (promoted to ready)
 

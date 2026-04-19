@@ -105,16 +105,18 @@ git diff $BASE...HEAD                  # full diff (for description reasoning)
 
 Look for artifacts in `./swarm-report/` that match the current branch/task slug. Read those that exist:
 
-| Artifact | Purpose in body |
-|---|---|
-| `<slug>-research.md` | Link + 1-sentence abstract in "Context" section |
-| `<slug>-spec.md` | Reference as "Specification" |
-| `<slug>-plan.md` | Reference as "Plan"; acceptance criteria extracted for "How to test" |
-| `<slug>-test-plan.md` | Reference; test cases become checklist in "How to test" |
-| `<slug>-implement.md` | Summary of implementation goes into "What changed" |
-| `<slug>-quality.md` | Gate pass/fail summary for status table |
-| `<slug>-finalize.md` | Round-by-round summary for status table (when finalize skill exists) |
-| `<slug>-acceptance.md` | Pass/fail + verified scenarios for "Verification" section |
+| Artifact | Location | Purpose in body |
+|---|---|---|
+| research | `swarm-report/<slug>-research.md` | Link + 1-sentence abstract in "Context" section |
+| spec | `docs/specs/<YYYY-MM-DD>-<slug>.md` (written by `write-spec`) | Reference as "Specification" |
+| plan | `swarm-report/<slug>-plan.md` | Reference as "Plan"; acceptance criteria extracted for "How to test" |
+| decomposition | `swarm-report/<slug>-decomposition.md` | Reference as "Task breakdown" when present |
+| debug | `swarm-report/<slug>-debug.md` | Root cause + reproduction steps — primary context for bugfix PRs |
+| test plan | `swarm-report/<slug>-test-plan.md` | Reference; test cases become checklist in "How to test" |
+| implement | `swarm-report/<slug>-implement.md` | Summary of implementation goes into "What changed" |
+| quality | `swarm-report/<slug>-quality.md` | Gate pass/fail summary for status table |
+| finalize | `swarm-report/<slug>-finalize.md` | Round-by-round summary for status table (available once the `finalize` skill is installed) |
+| acceptance | `swarm-report/<slug>-acceptance.md` | Pass/fail + verified scenarios for "Verification" section |
 
 Slug resolution:
 1. Prefer slug if orchestrator passed it as argument
@@ -266,7 +268,7 @@ glab mr update --description "<body>"
 ```
 
 Output:
-> Draft PR: `<url>`
+> Draft PR created: `<url>`
 
 ### 9b. Mode `--refresh`
 
@@ -310,7 +312,7 @@ Output differs by status (see "Output templates" below).
 
 **Draft (`--draft` or default → draft):**
 > Draft PR created: `<url>`
-> Next: complete implementation → invoke `/finalize` → `/acceptance` → `/create-pr --promote` to mark ready.
+> Next: complete implementation and local quality checks → `/acceptance` → `/create-pr --promote` to mark ready. (If the `finalize` skill is installed, the orchestrator will also run it between implement and acceptance.)
 
 **Refreshed (`--refresh`):**
 > PR body refreshed: `<url>`
@@ -332,9 +334,12 @@ Orchestrators (`feature-flow`, `bugfix-flow`) invoke this skill at these milesto
 ```
 implement first pass → push → /create-pr --draft
 implement fix loop pushes → (optional) /create-pr --refresh on major fixes
-finalize round complete → push → /create-pr --refresh
 acceptance complete → /create-pr --refresh (adds acceptance results to body)
 all local checks PASS → /create-pr --promote
+
+(When the `finalize` skill is installed, the orchestrator inserts a
+`/finalize` stage between implement and acceptance; it pushes commits
+between rounds and may call /create-pr --refresh at round boundaries.)
 ```
 
 The orchestrator owns deciding *when* to invoke; this skill owns *how*.
