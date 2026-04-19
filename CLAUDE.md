@@ -55,7 +55,7 @@ Each plugin versions independently. To release:
 2. Pick the plugin, bump type (patch/minor/major), and whether to cascade patch-bumps to family dependents (`developer-workflow*` family only — defaults on).
 3. The workflow bumps `plugin.json` + `marketplace.json` (+ `package.json` for `maven-mcp`), commits, creates per-plugin tag `{plugin-name}--v{version}`, publishes `@krozov/maven-central-mcp` to npm if releasing `maven-mcp`, and creates a GitHub Release.
 
-Pre-release checklist in [`docs/PLUGIN-STANDARDS.md`](docs/PLUGIN-STANDARDS.md) §10 stays manual (run `plugin-dev:plugin-validator` on each plugin before clicking Run).
+Pre-release checklist in [`docs/PLUGIN-STANDARDS.md`](docs/PLUGIN-STANDARDS.md) §10 stays manual (run `plugin-dev:plugin-validator` on each plugin before clicking Run). Full release guide with cascade behaviour, failure modes, and rollback procedures: [`docs/RELEASING.md`](docs/RELEASING.md).
 
 ## Worktrees
 
