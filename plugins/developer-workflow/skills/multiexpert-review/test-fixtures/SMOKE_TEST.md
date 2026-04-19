@@ -18,7 +18,7 @@ This harness checks **structural** properties, not content-level correctness. Be
 ## Running a smoke-test manually
 
 1. Pick a fixture, e.g. `plan.md`.
-2. Invoke `multiexpert-review` in a Claude Code session on the fixture. For `spec.md`, you can either rely on frontmatter detection or prepend `profile: spec\n---\n` hint (the `write-spec` callsite does the latter for in-memory drafts — see `write-spec/SKILL.md:538`).
+2. Invoke `multiexpert-review` in a Claude Code session on the fixture. For `spec.md`, you can either rely on frontmatter detection or prepend `profile: spec\n---\n` hint (the `write-spec` callsite does the latter for in-memory drafts — see `write-spec/SKILL.md` section 4.3 "Run multiexpert-review (spec profile)").
 3. Capture the **structural** properties of the run (not the content of individual issues):
    - Which profile the engine detected (logged in state file under `Profile:` and `Profile source:`)
    - Reviewer roster actually invoked
@@ -64,7 +64,7 @@ This harness checks **structural** properties, not content-level correctness. Be
 
 ## What this harness does NOT cover
 
-- Pre/post structural equivalence against the pre-refactor `plan-review` — this would require a baseline captured before commit `8608cbe`, which was not done. Future refactors should capture baseline first; this harness provides the fixture set to do so.
+- Pre/post structural equivalence against the pre-refactor `plan-review` — this would require a baseline captured before the rename/refactor landed (see PR #101), which was not done. Future refactors should capture baseline first; this harness provides the fixture set to do so.
 - Multi-run modal match (3 runs per fixture) — stochasticity smoothing is out of scope for this lightweight harness.
 - Fail-loud error cases (`UNKNOWN_PROFILE_HINT`, `FORBIDDEN_PROFILE_FIELD`, `NO_REVIEWERS_AVAILABLE`, `PROFILE_INVENTORY_MISMATCH`) — documented in `../profiles/README.md` but not executed here because they would require mutating the live profile set.
 - Actual receipt writing for the `test-plan` profile — the baseline only asserts that the engine resolves `receipt.path_template` correctly; no receipt file is written during smoke-test since there is no live pipeline slug. File-write behavior must be exercised via a real `generate-test-plan → multiexpert-review` run.

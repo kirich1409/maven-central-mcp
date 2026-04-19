@@ -74,7 +74,7 @@ This path was not fully executed (would require interactive user prompt); behavi
 
 ## What this baseline is NOT
 
-- Not a pre/post comparison — the pre-refactor baseline was not captured before commit `8608cbe`. For future regression testing, use this baseline as the post-reference and capture pre-baseline before the next structural change.
+- Not a pre/post comparison — the pre-refactor baseline was not captured before the rename/refactor landed (see PR #101). For future regression testing, use this baseline as the post-reference and capture pre-baseline before the next structural change.
 - Not a multi-run modal average — PoLL stochasticity means content of individual findings will differ next run. Only the structural properties listed above should be stable across runs.
 - Not a full acceptance of AC-E2/E3 from `docs/specs/2026-04-19-multiexpert-review.md` — that spec required 3 runs per fixture; this is a single-run capture as a lightweight smoke-test. Full compliance would require a test harness not built here.
 
