@@ -1,12 +1,13 @@
 ---
 type: test-plan
 slug: smoke-test-test-plan-fixture
-source_spec: docs/specs/synthetic-user-profile-cache.md
 ---
 
 # Test Plan: User profile caching
 
-## Acceptance Criteria (from source spec)
+_Synthetic fixture for smoke-testing the `test-plan` profile. The acceptance criteria and test cases below are fabricated for detector/roster assertions — no corresponding source spec exists in this repo._
+
+## Acceptance Criteria (fabricated for this fixture)
 
 - AC-1: `GET /api/users/:id` returns cached result when cache hit
 - AC-2: Cache hit rate ≥80% under steady state

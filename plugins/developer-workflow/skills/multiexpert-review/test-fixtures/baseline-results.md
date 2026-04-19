@@ -1,6 +1,12 @@
 # Smoke-test baseline — captured 2026-04-19
 
-Captured manually via direct agent invocation on the fixtures in this directory. Asserted **structural** properties only; content of individual issues is PoLL-stochastic and not part of the baseline.
+Captured manually via direct agent invocation on the fixtures in this directory — the baseline bypasses the engine orchestration layer. Asserted **structural** properties only; content of individual issues is PoLL-stochastic and not part of the baseline.
+
+**What this means for engine-level expectations.** Because the capture is agent-level, not engine-level:
+- No receipts are created. A real engine run with `profile.receipt` present and a `slug` in the fixture frontmatter WILL create/update the resolved file per the engine contract (`SKILL.md` → Receipt integration).
+- Panel enforcement is not exercised. A profile with `allow_single_reviewer: false` and multiple primary reviewers would, under engine orchestration, invoke the full primary panel (or fail loud with `NO_REVIEWERS_AVAILABLE`). This baseline captures one reviewer's perspective and records only that — do not read "only X invoked" as "panel policy honored".
+
+Engine-level behavior (receipt writes, panel enforcement, verdict aggregation across reviewers) must be exercised via a real pipeline run; it is deliberately out of scope here.
 
 ## Fixture: `plan.md` (implementation-plan profile)
 
@@ -29,14 +35,14 @@ Captured manually via direct agent invocation on the fixtures in this directory.
 - 5-item checklist evaluated explicitly (each item marked satisfied / violated)
 - Final verdict derived from profile verdict policy: `FAIL` because (b) and (c) violated (critical)
 - Output follows engine template
-- Receipt path resolved to `swarm-report/smoke-test-test-plan-fixture-test-plan.md` (not written in smoke-test since no live pipeline)
+- Receipt path resolved to `swarm-report/smoke-test-test-plan-fixture-test-plan.md`; the file is not created by this direct-agent baseline capture (engine was bypassed), but a real engine run on the same fixture would create or update it per the engine's Receipt integration contract
 
 **Sample observed findings:** 6 issues total — items (b), (c) flagged critical; items (a), (d), (e) flagged with matching severities; verdict FAIL per profile policy. Reviewer also raised open questions about test infrastructure and PII handling — domain-appropriate.
 
 ## Fixture: `spec.md` (spec profile)
 
 **Profile detection:** `spec` via frontmatter `type: spec`
-**Reviewer invoked:** `business-analyst` (first of `reviewer_roster.primary: [business-analyst, architecture-expert]`)
+**Reviewer invoked in this capture:** `business-analyst` only. The spec profile declares `reviewer_roster.primary: [business-analyst, architecture-expert]` with `allow_single_reviewer: false`, so a real engine run would invoke both agents (or fail loud with `NO_REVIEWERS_AVAILABLE` if only one is available). This baseline intentionally captures the single-agent perspective and records that fact; panel-enforcement is engine-level and out of scope for this harness.
 **Verdict alphabet used:** `PASS / CONDITIONAL / FAIL` (per profile `verdicts`)
 **Severity mapping applied:**
 - items `acceptance_criteria`, `prerequisites` → `critical`

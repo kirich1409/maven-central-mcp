@@ -43,7 +43,7 @@ This harness checks **structural** properties, not content-level correctness. Be
 - **Profile source:** `frontmatter` (from `type: test-plan`)
 - **Reviewer roster:** `business-analyst` (always); plus `security-expert` if fixture mentions `auth|token|encryption|PII|credential` (this fixture does not); plus `performance-expert` because fixture mentions `latency` and `p99` (matches `SLA|latency|throughput|budget`)
 - **Verdict:** one of `PASS / WARN / FAIL`
-- **Receipt writing:** engine resolves `receipt.path_template` to `swarm-report/smoke-test-test-plan-fixture-test-plan.md` and writes `review_verdict` + optional `review_warnings` / `review_blockers`
+- **Receipt writing:** under engine orchestration, `receipt.path_template` resolves to `swarm-report/smoke-test-test-plan-fixture-test-plan.md` and the engine **creates or updates** that file with `review_verdict` + optional `review_warnings` / `review_blockers`. If you run this fixture via the real engine, expect a new or updated file at that path. If you capture baseline via direct-agent invocation (the mode used in `baseline-results.md`), no receipt is written because the engine is bypassed.
 - **Rubric applied:** 5-item checklist (a)–(e) must be evaluated explicitly
 
 ### `spec.md` (spec)
@@ -67,7 +67,7 @@ This harness checks **structural** properties, not content-level correctness. Be
 - Pre/post structural equivalence against the pre-refactor `plan-review` — this would require a baseline captured before the rename/refactor landed (see PR #101), which was not done. Future refactors should capture baseline first; this harness provides the fixture set to do so.
 - Multi-run modal match (3 runs per fixture) — stochasticity smoothing is out of scope for this lightweight harness.
 - Fail-loud error cases (`UNKNOWN_PROFILE_HINT`, `FORBIDDEN_PROFILE_FIELD`, `NO_REVIEWERS_AVAILABLE`, `PROFILE_INVENTORY_MISMATCH`) — documented in `../profiles/README.md` but not executed here because they would require mutating the live profile set.
-- Actual receipt writing for the `test-plan` profile — the baseline only asserts that the engine resolves `receipt.path_template` correctly; no receipt file is written during smoke-test since there is no live pipeline slug. File-write behavior must be exercised via a real `generate-test-plan → multiexpert-review` run.
+- Actual receipt writing for the `test-plan` profile — the captured baseline was produced via direct-agent invocation that bypasses the engine, so no receipt file is written during that capture. A real engine run on the same fixture (which has a `slug` in frontmatter and a profile with `receipt:` defined) will create or update `swarm-report/smoke-test-test-plan-fixture-test-plan.md`. Full receipt-payload validation must be exercised via a real `generate-test-plan → multiexpert-review` pipeline run.
 - Test-plan receipt consumer flow (acceptance skill reading `review_verdict`) — out of scope.
 
 ## Captured baseline
