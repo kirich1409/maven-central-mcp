@@ -22,7 +22,7 @@ developer-workflow-kotlin          developer-workflow-swift
 
 Installing this plugin automatically pulls `developer-workflow-experts`. Installing `-kotlin` or `-swift` additionally pulls this plugin.
 
-## Skills (16)
+## Skills (17)
 
 ### Planning / research
 | Skill | Purpose |
@@ -91,17 +91,27 @@ For **most skills**, these integrations are optional enhancements: when present,
 
 ## Installation
 
+**Prerequisite — cross-marketplace dependency.** `developer-workflow` declares a hard dependency on `pr-review-toolkit` from the official Anthropic plugin marketplace. Add that marketplace before installing:
+
+```
+/plugin marketplace add anthropics/claude-plugins-official
+```
+
+Then add ours and install:
+
 ```
 /plugin marketplace add kirich1409/krozov-ai-tools
 /plugin install developer-workflow@krozov-ai-tools
 ```
 
-`developer-workflow-experts` installs automatically as a declared dependency. Add platform plugins as needed:
+`developer-workflow-experts` and `pr-review-toolkit` install automatically as declared dependencies. Add platform plugins as needed:
 
 ```
 /plugin install developer-workflow-kotlin@krozov-ai-tools
 /plugin install developer-workflow-swift@krozov-ai-tools
 ```
+
+If the cross-marketplace dep fails to resolve (e.g., `claude-plugins-official` not added to user's environment), `developer-workflow` installation will abort with a clear message. Add the marketplace and retry.
 
 ## Pipeline documentation
 
