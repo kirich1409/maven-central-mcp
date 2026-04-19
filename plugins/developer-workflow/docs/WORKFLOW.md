@@ -48,7 +48,7 @@ IDEA / FEATURE REQUEST
   |                Artifacts: docs/testplans/<slug>-test-plan.md (permanent)
   |                           swarm-report/<slug>-test-plan.md (receipt)
   v
-[test-multiexpert-review] ---- multiexpert-review with test-plan branch (PASS / WARN / FAIL)
+[test-multiexpert-review] ---- multiexpert-review with test-plan profile (PASS / WARN / FAIL)
   |                      FAIL → revise loop back to [test-plan] (max 3 cycles)
   |                      Artifact: receipt review_verdict updated
   v
@@ -370,7 +370,7 @@ artifact required.
 | Decompose | `decompose-feature` | Feature idea/PRD + research artifact | `<slug>-decomposition.md`: tasks with dependencies, acceptance criteria, waves |
 | Plan review | `multiexpert-review` | Plan or decomposition artifact | Verdict: PASS / CONDITIONAL / FAIL with blockers |
 | Test Plan | `generate-test-plan` | Feature slug + available artifacts (`research.md`, `decomposition.md`, `plan.md`, spec) | `docs/testplans/<slug>-test-plan.md` (permanent) + `<slug>-test-plan.md` (receipt: `status`, `permanent_path`, `review_verdict`, `phase_coverage`) |
-| Test Plan Review | `multiexpert-review` (test-plan branch) | Permanent test plan file | Receipt updated with `review_verdict`: PASS / WARN / FAIL |
+| Test Plan Review | `multiexpert-review` (test-plan profile) | Permanent test plan file | Receipt updated with `review_verdict`: PASS / WARN / FAIL |
 | Implement | `implement` | Task + optional artifacts (`research.md`, `debug.md`, `plan.md`) | `<slug>-implement.md`: changes summary, files, decisions + `<slug>-quality.md`: gate results |
 | Acceptance | `acceptance` | Spec source (requirements / `debug.md` reproduction steps) + test-plan receipt (when available) + running app | `<slug>-acceptance.md`: VERIFIED / FAILED / PARTIAL with bug list; includes `test_plan_source: receipt / mounted / on-the-fly / absent` |
 | PR | `create-pr` | Branch with commits | PR URL |

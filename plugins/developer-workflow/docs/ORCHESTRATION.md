@@ -92,7 +92,7 @@ Each stage produces an artifact in `swarm-report/`. The next stage reads it befo
 |-------|----------|
 | Research | `<slug>-research.md` |
 | Plan | `<slug>-plan.md` |
-| TestPlan | `docs/testplans/<slug>-test-plan.md` (permanent, source of truth) + `<slug>-test-plan.md` (receipt: `status`, `permanent_path`, `source_spec`, `review_verdict`, `phase_coverage`). Created by `generate-test-plan` when invoked from the orchestrator with a slug; read by `multiexpert-review` (test-plan branch) and `acceptance`. |
+| TestPlan | `docs/testplans/<slug>-test-plan.md` (permanent, source of truth) + `<slug>-test-plan.md` (receipt: `status`, `permanent_path`, `source_spec`, `review_verdict`, `phase_coverage`). Created by `generate-test-plan` when invoked from the orchestrator with a slug; read by `multiexpert-review` (test-plan profile) and `acceptance`. |
 | TestPlanReview | `<slug>-test-plan.md` receipt updated in place: `review_verdict` set to PASS / WARN / FAIL, `status` advances Draft → Ready on PASS/WARN. |
 | Implement | `<slug>-implement.md` (summary of changes, files touched) + `<slug>-quality.md` (mechanical checks / intent check results, notes for finalize) |
 | Finalize | `<slug>-finalize.md` (round-by-round phase A-D findings, unresolved BLOCKs, acknowledged risks, commits added during finalize) |

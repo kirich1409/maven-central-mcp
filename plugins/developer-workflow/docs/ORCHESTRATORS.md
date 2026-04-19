@@ -41,7 +41,7 @@ flowchart TD
     testplan_gate -->|Skip| impl
     testplan_gate -->|Run| test_plan[/generate-test-plan/]
 
-    test_plan --> test_plan_review[/multiexpert-review<br/>test-plan branch/]
+    test_plan --> test_plan_review[/multiexpert-review<br/>test-plan profile/]
     test_plan_review -->|PASS| impl
     test_plan_review -->|WARN| impl
     test_plan_review -->|FAIL, cycles<3| test_plan

@@ -180,11 +180,11 @@ the receipt at `swarm-report/<slug>-test-plan.md` (receipt `status: Draft`,
 
 ### 1.6 TestPlanReview (default-on)
 
-Review the generated test plan via the test-plan branch of `multiexpert-review`.
+Review the generated test plan via the test-plan profile of `multiexpert-review`.
 
 - Invoke `developer-workflow:multiexpert-review` with the permanent test-plan file
   (`docs/testplans/<slug>-test-plan.md`) as input — its detector auto-classifies the input
-  as `type: test-plan` and runs the test-plan branch (PASS / WARN / FAIL verdicts).
+  as `type: test-plan` and runs the test-plan profile (PASS / WARN / FAIL verdicts).
 - Route by verdict — see [TestPlanReview Verdict Handling](#testplanreview-verdict-handling).
 - On completion (PASS or WARN) the receipt is updated with `review_verdict` and
   `status: Ready`; the pipeline transitions to Implement.
@@ -256,8 +256,8 @@ initial TestPlan stage in two scenarios:
 
 ## TestPlanReview Verdict Handling
 
-The TestPlanReview stage maps `multiexpert-review` verdicts (test-plan branch — see
-`plugins/developer-workflow/skills/multiexpert-review/SKILL.md` §Test-Plan Review Branch) to
+The TestPlanReview stage maps `multiexpert-review` verdicts (test-plan profile — see
+`plugins/developer-workflow/skills/multiexpert-review/profiles/test-plan.md`) to
 pipeline transitions:
 
 - **PASS** — all five checklist items satisfied. Unconditional transition to Implement.
