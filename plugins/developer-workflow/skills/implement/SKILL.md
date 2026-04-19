@@ -108,52 +108,16 @@ If simplify produces changes — commit them separately.
 
 ## Phase 4: Quality Loop
 
-Run quality gates sequentially. A failure triggers a fix cycle before advancing.
+After code is written, run the Quality Loop defined in [`docs/ORCHESTRATION.md`](../../docs/ORCHESTRATION.md#quality-loop) — that document is the single source of truth for gate definitions, verdict handling, expert-review triggers, and iteration limits.
 
-### Gate 1: Mechanical checks
-Invoke the `/check` skill. It auto-detects the project tooling (Gradle / Node / Cargo / Swift SPM / Python / Go / Makefile) and runs the appropriate build + lint + typecheck + tests in sequence with fail-fast.
+Summary for this skill's callers:
+- Gate 1 invokes `/check` (mechanical: build + lint + typecheck + tests)
+- Gate 2 is the semantic self-review by `code-reviewer`
+- Gate 3 launches domain experts only when triggers match the diff
+- Gate 4 is the intent check
+- A gate failure triggers a fix cycle; total loop is capped per ORCHESTRATION.md
 
-Fix failures reported by `/check` — they fall into three buckets:
-- Build / typecheck errors — fix the code that broke compilation
-- Lint / static-analysis violations — fix per the tool's output
-- Test failures in scope of current changes — fix; pre-existing failures, note for the quality report but do not fix
-
-After each fix, re-invoke `/check`. Do not proceed to Gate 2 until `/check` returns PASS. If `/check` itself fails for non-code reasons (missing tooling, timeout, network), escalate — do not try to work around it.
-
-### Gate 2: Semantic self-review
-Launch the `code-reviewer` agent with:
-- Original task description (verbatim)
-- Plan artifact path (if exists)
-- `git diff` of all changes
-
-The reviewer checks: does the code solve the original problem? Is there scope creep?
-Are acceptance criteria met?
-
-| Verdict | Action |
-|---------|--------|
-| PASS | Proceed to gate 3 |
-| WARN | Proceed, note issues in quality report |
-| FAIL | Fix critical issues, re-run gate 1 (`/check`) after edits, then gate 2 |
-
-### Gate 3: Expert reviews (conditional)
-
-Launch only when relevant, in parallel:
-
-| Expert | Trigger |
-|--------|---------|
-| `security-expert` | Auth, encryption, tokens, network, permissions, user data |
-| `performance-expert` | Lists, DB queries, image loading, hot loops, large collections |
-| `architecture-expert` | New modules, dependency direction, public API changes |
-
-No triggers matched → skip. If any expert demands a code change, apply it, re-run gate 1 (`/check`), then proceed.
-
-### Gate 4: Intent check
-Re-read original task + plan. Verify the diff addresses them. If drift detected — fix or flag. Re-run gate 1 after any fix.
-
-### Iteration limits
-
-- Per gate: max 3 fix attempts. Still failing → escalate.
-- Total loop: max 5 full iterations. Not converging → escalate.
+Do not duplicate gate details here — read ORCHESTRATION.md before executing. If ORCHESTRATION.md is missing, escalate rather than guessing the current rules.
 
 ---
 

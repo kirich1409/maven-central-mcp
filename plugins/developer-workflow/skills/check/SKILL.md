@@ -5,8 +5,8 @@ description: >-
   tests, and typecheck — in a single command. Reusable utility called by any stage that
   modifies code: implement, finalize, migration skills, or directly by the user.
 
-  Auto-detects project tooling (Gradle, npm/pnpm/yarn, cargo, Swift SPM, Python, Go)
-  and runs the appropriate commands. Does NOT modify code — it only verifies.
+  Auto-detects project tooling (Gradle, npm/pnpm/yarn, cargo, Swift SPM, Xcode, Python,
+  Go, Makefile) and runs the appropriate commands. Does NOT modify code — it only verifies.
 
   Use when: "check the project", "run tests", "verify build", "after I edited X run checks",
   "проверь проект", "запусти проверки", or when a pipeline stage needs to confirm that
@@ -51,7 +51,7 @@ Prefer `./gradlew check` — it is the Gradle convention for "run all verificati
 ./gradlew assemble check
 ```
 
-Honor the wrapper — never use system-installed `gradle`. If `gradlew` is not executable, run `chmod +x gradlew` once before the first check.
+Honor the wrapper — never use system-installed `gradle`. If `gradlew` is not executable, invoke it non-mutatingly via `bash ./gradlew check` rather than changing tracked file mode with `chmod +x`. If the permission issue persists, escalate to the caller with a note to fix the wrapper permission themselves — `/check` does not modify the working tree.
 
 ### 2.2 Node (package.json)
 

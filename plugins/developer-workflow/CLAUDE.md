@@ -3,7 +3,7 @@
 ## Structure
 
 ```
-skills/<name>/SKILL.md    # 14 lifecycle skills, each a directory with YAML frontmatter
+skills/<name>/SKILL.md    # 15 lifecycle skills, each a directory with YAML frontmatter
 agents/manual-tester.md   # only agent in core (QA executor)
 docs/WORKFLOW.md          # Full pipeline documentation with diagrams
 docs/ORCHESTRATORS.md     # feature-flow and bugfix-flow diagrams

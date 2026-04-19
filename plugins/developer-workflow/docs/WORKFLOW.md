@@ -117,23 +117,22 @@ before starting work.
 ```
                               Iteration cap: max 5 full cycles
                               Per gate: max 3 fix attempts
-     ___________________________________________________________________
-    |                                                                   |
-    v                                                                   |
-+--------+    +---------+    +-------+    +-------------+    +--------+ |
-| Gate 1 |--->| Gate 2  |--->| Gate 3|--->|   Gate 4    |--->| Gate 5 | |
-| Build  |    | Static  |    | Tests |    | code-       |    | Expert | |
-|        |    | Analysis|    |       |    | reviewer    |    | Reviews| |
-+--------+    +---------+    +-------+    +-------------+    +--------+ |
-    |fail         |fail          |fail         |                  |     |
-    v             v              v             v                  v     |
- [fix]         [fix]          [fix]     PASS: gate 5        +--------+ |
-    |             |              |      WARN: gate 5 +      | Gate 6 | |
-    '-----.-------'-------.------'       acknowledged risks | Intent  | |
-          |               |             FAIL: --> Implement | Check   | |
-          '--------.------'                                 +--------+ |
-                   |                                           |       |
-                   '------- (fix cycle) -----------------------'-------'
+     _________________________________________________________
+    |                                                         |
+    v                                                         |
++------------+    +-------------+    +--------+    +--------+ |
+|  Gate 1    |--->|   Gate 2    |--->| Gate 3 |--->| Gate 4 | |
+| /check     |    | code-       |    | Expert |    | Intent | |
+| (mech.)    |    | reviewer    |    | Reviews|    | Check  | |
++------------+    +-------------+    +--------+    +--------+ |
+     |fail             |                  |            |      |
+     v                 v                  v            v      |
+  [fix cycle:      PASS: gate 3      (by trigger    [fix, if   |
+   re-invoke        WARN: gate 3 +    only)          drift]   |
+   /check]          acknowledged      fix -> /check   |        |
+     |              risks, gate 4                    v        |
+     |              FAIL: --> Implement        (loop closes)  |
+     '---------------------------------------------------------'
 ```
 
 ### Gates
