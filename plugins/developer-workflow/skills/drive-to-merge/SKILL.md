@@ -112,14 +112,18 @@ Status: running | waiting-for-user | merged | blocked
 |---|---------|---------|----|--------------|---------|---------|
 
 ## Commitments (open threads this skill owns)
-| thread_id | category | delegated_to | commit_after_fix | replied | resolved |
-|-----------|----------|--------------|-------------------|---------|----------|
+| thread_id | category | delegated_to | fix_commit_sha | replied | resolved |
+|-----------|----------|--------------|----------------|---------|----------|
+
+`fix_commit_sha` holds the abbreviated sha of the commit that addressed the thread (empty string if the thread is dismiss-only, no code change).
 
 ## Blockers raised
 <empty | list of items the skill surfaced to the user>
 ```
 
 On every resume (new session after context compaction) — re-read this file first; do not re-run analysis that already lives in a "Commitments" row unless the reviewer posted new activity.
+
+**Mode precedence on resume.** The state file `Mode` is the authoritative source. A fresh invocation without a flag inherits the stored mode; a fresh invocation with an explicit flag **overrides** the stored mode and rewrites it. This lets the user downgrade an `auto` run to `default` by re-invoking the skill, but does not silently demote an autonomous run just because the wake-up prompt was edited.
 
 ---
 
@@ -324,6 +328,8 @@ git rebase "origin/$BASE"
 
 On clean rebase: run local `check` skill (build + lint + tests); on success push with `--force-with-lease`. On conflict: resolve only truly mechanical conflicts (import reshuffle, unrelated whitespace); otherwise surface as a blocker — do not guess merge resolutions that involve logic.
 
+**Expected side effect.** After a `--force-with-lease` push, some repos reset `reviewDecision` from `APPROVED` back to `REVIEW_REQUIRED` (branch-protection "Dismiss stale approvals" setting). Do not treat this as a regression — re-request review per Phase 3.6 and keep looping. Tracking commit sha in `Commitments.fix_commit_sha` identifies which fixes have already been through review versus which are new since the rebase.
+
 ---
 
 ## Phase 3: Execute approved rows
@@ -426,9 +432,9 @@ Entered when: CI all green + `reviewDecision == APPROVED` + no unresolved thread
 
 Before proposing merge:
 
-1. Re-verify the state file's `Commitments` section — every row with `delegated_to` must have `commit_after_fix` set and `replied: true`.
+1. Re-verify the state file's `Commitments` section — every row with `delegated_to` must have non-empty `fix_commit_sha` and `replied: true`.
 2. Re-pull PR state (reviewers may have changed their decision since last round).
-3. Confirm the branch has not diverged from origin.
+3. Confirm the branch has not diverged from origin. If `git status -sb` shows the local branch behind / ahead of `origin/$HEAD` unexpectedly — skip merge, log the delta, return to Phase 2.1 for one more round.
 
 Show the user:
 
@@ -515,6 +521,8 @@ The skill decides these without asking, in any mode:
 
 ## Tool priority
 
-`gh` / `glab` CLI when available → REST via `gh api` / `glab api` → GraphQL via `gh api graphql` for review threads and node ids → nothing else.
+`gh` / `glab` CLI when available → REST via `gh api` / `glab api` → GraphQL via `gh api graphql` for review threads and node ids → `ScheduleWakeup` for Phase 4 polling → nothing else.
 
-If neither CLI is installed or authenticated, stop with a clear message: this skill cannot degrade gracefully without a working CLI, because its value is autonomous push + reply + resolve. Ask the user to install and authenticate, then rerun.
+If neither `gh` nor `glab` is installed or authenticated, stop with a clear message: this skill cannot degrade gracefully without a working CLI, because its value is autonomous push + reply + resolve. Ask the user to install and authenticate, then rerun.
+
+`ScheduleWakeup` is required for autonomous polling. If the runtime does not expose it, fall back to a single-shot round: report state, record a "wake me manually" note in the state file, and exit. The user then re-invokes `/drive-to-merge` when they want the next round.
