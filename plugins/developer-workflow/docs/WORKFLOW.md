@@ -14,12 +14,15 @@ working independently in its own domain (codebase, web, documentation, dependenc
 architecture). Results are reviewed and validated by `business-analyst`.
 This ensures decisions are made based on data, not solely on the model's training data.
 
-Quality is enforced by the Quality Loop — four sequential gates from mechanical checks to
-intent verification. Key principle: the author of the code never reviews their own code —
-gate 2 launches a separate `code-reviewer` agent that receives only the task description,
-plan, and git diff, without any implementation context. Mechanical verification (build,
-lint, typecheck, tests) is delegated to the reusable `/check` skill, which auto-detects
-the project stack. Receipt-based gating ensures no stage
+Quality is split into three stages, each answering a different question:
+**implement** (does the code work and match the plan?) → **finalize** (is the code written
+well?) → **acceptance** (does the feature solve the user's problem?). `implement` runs a
+2-gate Quality Loop: mechanical checks via `/check` (build/lint/typecheck/tests) and intent
+check. `finalize` runs a multi-round review-and-fix loop (code-reviewer → /simplify →
+pr-review-toolkit trio → conditional expert reviews) with `/check` between each fix. Key
+principle: the author of the code never reviews their own code — `finalize` Phase A
+launches a separate `code-reviewer` agent that receives only the task description, plan,
+and git diff, without any implementation context. Receipt-based gating ensures no stage
 starts without the previous stage's artifact. Re-anchoring at every stage transition prevents
 drift from the original intent.
 
@@ -52,11 +55,18 @@ IDEA / FEATURE REQUEST
   |   ┌────────────── for each task ──────────────┐
   |   │                                            │
   |   v                                            │
-  | [implement] ---- Code + simplify + Quality Loop
+  | [implement] ---- Write code + Quality Loop (2 gates)
   |   |  |-- specialist agents                     │
-  |   |  '-- Quality Loop (4 gates)                │
+  |   |  '-- /check + intent check                 │
   |   |        Artifacts: <slug>-implement.md      │
   |   |                   <slug>-quality.md        │
+  |   v                                            │
+  | [finalize] ---- Code-quality pass (3-round loop)│
+  |   |  |-- Phase A: code-reviewer               │
+  |   |  |-- Phase B: /simplify                    │
+  |   |  |-- Phase C: pr-review-toolkit trio       │
+  |   |  '-- Phase D: experts (conditional)        │
+  |   |        Artifact: <slug>-finalize.md        │
   |   v                                            │
   | [acceptance] ---- Verify against spec          │
   |   |  '-- manual-tester agent                   │
@@ -84,9 +94,12 @@ BUG REPORT / ISSUE
 [debug] ---- Reproduce -> Binary search -> Hypothesis -> Confirm root cause
   |             Artifact: swarm-report/<slug>-debug.md
   v
-[implement] ---- Fix based on root cause + simplify + Quality Loop
+[implement] ---- Fix based on root cause + Quality Loop (2 gates)
   |                Artifacts: swarm-report/<slug>-implement.md
   |                           swarm-report/<slug>-quality.md
+  v
+[finalize] ---- Code-quality pass (3-round loop)
+  |                Artifact: swarm-report/<slug>-finalize.md
   v
 [acceptance] ---- Verify bug no longer reproduces on live app
   |                Artifact: swarm-report/<slug>-acceptance.md
@@ -112,39 +125,58 @@ Auto-detection is based on keywords and context. When ambiguous — ask the user
 before starting work.
 
 
-## 4. Quality Loop
+## 4. Quality pipeline — three stages
+
+Quality is enforced across three stages, each answering a different question:
+
+| Stage | Skill | Question |
+|---|---|---|
+| 1. Mechanical + intent | `implement` | Does it compile, lint, test, and match the plan? |
+| 2. Code quality | `finalize` | Is the code written well? |
+| 3. Functional correctness | `acceptance` | Does the feature solve the user's problem? |
+
+### 4.1 Implement — 2-gate Quality Loop
 
 ```
-                              Iteration cap: max 5 full cycles
-                              Per gate: max 3 fix attempts
-     _________________________________________________________
-    |                                                         |
-    v                                                         |
-+------------+    +-------------+    +--------+    +--------+ |
-|  Gate 1    |--->|   Gate 2    |--->| Gate 3 |--->| Gate 4 | |
-| /check     |    | code-       |    | Expert |    | Intent | |
-| (mech.)    |    | reviewer    |    | Reviews|    | Check  | |
-+------------+    +-------------+    +--------+    +--------+ |
-     |fail             |                  |            |      |
-     v                 v                  v            v      |
-  [fix cycle:      PASS: gate 3      (by trigger    [fix, if   |
-   re-invoke        WARN: gate 3 +    only)          drift]   |
-   /check]          acknowledged      fix -> /check   |        |
-     |              risks, gate 4                    v        |
-     |              FAIL: --> Implement        (loop closes)  |
-     '---------------------------------------------------------'
+     __________________________________________
+    |                                          |
+    v                                          |
++----------+   +--------------+                |
+| Gate 1   |-->| Gate 2       |                |
+| /check   |   | Intent Check |                |
++----------+   +--------------+                |
+    |fail          |fail                       |
+    v              v                           |
+ [fix cycle] -- re-run /check ------------------'
+ max 3 iterations total; per-gate 3 fix attempts
 ```
-
-### Gates
 
 | # | Gate | Action | Executor |
 |---|------|--------|----------|
 | 1 | Mechanical checks | Invoke `/check` — build + lint + typecheck + tests (fail-fast); fix reported issues, re-invoke until PASS | Implementation agent + `/check` skill |
-| 2 | Semantic Self-Review | Compare intent vs. `git diff` | `code-reviewer` agent |
-| 3 | Expert Reviews | Parallel domain-specific reviews (by trigger) | Specialist agents |
-| 4 | Intent Check | Re-read task + plan, verify correspondence | Orchestrator |
+| 2 | Intent Check | Re-read task + plan, verify correspondence | Orchestrator |
 
-### Expert Review Triggers (gate 3)
+### 4.2 Finalize — multi-round code-quality loop
+
+After implement PASSes both gates, orchestrator invokes `/finalize`:
+
+```
+Round N  (max 3 rounds):
+  Phase A  code-reviewer       -> fix BLOCK -> /check
+  Phase B  /simplify (auto-fix)                -> /check
+  Phase C  pr-review-toolkit trio (parallel)  -> fix BLOCK -> /check
+  Phase D  experts (conditional, parallel)    -> fix BLOCK -> /check
+  end round: any BLOCK? yes -> next round. no -> PASS, exit.
+```
+
+| Phase | Agent / skill | Purpose |
+|---|---|---|
+| A | `code-reviewer` (from `developer-workflow-experts`) | Plan conformance, CLAUDE.md, bugs — confidence 0/25/50/75/100 rubric |
+| B | `/simplify` (built-in) | Reuse / quality / efficiency with auto-fix |
+| C | `pr-review-toolkit:pr-test-analyzer`, `silent-failure-hunter`, `type-design-analyzer` (parallel) | Test quality, silent failures, type design invariants |
+| D | `security-expert`, `performance-expert`, `architecture-expert` (conditional, parallel) | Domain-specific deep review |
+
+### Phase D trigger table
 
 | Expert | Trigger — changed files touch any of: |
 |--------|---------------------------------------|
@@ -152,15 +184,20 @@ before starting work.
 | `performance-expert` | RecyclerView/LazyColumn, DB queries, image loading, hot loops |
 | `architecture-expert` | New modules, changed dependency direction, public API |
 
-If no trigger fired — gate 3 is skipped.
+If no trigger fired — Phase D is skipped for that round.
 
-### Verdict Handling (gate 2)
+### Verdict handling (Phase A code-reviewer)
 
 | Verdict | Orchestrator action |
 |---------|---------------------|
-| **PASS** | Advance to gate 3 (expert reviews) |
-| **WARN** | Advance to gate 3; major issues recorded in `<slug>-quality.md` as "Acknowledged risks" |
-| **FAIL** | Backward transition -> Implement; fix critical issues, re-run gate 1 (`/check`) after edits, then gate 2 (max 3 cycles) |
+| **PASS** | Continue to Phase B (/simplify) |
+| **WARN** | Continue to Phase B; items listed in the finalize report as "Acknowledged risks" |
+| **FAIL** | Apply BLOCK fixes, re-run `/check`, then re-run Phase A in next round; after 3 rounds with FAIL — escalate to user |
+
+### Finalize exit criteria
+
+- **PASS** — no BLOCK-severity findings across A/B/C/D. WARN and NIT surface in `<slug>-finalize.md`.
+- **ESCALATE** — 3 rounds complete, BLOCK findings remain. Stop and report to user.
 
 ### Build System Detection
 
@@ -366,19 +403,27 @@ research/debug ──→ implement ──→ acceptance ──→ create-pr ─�
 - PARTIAL (P2/P3 only) → orchestrator asks user: fix now or ship with known issues
 
 **Implement inner loop:**
-- Quality gates (mechanical checks via `/check` → code-reviewer → expert reviews → intent check) run inside `implement`
-- Gate failure → fix → re-run gate (max 3 attempts per gate, max 5 full cycles)
+- Two quality gates inside `implement`: mechanical checks via `/check`, then intent check
+- Gate failure → fix → re-run gate (max 3 attempts per gate, max 3 full cycles)
 - If not converging → escalate to user
+
+**Finalize loop:**
+- Runs after `implement` passes both gates, before `acceptance`
+- Four phases per round: code-reviewer → /simplify → pr-review-toolkit trio → conditional expert reviews
+- `/check` invoked between fixes
+- Max 3 rounds; PASS when no BLOCK remains; ESCALATE otherwise
 
 **PR review loop:**
 - `triage-feedback` categorizes and prioritizes the reviewer comments into a
   structured report. FIXABLE items feed back into `implement` on user's call.
-- If review requires significant code changes → back to `implement` → `acceptance` → update PR
+- If review requires significant code changes, the full quality path still applies:
+  `implement` → `finalize` → `acceptance` → update PR. Do not skip `finalize` on review-driven fixes; the code-quality gates apply to fix commits too.
 - CI monitoring and merge execution are done by the user outside this pipeline.
 
 **Loop limits:**
 - Acceptance → Implement: max 3 round-trips. After that → escalate
-- Quality gates: max 3 attempts per gate, max 5 full cycles
+- Implement quality gates: max 3 attempts per gate, max 3 full cycles
+- Finalize: max 3 rounds (A → D per round)
 - PR review: no hard limit, but escalate if same feedback repeats
 
 ### Artifact Contents
@@ -409,12 +454,14 @@ Each artifact includes:
 | `migrate-to-compose` | Implement (Migration) | View -> Compose migration with visual baseline |
 | `create-pr` | PR | PR/MR creation: title, description, labels, reviewers |
 | `triage-feedback` | Post-PR | Analyze, categorize, and prioritize feedback (PR comments or pasted text). Produces action plan. Optionally posts replies + resolves threads via an editable manifest on explicit apply trigger for terminal-verdict items (PRAISE / OUT_OF_SCOPE / NO_ACTION, plus NIT with NO_ACTION); never edits code |
-| `generate-test-plan` | Plan / Verify | Structured test plan from specification |
-| `acceptance` | Verify | Acceptance verification on live app — features and bug fixes |
-| `bug-hunt` | Verify | Undirected bug hunting without a specification |
+| `generate-test-plan` | Plan / Acceptance | Structured test plan from specification |
+| `acceptance` | Acceptance | Acceptance verification on live app — features and bug fixes |
+| `bug-hunt` | Acceptance | Undirected bug hunting without a specification |
 | `decompose-feature` | Research / Plan | Feature decomposition into tasks |
 | `write-tests` | Implement | Retroactive test writing |
-| `simplify`* | Quality | Code review for reuse, quality, and efficiency |
+| `simplify`* | Finalize Phase B | Reuse, quality, and efficiency review with auto-fix |
+| `finalize` | Finalize | Multi-round code-quality loop (A/B/C/D phases) |
+| `check` | Implement (gate 1), Finalize | Mechanical verification — build, lint, typecheck, tests |
 
 *Skill from another plugin / built-in.
 
@@ -423,16 +470,16 @@ Each artifact includes:
 
 | Agent | Stage | Role |
 |-------|-------|------|
-| `code-reviewer` | Quality (gate 2) | Independent review: intent vs. diff |
+| `code-reviewer` | Finalize Phase A | Independent review: intent vs. diff |
 | `kotlin-engineer` | Implement | Kotlin business logic, data/domain layer, ViewModel |
 | `compose-developer` | Implement | Compose UI: screens, components, themes, navigation |
-| `architecture-expert` | Research, Quality (gate 3) | Module structure, dependency direction, API design |
+| `architecture-expert` | Research, Finalize Phase D | Module structure, dependency direction, API design |
 | `business-analyst` | Research (auto-review) | Completeness, product sense, practicality |
-| `security-expert` | Quality (gate 3) | Auth, encryption, token storage, OWASP |
-| `performance-expert` | Quality (gate 3) | N+1, memory leaks, UI jank, hot loops |
-| `build-engineer` | Quality (gate 3) | Gradle config, build performance, module structure |
-| `manual-tester` | Verify | QA on live app: test cases, bug reports |
-| `ux-expert` | Quality (gate 3) | UX review, accessibility, platform conventions |
+| `security-expert` | Finalize Phase D | Auth, encryption, token storage, OWASP |
+| `performance-expert` | Finalize Phase D | N+1, memory leaks, UI jank, hot loops |
+| `build-engineer` | Finalize Phase D | Gradle config, build performance, module structure |
+| `manual-tester` | Acceptance | QA on live app: test cases, bug reports |
+| `ux-expert` | Finalize Phase D | UX review, accessibility, platform conventions |
 | `devops-expert` | PR / Merge | CI/CD, deployment, release automation |
 
 

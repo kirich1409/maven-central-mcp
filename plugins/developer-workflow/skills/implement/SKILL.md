@@ -6,8 +6,10 @@ description: >-
   plain text description, GitHub/Jira/Linear issue URL, or a reference to an existing artifact
   (research.md, debug.md, plan.md).
 
-  Pipeline: understand task → implement → simplify → quality loop → produce artifacts.
-  Does NOT create worktrees, PRs, or run live QA — those are separate stages.
+  Pipeline: understand task → write code → quality loop (/check + intent check) → produce artifacts.
+  Semantic review, simplification, expert review, and PR-level quality checks live in the
+  separate `finalize` stage. Does NOT create worktrees, PRs, or run live QA — those are
+  separate stages.
 
   Use when: "implement", "write the code", "fix this", "сделай", "реализуй", "напиши код",
   "пофикси", or when an orchestrator delegates the implementation stage.
@@ -97,24 +99,17 @@ stage (e.g., model, repository, UI layer). Stage specific files, never `git add 
 
 ---
 
-## Phase 3: Simplify
+## Phase 3: Quality Loop
 
-After implementation is complete, invoke the `simplify` skill on changed files.
-This reviews for reuse opportunities, code quality, and efficiency — then fixes issues found.
+Run two quality gates sequentially. A failure triggers a fix cycle before advancing.
 
-If simplify produces changes — commit them separately.
+Semantic review, simplification, expert review, and PR-level code-quality analysis live in the separate `finalize` stage, which the orchestrator runs after `implement`. `implement` is now strictly focused on *getting the code written and working according to the plan* — nothing more.
 
----
-
-## Phase 4: Quality Loop
-
-After code is written, run the Quality Loop defined in [`docs/ORCHESTRATION.md`](../../docs/ORCHESTRATION.md#quality-loop) — that document is the single source of truth for gate definitions, verdict handling, expert-review triggers, and iteration limits.
+After code is written, run the Quality Loop defined in [`docs/ORCHESTRATION.md`](../../docs/ORCHESTRATION.md#implement--quality-loop-2-gates) — that document is the single source of truth for gate definitions, verdict handling, and iteration limits.
 
 Summary for this skill's callers:
 - Gate 1 invokes `/check` (mechanical: build + lint + typecheck + tests)
-- Gate 2 is the semantic self-review by `code-reviewer`
-- Gate 3 launches domain experts only when triggers match the diff
-- Gate 4 is the intent check
+- Gate 2 is the intent check — re-read task + plan, verify the diff addresses them; scope creep or drift → fix or flag
 - A gate failure triggers a fix cycle; total loop is capped per ORCHESTRATION.md
 
 Do not duplicate gate details here — read ORCHESTRATION.md before executing. If ORCHESTRATION.md is missing, escalate rather than guessing the current rules.
@@ -161,18 +156,16 @@ Save to `swarm-report/<slug>-quality.md`:
 | # | Gate | Result | Attempts |
 |---|------|--------|----------|
 | 1 | Mechanical checks (`/check`) | PASS/FAIL | N |
-| 2 | Semantic review | PASS/WARN/FAIL | N |
-| 3 | Expert reviews | PASS/SKIP | — |
-| 4 | Intent check | PASS/DRIFT | — |
+| 2 | Intent check | PASS/DRIFT | — |
 
 ## Issues Found and Fixed
 - <issue> — <fix applied>
 
-## Expert Review Findings
-<per expert, if any ran>
+## Intent Check
+<PASS / DRIFT with explanation>
 
-## Acknowledged Risks
-<WARN items from semantic review, if any>
+## Notes for finalize
+<anything surfaced during implement that the finalize stage should know about: test gaps, security concerns, structural concerns that did not block mechanical checks>
 ```
 
 ---

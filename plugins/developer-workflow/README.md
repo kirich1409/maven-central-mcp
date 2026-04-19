@@ -22,7 +22,7 @@ developer-workflow-kotlin          developer-workflow-swift
 
 Installing this plugin automatically pulls `developer-workflow-experts`. Installing `-kotlin` or `-swift` additionally pulls this plugin.
 
-## Skills (15)
+## Skills (16)
 
 ### Planning / research
 | Skill | Purpose |
@@ -36,8 +36,9 @@ Installing this plugin automatically pulls `developer-workflow-experts`. Install
 ### Implementation
 | Skill | Purpose |
 |---|---|
-| `/implement` | Master orchestrator — delegates to engineers, runs quality loop |
-| `/check` | Mechanical verification utility — auto-detects project tooling (Gradle/Node/Cargo/Swift/Python/Go), runs build + lint + typecheck + tests, reports pass/fail. Called by `implement`, `finalize`, migration skills, or directly by user |
+| `/implement` | Writes code to meet the plan; mechanical checks via `/check` + intent check only. Semantic review, simplify, and expert review live in `/finalize`. |
+| `/check` | Mechanical verification utility — auto-detects project tooling (Gradle/Node/Cargo/Swift/Python/Go), runs build + lint + typecheck + tests. Called by `implement`, `finalize`, migration skills, or user. |
+| `/finalize` | Code-quality pass between `implement` and `acceptance`. Multi-round loop: `code-reviewer` → `/simplify` → `pr-review-toolkit` trio → conditional expert reviews, with `/check` between fixes. Max 3 rounds. |
 | `/debug` | Read-only root cause analysis (via `debugging-expert` from `-experts`) |
 | `/write-tests` | Retroactive tests for existing code — delegates test generation to engineers |
 
