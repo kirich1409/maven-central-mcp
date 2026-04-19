@@ -38,11 +38,12 @@ Skills in this plugin delegate to engineer agents (kotlin-engineer / compose-dev
 - Pipeline orchestration rules (task profiling, Research Consortium, Quality Loop gates, State Machine, receipt-based gating) ship with this plugin at [`docs/ORCHESTRATION.md`](docs/ORCHESTRATION.md) — skills and the core feature-flow/bugfix-flow orchestrators read from there.
 - Quality Loop gates are defined in `docs/ORCHESTRATION.md`, not in any individual skill.
 
-## Skills roster (15)
+## Skills roster (16)
 
 - Planning/research: `research`, `decompose-feature`, `write-spec`, `plan-review`, `design-options` (optional pre-plan-review stage — generates 2-3 architectural alternatives for high-arch-risk tasks)
 - Implementation: `implement`, `write-tests`, `debug`
-- Verification utility: `check` — reusable mechanical-check runner (build + lint + typecheck + tests), invoked by `implement` and any code-modifying skill
+- Verification utility: `check` — reusable mechanical-check runner (build + lint + typecheck + tests), invoked by `implement`, `finalize`, and any code-modifying skill
+- Code-quality pass: `finalize` — multi-round review-and-fix loop (code-reviewer → /simplify → pr-review-toolkit trio → expert reviews) that runs between `implement` and `acceptance`
 - QA: `generate-test-plan`, `acceptance`, `bug-hunt`
 - PR: `create-pr`, `triage-feedback`
 - Orchestrators: `feature-flow`, `bugfix-flow`

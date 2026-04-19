@@ -50,9 +50,12 @@ TestPlan       -> TestPlanReview
 TestPlanReview -> Implement        (PASS or WARN)
 TestPlanReview -> TestPlan         (FAIL — revise loop, max 3 cycles)
 TestPlanReview -> escalate         (after 3 failed revise cycles)
-Implement      -> Acceptance
+Implement      -> Finalize
+Finalize       -> Acceptance       (PASS — no BLOCKs remain)
+Finalize       -> Implement        (ESCALATE after 3 rounds; user routes back to implement)
+Finalize       -> escalate         (ESCALATE after 3 rounds; user picks non-implement path)
 Acceptance     -> PR               (VERIFIED)
-Acceptance     -> Implement        (FAILED — bugs to fix)
+Acceptance     -> Implement        (FAILED — bugs to fix; Implement then re-runs Finalize)
 Acceptance     -> TestPlan         (FAILED — add Regression TC for new bugs)
 Acceptance     -> Debug            (FAILED — unclear root cause)
 PR             -> Merge
@@ -296,13 +299,27 @@ Wait for `swarm-report/<slug>-implement.md` + `swarm-report/<slug>-quality.md`.
 
 After `implement` returns a clean Quality Loop result and the branch has been pushed, invoke `developer-workflow:create-pr` with the `--draft` argument:
 
-> Stage: Implement → Acceptance (draft PR created)
+> Stage: Implement → Finalize (draft PR created)
 
 Rationale: the remote branch + draft PR become the source of truth for the work in progress. Reviewers can inspect the code online, the description carries the plan and available artifacts, and later stages push refinements to the same PR rather than accumulating local-only changes.
 
 If a draft PR already exists for this branch (e.g., re-entry on rollback), `create-pr --draft` refreshes the body instead of creating a new PR — idempotent by design.
 
-### 2.2 Acceptance
+### 2.2 Finalize (code-quality pass)
+
+After `implement` passes its two gates (mechanical checks + intent check), invoke `developer-workflow:finalize` with:
+- Slug
+- Path to `swarm-report/<slug>-plan.md` (for Phase A code-reviewer anchor)
+
+`finalize` runs a multi-round loop (max 3 rounds): code-reviewer → /simplify → pr-review-toolkit trio → conditional expert reviews, with `/check` between fixes.
+
+Wait for `swarm-report/<slug>-finalize.md`.
+
+**Route by result:**
+- **PASS** (no BLOCKs remain) → **Stage: Finalize → Acceptance**
+- **ESCALATE** (3 rounds with BLOCKs) — orchestrator stops and reports to user. User decides: (a) accept the risks and go to acceptance manually; (b) route back to `implement` to address root issues; (c) escalate as a task-level re-scope.
+
+### 2.3 Acceptance
 
 Invoke `developer-workflow:acceptance` with:
 - Spec source: requirements from the task / plan / decomposition
@@ -368,6 +385,7 @@ Implement on the user's instruction.
 |------|----|---------|-----|
 | PlanReview | Research | FAIL — knowledge gaps | 2 |
 | TestPlanReview | TestPlan | FAIL — test-plan revise loop | 3 |
+| Finalize | Implement | ESCALATE — user routes back to fix root issues | 1 |
 | Acceptance | Implement | FAILED bugs | 3 |
 | Acceptance | TestPlan | FAILED — append Regression TC for new bugs | 3 |
 | Acceptance | Debug | P0/P1 with unclear cause | 1 |

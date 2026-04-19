@@ -38,7 +38,10 @@ Debug      -> Implement        (simple fix — root cause diagnosed, fix is clea
 Debug      -> Report           (not reproducible or escalated)
 Plan       -> Implement
 Plan       -> Debug            (plan review FAIL — need more diagnostic context)
-Implement  -> Acceptance
+Implement  -> Finalize
+Finalize   -> Acceptance       (PASS — no BLOCKs remain)
+Finalize   -> Implement        (ESCALATE after 3 rounds; user routes back)
+Finalize   -> escalate         (ESCALATE after 3 rounds; user picks non-implement path)
 Acceptance -> PR               (VERIFIED — bug gone)
 Acceptance -> Implement        (FAILED — bug still reproduces or new bugs)
 Acceptance -> Debug            (FAILED — fix didn't address root cause)
@@ -128,11 +131,27 @@ Wait for `swarm-report/<slug>-implement.md` + `swarm-report/<slug>-quality.md`.
 
 After `implement` returns a clean Quality Loop result and the branch has been pushed, invoke `developer-workflow:create-pr` with the `--draft` argument:
 
-> Stage: Implement → Acceptance (draft PR created)
+> Stage: Implement → Finalize (draft PR created)
 
-The draft PR body references the debug artifact (root cause + reproduction steps) and the fix summary. Acceptance runs against the pushed PR branch, keeping remote state in sync.
+The draft PR body references the debug artifact (root cause + reproduction steps) and the fix summary. Subsequent stages run against the pushed PR branch, keeping remote state in sync.
 
 If a draft PR already exists for this branch (re-entry on rollback), `--draft` is idempotent — it refreshes the body instead of failing.
+
+---
+
+## Phase 2.5: Finalize (code-quality pass)
+
+After `implement` passes its two gates (mechanical checks + intent check), invoke `developer-workflow:finalize` with:
+- Slug
+- Path to `swarm-report/<slug>-debug.md` (serves as the plan anchor for bugfix-flow — describes root cause and fix direction)
+
+`finalize` runs a multi-round loop (max 3): code-reviewer → /simplify → pr-review-toolkit trio → conditional expert reviews, with `/check` between fixes.
+
+Wait for `swarm-report/<slug>-finalize.md`.
+
+**Route by result:**
+- **PASS** → **Stage: Finalize → Acceptance**
+- **ESCALATE** → stop, report to user. User decides whether to accept risks, route back to implement for deeper fix, or re-scope.
 
 ---
 
@@ -196,6 +215,7 @@ exist.
 
 | From | To | Trigger | Max |
 |------|----|---------|-----|
+| Finalize | Implement | ESCALATE — user routes back to fix root issues | 1 |
 | Acceptance | Implement | Bug still reproduces or new bugs | 3 |
 | Acceptance | Debug | Fix didn't address root cause (2 failed implementations) | 1 |
 | PR | Implement | Review feedback requires code changes | 2 |

@@ -99,11 +99,23 @@ Each stage produces an artifact in `swarm-report/`. The next stage reads it befo
 
 If a stage artifact is missing — the previous stage did not complete. Do not skip ahead.
 
-## Quality Loop
+## Quality Pipeline
+
+Three stages cover the full quality picture. Each stage answers a different question.
+
+| Stage | Skill | Question | Gate type |
+|---|---|---|---|
+| Mechanical + intent | `implement` | Does it compile, lint, test, and match the plan? | Two-gate Quality Loop |
+| Code quality | `finalize` | Is the code written well? | Multi-round review-and-fix loop |
+| Functional correctness | `acceptance` | Does the feature solve the user's problem? | Manual or automated QA |
+
+The orchestrator sequences them: **implement → finalize → acceptance → PR**. Each stage consumes the previous stage's artifact as a receipt.
+
+---
+
+## Implement — Quality Loop (2 gates)
 
 When the user asks to "prepare for PR", "quality check the branch", "run the quality loop", or "make it PR-ready" — run these gates on the current branch.
-
-After implementation completes and before PR creation, run a mandatory quality loop. Each gate runs in order; a failure triggers a fix cycle before advancing.
 
 ### Build system detection
 
@@ -172,37 +184,60 @@ default like `library`.
 | # | Gate | Action | Agent |
 |---|------|--------|-------|
 | 1 | Mechanical checks | Invoke `/check` — detects project tooling and runs build + lint + typecheck + tests with fail-fast; fix reported issues, re-invoke until PASS | Implementation agent + `/check` skill |
-| 2 | Semantic self-review | Compare original intent ↔ actual `git diff` | `code-reviewer` agent |
-| 3 | Expert reviews | Parallel domain-specific reviews (only when triggered) | Specialist agents |
-| 4 | Intent check | Re-read original task + plan, verify the diff addresses them | Orchestrator |
+| 2 | Intent check | Re-read original task + plan, verify the diff addresses them; scope creep or drift → fix or flag | Orchestrator |
 
-### Separation of author and reviewer
+### Iteration cap
 
-The agent that wrote the code must NOT perform the semantic self-review (gate 2). Launch the `code-reviewer` agent that receives only:
+- **Per gate:** max 3 fix attempts. If still failing after 3 — stop and escalate to user with the failure details and what was tried.
+- **Total quality loop:** max 3 full iterations (gate 1–2 cycles). If the loop does not converge — escalate.
+
+### Quality report artifact
+
+After the loop completes (pass or escalation), save `swarm-report/<slug>-quality.md` with:
+
+- Gate results (mechanical checks, intent check)
+- Issues found and fixes applied
+- Notes for `finalize` — anything surfaced during implement that the finalize stage should investigate (test coverage gaps, security concerns, structural concerns that did not block mechanical checks)
+
+This artifact is the receipt for the Finalize stage — Finalize must not start without it.
+
+---
+
+## Finalize — Code-quality loop
+
+Between `implement` and `acceptance`, the orchestrator runs the `finalize` skill. See [`skills/finalize/SKILL.md`](../skills/finalize/SKILL.md) for full details. Summary of the contract:
+
+### Phases per round (A → B → C → D)
+
+| Phase | Agent / skill | Purpose |
+|---|---|---|
+| A | `code-reviewer` (from `developer-workflow-experts`) | Semantic review: plan conformance, CLAUDE.md, bug detection. Confidence-scored 0/25/50/75/100. |
+| B | `/simplify` (built-in) | Reuse / quality / efficiency pass with auto-fix (3 parallel review agents + direct fix) |
+| C | `pr-review-toolkit:pr-test-analyzer`, `pr-review-toolkit:silent-failure-hunter`, `pr-review-toolkit:type-design-analyzer` — parallel | Test quality, silent failures, type design invariants |
+| D | `security-expert`, `performance-expert`, `architecture-expert` — conditional, parallel | Domain-specific deep review |
+
+Between phases and after any auto-fix, the orchestrator invokes `/check` to confirm mechanical pass.
+
+### Separation of author and reviewer (Phase A)
+
+The agent that wrote the code must NOT perform the Phase A semantic review. Launch the `code-reviewer` agent with only:
 
 1. The original task description (verbatim)
-2. The plan artifact (`swarm-report/<slug>-plan.md`) — if exists
+2. The plan artifact (`swarm-report/<slug>-plan.md`) — or `swarm-report/<slug>-debug.md` for bugfix-flow — if exists
 3. The `git diff` of all changes
 
-Nothing else. No implementation context, no conversation history. This prevents the author's assumptions from leaking into the review.
-
-Questions the reviewer must answer:
+Nothing else. No implementation context. Questions the reviewer must answer:
 - Does the code solve the original problem?
 - Is there scope creep beyond the plan?
 - Are acceptance criteria from the plan met?
 
-### Invocation template for gate 2
-
-The orchestrator prepares the diff before launching the agent:
-1. `git diff $(git merge-base origin/main HEAD)..HEAD > swarm-report/<slug>-diff.txt`
-2. Launch `code-reviewer` agent with this prompt structure:
-
+Invocation template:
 ```
 ## Task description
 {original task description verbatim}
 
-## Plan
-Read the plan at: {path to swarm-report/<slug>-plan.md, or "No plan for this task"}
+## Plan or debug context
+Read: {path to swarm-report/<slug>-plan.md or -debug.md, or "No context document"}
 
 ## Changes to review
 Read the diff at: {path to swarm-report/<slug>-diff.txt}
@@ -210,9 +245,7 @@ Read the diff at: {path to swarm-report/<slug>-diff.txt}
 Review these changes and produce a structured verdict.
 ```
 
-### Expert review triggers
-
-Not every change needs all expert reviews. Launch only the relevant ones, in parallel.
+### Phase D expert-review triggers
 
 | Expert | Trigger — files touch any of: |
 |--------|-------------------------------|
@@ -220,32 +253,16 @@ Not every change needs all expert reviews. Launch only the relevant ones, in par
 | `performance-expert` | RecyclerView/LazyColumn adapters, database queries, image loading, coroutine dispatchers, hot loops, large collections |
 | `architecture-expert` | New modules created, dependency direction changed, public API modified, new abstractions introduced |
 
-If no trigger matches — skip expert reviews entirely.
+If no trigger matches — skip Phase D entirely.
 
-### Iteration cap
+### Exit criteria
 
-- **Per gate:** max 3 fix attempts. If still failing after 3 — stop and escalate to user with the failure details and what was tried.
-- **Total quality loop:** max 5 full iterations (gate 1–4 cycles). If the loop does not converge — escalate. This prevents infinite fix-break-fix loops.
+- **PASS** — no BLOCK-severity findings remain. WARN and NIT surface in the report but do not block progression to acceptance.
+- **ESCALATE** — after 3 rounds, BLOCK findings remain. Orchestrator stops and reports to the user.
 
-### Quality report artifact
+### Finalize report artifact
 
-After the loop completes (pass or escalation), save `swarm-report/<slug>-quality.md` with:
-
-- Gates passed / failed (with attempt counts)
-- Issues found and fixes applied
-- Expert review findings (per expert, if any ran)
-- Semantic self-review verdict
-- Intent check result: PASS or DRIFT (with explanation)
-
-This artifact is the receipt for the Verify stage — Verify must not start without it.
-
-### Verdict handling (gate 2)
-
-| Verdict | Orchestrator action |
-|---------|---------------------|
-| PASS | Proceed to gate 3 (expert reviews) |
-| WARN | Proceed, but include major issues in `swarm-report/<slug>-quality.md` under "Acknowledged risks". If creating a PR, add these to the PR description. |
-| FAIL | Backward transition → Implement. Fix critical issues, re-run gate 1 (`/check`) after edits, then gate 2 (max 3 cycles). |
+Save `swarm-report/<slug>-finalize.md` with round-by-round findings (see `skills/finalize/SKILL.md` for the full schema). This artifact is the receipt for the Acceptance stage — Acceptance must not start without it.
 
 ## Testing Strategy in Planning
 
