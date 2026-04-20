@@ -109,7 +109,7 @@ Abort with a clear message if any of these fail:
 
 ### 1.4 State file
 
-`swarm-report/<slug>-drive-state.md`. Slug = `<branch-with-prefix-stripped>-pr<PR_NUMBER>` (e.g. `fix/login` on PR 42 → `login-pr42`). The PR number disambiguates parallel branches that would otherwise produce the same slug (e.g. `feature/login` and `fix/login`, or two re-openings of the same branch). Verify `swarm-report/` is gitignored. If absent — abort with a clear message asking the user to add `swarm-report/` to `.gitignore` and rerun. Do not auto-modify `.gitignore`: that creates an unrelated diff inside a PR-driving loop and surprises the user.
+`swarm-report/<slug>-drive-state.md`. Slug = `<branch-with-prefix-stripped>-pr<PR_NUMBER>` (e.g. `fix/login` on PR 42 → `login-pr42`). The PR number disambiguates parallel branches that would otherwise produce the same slug (e.g. `feature/login` and `fix/login`, or two re-openings of the same branch). Verify `swarm-report/` is gitignored by running `git check-ignore -q swarm-report/`; exit 0 = ignored, non-zero = not ignored. On non-zero — abort with `swarm-report/ is not ignored by git; add swarm-report/ to .gitignore and rerun`. Do not auto-modify `.gitignore`: that creates an unrelated diff inside a PR-driving loop and surprises the user.
 
 Schema (markdown, machine-parseable by the skill on resume):
 
@@ -337,7 +337,7 @@ Round N — review proposals
 
 ## Summary
 
-6 пунктов: 3 правки, 1 делегирование, 2 dismiss, 1 уточнение.
+6 пунктов: 2 правки, 1 делегирование, 2 dismiss, 1 уточнение.
 ```
 
 **Format rules:**
@@ -465,13 +465,13 @@ if [ -n "$COPILOT_NODE_ID" ]; then
   # not a non-zero exit code. Without this check the failure is silent.
   if jq -e '.errors // empty' <<<"$MUTATION_OUT" >/dev/null 2>&1 || [ -z "$MUTATION_OUT" ]; then
     # Record once, stop trying for the rest of this PR's lifetime.
-    # Downgrade state-file header to `copilot_unavailable: true`.
+    # Downgrade state-file header field `Copilot node id:` to the sentinel `unavailable`.
     COPILOT_NODE_ID=""
   fi
 fi
 ```
 
-Cache `$COPILOT_NODE_ID` in the state file header once resolved (avoid re-querying every round). If the lookup returned empty or the mutation returned `errors` — record `copilot_unavailable: true` in the header and stop trying for the rest of this PR's lifetime.
+Cache `$COPILOT_NODE_ID` in the state file header once resolved (avoid re-querying every round). If the lookup returned empty or the mutation returned `errors` — write the sentinel `Copilot node id: unavailable` into the header (the single schema-defined way to flag this; do NOT invent a separate `copilot_unavailable` field) and stop trying for the rest of this PR's lifetime.
 
 GitLab: `glab mr update $MR_IID --reviewer <user>` for humans; GitLab has no first-class bot equivalent of Copilot review — skip.
 
@@ -572,8 +572,7 @@ After merge:
 | State | When | What the skill writes |
 |---|---|---|
 | `merged` | Phase 5 succeeded | state file marked merged, success summary in session |
-| `blocked` | A blocker was surfaced (failure-loop guard, integrity mismatch, unresolvable rebase, DISCUSSION requires user, polling exceeded cap) | state file `Blockers raised` filled, session message explains next action |
-| `abandoned` | User explicitly says "stop" | state file `Status: blocked` with reason "user stop", no further work |
+| `blocked` | A blocker was surfaced (failure-loop guard, integrity mismatch, unresolvable rebase, DISCUSSION requires user, polling exceeded cap, or user explicitly says "stop") | state file `Blockers raised` filled (including reason `"user stop"` when applicable), session message explains next action |
 
 ---
 

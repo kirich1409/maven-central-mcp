@@ -393,10 +393,11 @@ to `developer-workflow:drive-to-merge`. That skill runs the autonomous
 CI-monitor + review-handling + merge loop: it diagnoses CI failures, fetches
 review comments, categorizes them inline, proposes concrete fixes, delegates
 to `implement` / `debug` for code changes, posts replies and resolves threads,
-re-requests review (Copilot + humans), polls via `ScheduleWakeup` for new
-activity, and asks the user only for the final merge confirmation (or when a
-true blocker surfaces — disagreements a human must resolve, unresolvable
-rebases, repeated same-signature CI failures).
+re-requests review (Copilot + humans), and polls via `ScheduleWakeup` for new
+activity. In default mode it pauses each round for `approve` / `skip` / `stop`;
+`--auto` skips that per-round approval gate. Both modes still ask the user for
+final merge confirmation (and surface true blockers — disagreements a human
+must resolve, unresolvable rebases, repeated same-signature CI failures).
 
 > Stage: PR (ready) → Drive to merge → Merged
 

@@ -204,9 +204,10 @@ Invoke `developer-workflow:create-pr` with the `--promote` argument.
 After `create-pr` marks the PR ready, the orchestrator invokes
 `developer-workflow:drive-to-merge`. That skill autonomously monitors CI,
 handles review comments (categorize → propose concrete fixes → delegate →
-reply → resolve), re-requests review including Copilot, polls via
-`ScheduleWakeup`, and asks the user only for the final merge confirmation or
-when a true blocker arises.
+reply → resolve), re-requests review including Copilot, and polls via
+`ScheduleWakeup`. In default mode it pauses each round for `approve` / `skip`
+/ `stop`; `--auto` skips that per-round approval gate. Both modes still ask
+the user for final merge confirmation, and surface true blockers.
 
 > Stage: PR (ready) → Drive to merge → Merged
 
