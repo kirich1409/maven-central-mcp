@@ -386,16 +386,24 @@ Invoke `developer-workflow:create-pr` with the `--promote` argument.
 - Independent tasks → one PR per task (create + promote per task's acceptance)
 - Tightly coupled tasks → single bundled PR; promote only after all tasks pass acceptance
 
-### 3.2 Hand-off to user
+### 3.2 Drive to merge
 
-The orchestrator stops after `create-pr` finishes. CI monitoring and merge
-execution are outside this pipeline.
+After `create-pr` marks the PR ready for review, the orchestrator hands control
+to `developer-workflow:drive-to-merge`. That skill runs the autonomous
+CI-monitor + review-handling + merge loop: it diagnoses CI failures, fetches
+review comments, categorizes them inline, proposes concrete fixes, delegates
+to `implement` / `debug` for code changes, posts replies and resolves threads,
+re-requests review (Copilot + humans), and polls via `ScheduleWakeup` for new
+activity. In default mode it pauses each round for `approve` / `skip` / `stop`;
+`--auto` skips that per-round approval gate. Both modes still ask the user for
+final merge confirmation (and surface true blockers — disagreements a human
+must resolve, unresolvable rebases, repeated same-signature CI failures).
 
-When review feedback arrives (bot or human), the user invokes
-`developer-workflow:triage-feedback` to categorize and prioritize it. The
-resulting `swarm-report/<slug>-triage.md` becomes the input for a new
-Implement cycle if FIXABLE items exist — the orchestrator resumes at
-Implement on the user's instruction.
+> Stage: PR (ready) → Drive to merge → Merged
+
+Invoke as `drive-to-merge` for a single-round interactive pass, or
+`drive-to-merge --auto` to skip the per-round approval gate (the merge gate
+always remains).
 
 ---
 
@@ -424,9 +432,11 @@ Each backward transition:
 
 The orchestrator **stops and waits for the user** at:
 - Profile confirmation (Phase 0.2)
-- After `create-pr` — hand-off to user. User runs `triage-feedback` when review
-  feedback arrives and decides whether to resume at `implement` with FIXABLE items;
-  CI monitoring and merge execution are outside this pipeline.
+- `drive-to-merge` merge gate — final `gh pr merge` / `glab mr merge` always requires
+  explicit user confirmation, regardless of mode.
+- `drive-to-merge` blockers — true DISCUSSION items on P0/P1, unresolvable rebase
+  conflicts, 3 consecutive CI failures with the same error signature, integrity
+  mismatch on a reply thread.
 - PARTIAL acceptance verdict (user decides: fix or ship)
 - TestPlanReview FAIL after 3 revise cycles — user picks: accept WARN manually, revise
   spec, or rerun with `--skip-test-plan`.

@@ -295,7 +295,7 @@ Route implementation to the right specialist:
 | Mechanical verification (build/lint/typecheck/tests) | `check` skill |
 | Code-quality pass (review + /simplify + pr-review-toolkit + experts) | `finalize` skill |
 | PR creation and lifecycle management | `create-pr` skill (`--draft` / `--refresh` / `--promote`) |
-| Triage feedback (PR comments or pasted text) — categorize, prioritize, group; optionally post replies / resolve threads for items with terminal verdicts via an editable manifest; never edits code | `triage-feedback` skill |
+| Drive an open PR/MR to merge — monitor CI, handle review comments (categorize → propose concrete fixes → delegate → reply → resolve), re-request review, poll for activity, confirm merge with user | `drive-to-merge` skill |
 | Plan review (PoLL) | `multiexpert-review` skill |
 | Test plan creation | `generate-test-plan` skill |
 | Feature verification on device | `acceptance` skill |
