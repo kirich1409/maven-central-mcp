@@ -9,8 +9,9 @@ description: >
   round; `--auto` proceeds without waiting; `--dry-run` stops after the first table. Final merge
   always requires explicit user confirmation. Triggers: "drive this PR to merge", "get this PR
   merged", "monitor CI and reviews", "ship this PR", "land this PR", "доведи PR до мержа",
-  "веди PR", "замержь этот PR". Do NOT use for creating new PRs (use create-pr) or code
-  written from scratch (use implement).
+  "веди PR", "замержь этот PR". Autonomous-mode triggers (equivalent to `--auto`): "действуй
+  автономно", "без подтверждений", "auto mode", "не спрашивай", "run autonomously". Do NOT use
+  for creating new PRs (use create-pr) or code written from scratch (use implement).
 ---
 
 # Drive to Merge
@@ -50,30 +51,40 @@ The merge step in Phase 5 **always** asks — `--auto` does not override that.
 
 ### 1.1 Detect platform
 
+Extract hostname from the remote URL and probe the matching CLI — do not regex for `github.com` / `gitlab` literals, which miss GitHub Enterprise Server and self-hosted GitLab.
+
 ```bash
 REMOTE_URL=$(git remote get-url origin)
-# github.com → gh CLI
-# gitlab     → glab CLI
+HOST=$(echo "$REMOTE_URL" | sed -E 's#^(https?://|git@)([^/:]+)[/:].*#\2#')
+
+if gh auth status --hostname "$HOST" >/dev/null 2>&1; then
+  PLATFORM=github
+elif glab auth status --hostname "$HOST" >/dev/null 2>&1 || glab config get --global gitlab_uri 2>/dev/null | grep -q "$HOST"; then
+  PLATFORM=gitlab
+else
+  echo "Unknown host $HOST — authenticate gh or glab against it and rerun." >&2
+  exit 1
+fi
 ```
 
 ### 1.2 Fetch PR/MR metadata
 
 ```bash
 # GitHub
-PR_INFO=$(gh pr view --json number,baseRefName,headRefName,title,body,isDraft,state,url,\
+PR_INFO=$(gh pr view --json id,number,baseRefName,headRefName,title,body,isDraft,state,url,\
 statusCheckRollup,reviewDecision,mergeable,mergeStateStatus,labels,closingIssuesReferences)
 PR_NUMBER=$(jq -r .number <<<"$PR_INFO")
 PR_URL=$(jq -r .url <<<"$PR_INFO")
 IS_DRAFT=$(jq -r .isDraft <<<"$PR_INFO")
 BASE=$(jq -r .baseRefName <<<"$PR_INFO")
 HEAD=$(jq -r .headRefName <<<"$PR_INFO")
+PR_NODE_ID=$(jq -r .id <<<"$PR_INFO")     # graphql node id from the same call — no extra round-trip
 REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 OWNER=${REPO%/*}; REPO_NAME=${REPO#*/}
 
-# Node ids — needed later for thread-ownership re-verify and Copilot re-request.
+# Repository node id — needed for thread-ownership re-verify before every POST.
 REPO_NODE_ID=$(gh api graphql -f query='query($o:String!,$n:String!){repository(owner:$o,name:$n){id}}' \
   -F o="$OWNER" -F n="$REPO_NAME" --jq '.data.repository.id')
-PR_NODE_ID=$(gh api "repos/$OWNER/$REPO_NAME/pulls/$PR_NUMBER" --jq '.node_id')
 # COPILOT_NODE_ID is resolved lazily in Phase 3.6 and cached in the state file header.
 
 # GitLab
@@ -98,7 +109,7 @@ Abort with a clear message if any of these fail:
 
 ### 1.4 State file
 
-`swarm-report/<slug>-drive-state.md`. Slug = branch name with `feature/` / `fix/` / `chore/` stripped. Verify `swarm-report/` is gitignored. If absent — abort with a clear message asking the user to add `swarm-report/` to `.gitignore` and rerun. Do not auto-modify `.gitignore`: that creates an unrelated diff inside a PR-driving loop and surprises the user.
+`swarm-report/<slug>-drive-state.md`. Slug = `<branch-with-prefix-stripped>-pr<PR_NUMBER>` (e.g. `fix/login` on PR 42 → `login-pr42`). The PR number disambiguates parallel branches that would otherwise produce the same slug (e.g. `feature/login` and `fix/login`, or two re-openings of the same branch). Verify `swarm-report/` is gitignored. If absent — abort with a clear message asking the user to add `swarm-report/` to `.gitignore` and rerun. Do not auto-modify `.gitignore`: that creates an unrelated diff inside a PR-driving loop and surprises the user.
 
 Schema (markdown, machine-parseable by the skill on resume):
 
@@ -154,6 +165,7 @@ Classify:
 | PR attribute | Values that matter |
 |---|---|
 | `state` | OPEN → continue; MERGED / CLOSED → Phase 5 terminal |
+| `isDraft` | `true` → handle review comments and CI, but never enter Phase 5; surface to user with "PR is draft — promote to ready with `gh pr ready` or abort" when everything else would be merge-ready |
 | `statusCheckRollup` | Any `FAILURE` / `CANCELLED` / `TIMED_OUT` → 2.2 CI handling; all `SUCCESS` → skip 2.2; mix of `IN_PROGRESS` + no failures → wait (Phase 4) |
 | `reviewDecision` | `CHANGES_REQUESTED` → 2.3 must run; `APPROVED` → candidate for merge; `REVIEW_REQUIRED` → 2.4 (request review) |
 | `mergeable` + `mergeStateStatus` | `CONFLICTING` → 2.6 rebase; `BLOCKED` (missing approval, failing required check) → identify and loop |
@@ -216,7 +228,7 @@ git diff "origin/$BASE"...HEAD
 Filter before categorizing:
 
 - Skip replies in already-resolved threads.
-- Skip comments posted by the current principal (the skill's own earlier replies).
+- Skip the skill's own earlier replies — identify by `(author == principal) AND (comment id OR body signature matches a state file `Commitments` row with `replied: true`)`. Do NOT skip every comment from the principal unconditionally — the user may also post from the same account, and those comments must be treated as reviewer input.
 - Skip comments already covered by a row in state file `Commitments` with `replied: true`.
 
 #### Categorize each remaining item
@@ -340,7 +352,7 @@ Round N — review proposals
 
 **Gate behaviour:**
 
-- Default mode: stop here. Tell the user: `reply "approve" to execute all items, "skip 1,4" to drop items by number, or "stop" to end the round without acting.` Wait for input. Numbering is global and continuous across sections — no letters, no per-section restart.
+- Default mode: stop here. Tell the user: `reply "approve" to execute all items, "skip 1,4" (or "skip 1 4") to drop items by number, or "stop" to end the round without acting.` Wait for input. Accept both comma-separated and space-separated number lists; strip whitespace around commas. Numbering is global and continuous across sections — no letters, no per-section restart.
 - `--auto`: skip waiting; proceed to Phase 3.
 - `--dry-run`: print the list and stop for good.
 
@@ -388,9 +400,9 @@ For each delegate row: invoke the named skill (`implement` or `debug`) or engine
 - The reviewer comment quote.
 - The proposed approach from the decision table.
 - The files to touch.
-- "Do not refactor outside the listed files. Report back with diff summary."
+- Scope guard: "Touch only the listed files. No new tests, no CI / workflow / build-config edits, no doc rewrites, no dependency changes, no refactors outside the listed files. Report back with a diff summary."
 
-Delegates run sequentially, not in parallel, so their edits don't stomp each other. After each delegate returns — spot-check the diff; if it went outside scope, revert and surface as a blocker.
+Delegates run sequentially, not in parallel, so their edits don't stomp each other. After each delegate returns — spot-check the diff; if it touched anything outside the listed files (including `.github/`, tests directories not mentioned, `package.json` / `build.gradle`, docs), revert and surface as a blocker.
 
 ### 3.3 Ask-in-thread rows (NEEDS_CLARIFICATION)
 
@@ -443,16 +455,23 @@ COPILOT_NODE_ID=$(gh api graphql -f query='
 
 # Best-effort. If empty — Copilot is not part of this repo's review pool, skip silently.
 if [ -n "$COPILOT_NODE_ID" ]; then
-  gh api graphql -f query='
+  MUTATION_OUT=$(gh api graphql -f query='
     mutation($pr:ID!,$user:ID!){
       requestReviews(input:{pullRequestId:$pr, userIds:[$user]}){
         pullRequest { id }
       }
-    }' -f pr="$PR_NODE_ID" -f user="$COPILOT_NODE_ID"
+    }' -f pr="$PR_NODE_ID" -f user="$COPILOT_NODE_ID" 2>&1)
+  # Explicit error check — a bot no longer in the review pool returns an `errors` array,
+  # not a non-zero exit code. Without this check the failure is silent.
+  if jq -e '.errors // empty' <<<"$MUTATION_OUT" >/dev/null 2>&1 || [ -z "$MUTATION_OUT" ]; then
+    # Record once, stop trying for the rest of this PR's lifetime.
+    # Downgrade state-file header to `copilot_unavailable: true`.
+    COPILOT_NODE_ID=""
+  fi
 fi
 ```
 
-Cache `$COPILOT_NODE_ID` in the state file header once resolved (avoid re-querying every round). If the lookup returned empty — record `copilot_unavailable: true` in the header and stop trying.
+Cache `$COPILOT_NODE_ID` in the state file header once resolved (avoid re-querying every round). If the lookup returned empty or the mutation returned `errors` — record `copilot_unavailable: true` in the header and stop trying for the rest of this PR's lifetime.
 
 GitLab: `glab mr update $MR_IID --reviewer <user>` for humans; GitLab has no first-class bot equivalent of Copilot review — skip.
 
