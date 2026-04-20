@@ -50,7 +50,7 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           generate_release_notes: true
           make_latest: true
@@ -81,7 +81,11 @@ jobs:
               continue
             fi
             echo "Creating ${per_plugin_tag}..."
-            git tag -a "${per_plugin_tag}" -m "Release ${plugin} ${VERSION} (unified release ${TAG})"
+            if ! git tag -a "${per_plugin_tag}" -m "Release ${plugin} ${VERSION} (unified release ${TAG})"; then
+              echo "::error::Failed to create ${per_plugin_tag}" >&2
+              rc=1
+              continue
+            fi
             echo "Pushing ${per_plugin_tag}..."
             if git push origin "${per_plugin_tag}"; then
               echo "Pushed ${per_plugin_tag}."
