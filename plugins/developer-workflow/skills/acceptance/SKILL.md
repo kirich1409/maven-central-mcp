@@ -1,13 +1,9 @@
 ---
 name: acceptance
 description: >
-  Acceptance verification — confirm implementation meets spec (feature) or that a bug no longer
-  reproduces (bug fix). Orchestrator: detects project type, verifies a source exists (spec AC,
-  test plan, or debug.md), fans out parallel checks to `manual-tester` (UI + scenario),
-  `code-reviewer` (delta), plus `business-analyst` / `ux-expert` / `security-expert` /
-  `performance-expert` and a build smoke as triggered by spec frontmatter and project type,
-  then aggregates via PoLL rules. Without a source, proposes `/write-spec`,
-  `/generate-test-plan`, or `/debug`. Trigger on: "test this", "verify against spec",
+  This skill should be used when the user wants to confirm an implementation meets its spec
+  (feature) or that a bug no longer reproduces (bug fix). Fans out parallel checks and
+  aggregates verdicts into one receipt. Triggers: "test this", "verify against spec",
   "QA the implementation", "run the test plan", "validate acceptance criteria",
   "verify the PR", "verify the fix", "confirm bug is gone", "acceptance", "приёмка",
   "проверь", "протестируй".

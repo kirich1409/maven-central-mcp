@@ -51,14 +51,29 @@ CURRENT_NAME=$(git config user.name)
 
 ## Step 2: Check for existing PR (all modes)
 
+Do NOT use `2>/dev/null` here — it silently conflates "no PR exists" (expected) with
+"CLI unavailable / auth failed" (a real error). Capture stderr and branch on exit code:
+
 ```bash
 # GitHub
-gh pr view --json url,isDraft,number,body 2>/dev/null
+out=$(gh pr view --json url,isDraft,number,body 2>&1); rc=$?
+# Exit code:
+#   0              → PR exists; parse $out as JSON
+#   1 + stderr contains "no pull requests" / "no open pull requests" → no PR (expected)
+#   any other rc or unexpected stderr → real error (CLI missing, unauthenticated, API down)
+
 # GitLab
-glab mr view --output json 2>/dev/null
+out=$(glab mr view --output json 2>&1); rc=$?
+# Same pattern: rc 0 → MR exists; stderr "no open merge request" → no MR; other → real error.
 ```
 
-Capture:
+**On real error (non-zero rc that is not the "no PR" case):** abort with the captured
+stderr and stop. Do not proceed as if no PR exists — that would try to create a duplicate.
+Typical causes: `gh` / `glab` not installed or not authenticated (`gh auth status`,
+`glab auth status`), API outage, or a sandbox/proxy environment where the Git provider
+token is missing.
+
+Capture on success:
 - `PR_EXISTS` — true/false
 - `PR_IS_DRAFT` — true/false (if exists)
 - `PR_URL` — for output
@@ -134,7 +149,15 @@ Only set labels/reviewers when **creating** (draft or default) or when **promoti
 
 ### 6.1 Labels
 
-Fetch available labels (GitHub: `gh label list --json name,description --limit 100`; GitLab: `glab api /projects/:fullpath/labels`). Select from existing only, based on changed file paths, commit types, and scope. Do not invent labels.
+Fetch available labels:
+
+- **GitHub:** `gh label list --json name,description --limit 100`
+- **GitLab:** `glab label list` (fetches labels for the current project resolved from
+  `git remote get-url origin`; do NOT use `glab api /projects/:fullpath/labels` — glab
+  does not substitute `:fullpath` and the call will 404)
+
+Select from existing only, based on changed file paths, commit types, and scope. Do not
+invent labels.
 
 **Add, don't replace.** When deriving labels during creation (`--draft` or default) or `--promote`, only **add** missing labels computed from the diff; never remove labels set manually by humans. This preserves reviewer / triage / release labels that a maintainer may have applied between draft creation and promote. `--refresh` skips Step 6 entirely (see header), so it never touches labels at all.
 
@@ -300,7 +323,19 @@ gh pr edit --body "<final-body>"      # or glab mr update --description
 
 # 2. Mark ready
 gh pr ready                           # GitHub
-glab mr update --ready                # GitLab (flag varies — also: --unwip; verify in glab version)
+# GitLab: --ready on current glab (≥1.32); older glab used --unwip.
+# Try --ready first; fall back to --unwip ONLY when stderr shows that
+# --ready itself is an unknown flag. Any other error is real — surface it.
+GLAB_ERR=$(mktemp)
+trap 'rm -f "$GLAB_ERR"' EXIT
+if ! glab mr update --ready 2>"$GLAB_ERR"; then
+  if grep -qE 'unknown flag:? --ready|flag provided but not defined: -?ready' "$GLAB_ERR"; then
+    glab mr update --unwip
+  else
+    cat "$GLAB_ERR" >&2
+    exit 1
+  fi
+fi
 ```
 
 Output:

@@ -25,8 +25,9 @@ The user provides one or more of:
 - A module or directory (`feature/auth`, `:core:network`)
 - A vague reference ("the auth module", "this class")
 
-Resolve vague references using `ast-index search` or `ast-index class`. If ambiguous, ask
-**one clarifying question** before proceeding.
+Resolve vague references using a code-index tool when one is available in the environment;
+fall back to `Grep` / `Glob` + `Read` otherwise. If the reference remains ambiguous after
+resolution, ask **one clarifying question** before proceeding.
 
 ### 1.1.1 Generate slug
 
@@ -47,7 +48,9 @@ Read all source files in the target scope. For each file, identify:
 
 Search for existing tests:
 - Check the corresponding test source set (`src/test/`, `src/androidTest/`, `src/commonTest/`)
-- Use `ast-index search "TargetClass"` or `ast-index usages "TargetClass"` to find test classes that reference the target classes
+- Prefer a code-index tool when one is available in the environment to locate test classes
+  that reference the target by symbol (search / usages / class lookups); fall back to
+  `Grep "TargetClass" path/to/test-src-set` when no index is available
 - Check for `@Test` annotations that exercise target functions
 
 ### 1.4 Identify untested code
