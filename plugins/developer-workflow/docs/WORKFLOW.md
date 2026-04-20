@@ -64,7 +64,7 @@ IDEA / FEATURE REQUEST
   | [finalize] ---- Code-quality pass (3-round loop)│
   |   |  |-- Phase A: code-reviewer               │
   |   |  |-- Phase B: /simplify                    │
-  |   |  |-- Phase C: pr-review-toolkit trio       │
+  |   |  |-- Phase C: pr-review-toolkit trio (opt) │
   |   |  '-- Phase D: experts (conditional)        │
   |   |        Artifact: <slug>-finalize.md        │
   |   v                                            │

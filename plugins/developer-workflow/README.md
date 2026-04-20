@@ -114,7 +114,7 @@ The `finalize` skill's Phase C invokes the `pr-review-toolkit` trio (test qualit
 /plugin install pr-review-toolkit@claude-plugins-official
 ```
 
-The plugin is **not** declared as a hard dependency because `claude-plugins-official` publishes marketplace entries without `version` fields, making semver resolution impossible for Claude Code. When `pr-review-toolkit` is absent, `finalize` logs `Phase C skipped — pr-review-toolkit not installed` and continues normally.
+The plugin is **not** declared as a hard dependency because `claude-plugins-official` publishes marketplace entries without `version` fields, making semver resolution impossible for Claude Code. When `pr-review-toolkit` is absent, `finalize` logs `phase: C, status: skipped, reason: pr-review-toolkit not installed` and continues normally.
 
 ## Pipeline documentation
 
