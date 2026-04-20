@@ -37,7 +37,7 @@ Compile findings into a structured summary that the code-generation agent consum
 ## Test Infrastructure Summary
 
 **Platform:** {Kotlin/Android / Swift/iOS / Swift/macOS / KMP}
-**Framework:** {JUnit 4 / JUnit 5 / Kotest / Swift Testing / XCTest / Quick+Nimble}
+**Framework:** {JUnit 4 / JUnit 5 / Kotest / Swift Testing / XCTest / Quick}
 **Assertions:** {Truth / AssertJ / Kotest matchers / kotlin.test / #expect / XCTAssert / Nimble}
 **Test doubles:** {MockK / Mockito-Kotlin / manual fakes / protocol-backed fakes / stubs / spies / none}
 **Async testing:** {runTest + Turbine / runTest / runBlocking / async tests / XCTestExpectation / none}

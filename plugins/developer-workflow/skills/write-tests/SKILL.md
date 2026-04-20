@@ -179,7 +179,9 @@ build system:
 
 # Swift — SwiftPM package
 swift test
-# or narrow to one target: swift test --filter <TargetName>Tests
+# Narrow by test-product (test target): swift test --test-product <TestTargetName>
+# Narrow by identifier pattern: swift test --filter <Suite>/<method>  (e.g. LoginTests/testSignIn)
+# Note: --filter matches test identifiers/regex, not targets.
 
 # Swift — Xcode project / workspace (iOS, macOS, etc.)
 xcodebuild test -scheme <Scheme> -destination 'platform=iOS Simulator,name=iPhone 15'
