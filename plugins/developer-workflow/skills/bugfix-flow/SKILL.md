@@ -1,12 +1,13 @@
 ---
 name: bugfix-flow
 description: >-
-  Thin orchestrator for bug fix tasks — sequences modular skills: debug → implement → acceptance → PR.
-  Invoke when the user reports a bug and wants it fixed end-to-end.
-  Trigger on: "/bugfix-flow", "bugfix flow", "fix this bug", "исправь баг", "почини", "это сломалось, почини",
-  "fix and ship", "find and fix", "debug and fix".
-  Do NOT use for: feature implementation (use feature-flow), investigation without fix (use debug),
-  quick obvious fix that doesn't need diagnosis (invoke implement directly).
+  This skill should be used when the user reports a bug and wants it fixed end-to-end —
+  thin orchestrator sequencing debug → (optional plan) → implement → finalize → acceptance →
+  draft/ready PR → drive-to-merge. Delegates every stage to a separate skill; writes no
+  code itself. Triggers: "/bugfix-flow", "bugfix flow", "fix this bug", "исправь баг",
+  "почини", "это сломалось, почини", "fix and ship", "find and fix", "debug and fix".
+  Do NOT use for: feature implementation (use feature-flow), investigation without fix
+  (use debug), or a quick obvious fix that does not need diagnosis (invoke implement directly).
 ---
 
 # Bugfix Flow — Bug Fix Orchestrator
@@ -45,9 +46,16 @@ Finalize   -> escalate         (ESCALATE after 3 rounds; user picks non-implemen
 Acceptance -> PR               (VERIFIED — bug gone)
 Acceptance -> Implement        (FAILED — bug still reproduces or new bugs)
 Acceptance -> Debug            (FAILED — fix didn't address root cause)
-PR         -> Merge
+PR         -> Merged           (TERMINAL — no further transitions)
 PR         -> Implement        (review feedback requires code changes)
+PR         -> escalate         (drive-to-merge blocker — DISCUSSION on P0/P1,
+                                unresolvable rebase, repeated same-signature CI failure)
 ```
+
+Per-transition maxima for backward edges (Plan → Debug, Finalize → Implement,
+Acceptance → Implement / Debug, PR → Implement) are declared in the
+[Backward Transitions](#backward-transitions-strict-limits) table below. When a cap is
+reached, the orchestrator **escalates** instead of looping again.
 
 **ALL other transitions are FORBIDDEN.** Before every transition, announce:
 
@@ -104,10 +112,16 @@ action that depends on reproduction steps.
 When the debug artifact indicates a complex fix (touches multiple modules, needs architectural
 decisions, or the recommended fix direction has alternatives):
 
-1. Create an implementation plan in Plan Mode based on the debug findings
-2. Invoke `developer-workflow:multiexpert-review` to validate the plan
-3. If FAIL → back to Debug for more context
-4. If PASS/CONDITIONAL → proceed to Implement
+1. Create an implementation plan in Plan Mode based on the debug findings and save it to
+   `swarm-report/<slug>-plan.md` (same convention as `feature-flow` Phase 1.3).
+2. Invoke `developer-workflow:multiexpert-review` on `swarm-report/<slug>-plan.md` with
+   `profile: implementation-plan` to validate.
+3. If FAIL → back to Debug for more context (counted against the Plan → Debug backward cap).
+4. If PASS/CONDITIONAL → proceed to Implement.
+
+When the Plan stage ran, `swarm-report/<slug>-plan.md` **overrides** `swarm-report/<slug>-debug.md`
+as the plan anchor for `finalize` (Phase 2.5) — the plan carries the chosen approach, while
+debug.md stays authoritative for root cause and reproduction steps.
 
 Skip for straightforward fixes where the debug artifact already gives a clear, single-path direction.
 
@@ -143,7 +157,10 @@ If a draft PR already exists for this branch (re-entry on rollback), `--draft` i
 
 After `implement` passes its two gates (mechanical checks + intent check), invoke `developer-workflow:finalize` with:
 - Slug
-- Path to `swarm-report/<slug>-debug.md` (serves as the plan anchor for bugfix-flow — describes root cause and fix direction)
+- Plan anchor — pass `swarm-report/<slug>-plan.md` when the Plan stage ran (Phase 1.5);
+  otherwise pass `swarm-report/<slug>-debug.md`. The plan overrides debug.md as the
+  anchor because the plan carries the chosen approach, while debug.md stays authoritative
+  for root cause and reproduction steps (see Phase 1.5).
 
 `finalize` runs a multi-round loop (max 3): code-reviewer → /simplify → pr-review-toolkit trio → conditional expert reviews, with `/check` between fixes.
 
@@ -181,8 +198,8 @@ Wait for `swarm-report/<slug>-acceptance.md`.
 | Result | Transition | Action |
 |--------|-----------|--------|
 | VERIFIED (bug gone) | **Acceptance → PR** | Proceed |
-| FAILED — same bug | **Acceptance → Implement** | Fix again. If 2nd failure → **Acceptance → Debug** (re-diagnose) |
-| FAILED — new bug | Route per bug: trivial → Implement, complex → Debug |
+| FAILED — same bug | **Acceptance → Implement** | Fix again (max 2 retries — see Backward Transitions). After the 2nd retry also fails acceptance, route **Acceptance → Debug** (re-diagnose). |
+| FAILED — new bug | Route per bug: trivial → Implement (counted against the `Acceptance → Implement` cap of 2), complex → Debug (counted against the `Acceptance → Debug` cap of 1). If either cap is exhausted, **escalate** — do not loop again. |
 | PARTIAL — bug gone, minor issues | Ask user: fix or ship as-is |
 
 ---
@@ -220,9 +237,10 @@ gate always requires explicit confirmation.
 
 | From | To | Trigger | Max |
 |------|----|---------|-----|
+| Plan | Debug | Plan-review FAIL — plan needs more diagnostic context | 1 |
 | Finalize | Implement | ESCALATE — user routes back to fix root issues | 1 |
-| Acceptance | Implement | Bug still reproduces or new bugs | 3 |
-| Acceptance | Debug | Fix didn't address root cause (2 failed implementations) | 1 |
+| Acceptance | Implement | Bug still reproduces or new bugs | 2 |
+| Acceptance | Debug | Fix didn't address root cause (after 2 failed implementations), or acceptance finds a complex new bug that needs renewed diagnosis | 1 |
 | PR | Implement | Review feedback requires code changes | 2 |
 
 Each backward transition:
