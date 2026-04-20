@@ -1,12 +1,14 @@
 ---
 name: feature-flow
 description: >-
-  Thin orchestrator for feature tasks — sequences modular skills through the full pipeline.
-  Invoke when the user gives a feature task and wants it done end-to-end autonomously.
-  Trigger on: "/feature-flow", "implement this feature", "сделай эту фичу от начала до конца",
-  "full cycle", "autonomous implementation".
-  Do NOT use for: bug fixes (use bugfix-flow), research-only (use research), single quick change
-  (invoke implement directly).
+  This skill should be used when the user wants a feature task driven end-to-end autonomously,
+  from research through PR merge — sequencing research, decomposition, planning, multiexpert
+  review, test-plan, implement, finalize, acceptance, draft/ready PR, and drive-to-merge.
+  Thin orchestrator: delegates every stage to a separate skill; writes no code itself.
+  Triggers: "/feature-flow", "implement this feature end-to-end", "run the full pipeline",
+  "сделай эту фичу от начала до конца", "full cycle", "autonomous implementation".
+  Do NOT use for: bug fixes (use bugfix-flow), research-only (use research), or a single
+  quick change that does not need the pipeline (invoke implement directly).
 ---
 
 # Feature Flow — Feature Orchestrator
@@ -58,9 +60,17 @@ Acceptance     -> PR               (VERIFIED)
 Acceptance     -> Implement        (FAILED — bugs to fix; Implement then re-runs Finalize)
 Acceptance     -> TestPlan         (FAILED — add Regression TC for new bugs)
 Acceptance     -> Debug            (FAILED — unclear root cause)
-PR             -> Merge
+Debug          -> Implement        (root cause diagnosed — fix follows)
+PR             -> Merge            (TERMINAL — no further transitions)
 PR             -> Implement        (review feedback requires code changes)
+PR             -> escalate         (drive-to-merge blocker — DISCUSSION on P0/P1,
+                                     unresolvable rebase, repeated same-signature CI failure)
 ```
+
+Per-transition maxima for backward edges (PlanReview → Research, TestPlanReview → TestPlan,
+Finalize → Implement, Acceptance → Implement / TestPlan / Debug, PR → Implement) are declared
+in the [Backward Transitions](#backward-transitions-strict-limits) table below. When a cap is
+reached, the orchestrator **escalates** instead of looping again.
 
 **Decision criteria for skipping stages:**
 - **Skip Research:** task is well-understood, no external APIs, no unfamiliar libraries
