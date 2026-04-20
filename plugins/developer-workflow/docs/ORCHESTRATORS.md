@@ -28,10 +28,15 @@ flowchart TD
 
     needs_decompose -->|No, simple| needs_plan{Complex single task?}
     needs_decompose -->|Yes| decompose[/decompose-feature/]
-    decompose --> plan_review
+    decompose --> design_opts_gate
 
     needs_plan -->|No| testplan_gate
-    needs_plan -->|Yes| plan_review[/multiexpert-review/]
+    needs_plan -->|Yes| design_opts_gate
+
+    design_opts_gate{High arch risk<br/>or user asked<br/>for alternatives?}
+    design_opts_gate -->|No, skip| plan_review[/multiexpert-review/]
+    design_opts_gate -->|Yes| design_opts[/design-options/]
+    design_opts --> plan_review
 
     plan_review -->|PASS| testplan_gate
     plan_review -->|CONDITIONAL| testplan_gate
@@ -77,6 +82,7 @@ flowchart TD
 
     style research fill:#e1f5fe
     style decompose fill:#e1f5fe
+    style design_opts fill:#e1f5fe
     style plan_review fill:#e1f5fe
     style test_plan fill:#e1f5fe
     style test_plan_review fill:#e1f5fe
