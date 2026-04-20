@@ -51,8 +51,8 @@ integration, or unfamiliar domain.
 ```
 Research best practices and implementation approaches for: {feature goal}
 
-If Perplexity MCP is available, use it for deep research (perplexity_research or
-perplexity_ask). Otherwise use built-in web search tools.
+Prefer a dedicated web research tool when one is available in the environment.
+Otherwise use standard web search.
 
 Investigate:
 1. Common implementation approaches with trade-offs
