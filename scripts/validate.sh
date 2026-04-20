@@ -2,8 +2,12 @@
 # Validates marketplace and plugin configurations.
 #
 # Usage:
-#   bash scripts/validate.sh                    # full validation
-#   bash scripts/validate.sh --check-tag 1.2.3  # + verify all versions match tag
+#   bash scripts/validate.sh    # full validation
+#
+# Each plugin is versioned independently (workflow_dispatch-driven release).
+# This script enforces the per-plugin invariant: marketplace.json entry,
+# plugin.json manifest, and (for maven-mcp) workspace package.json must all
+# carry the same version string for every plugin.
 #
 # Exit code: 0 if all checks pass, 1 if any error found.
 set -uo pipefail
@@ -109,10 +113,42 @@ check_name_consistency() {
   done < <(jq -r '.plugins[] | [.name, .source] | @tsv' "$MARKETPLACE")
 }
 
-# ---------- L4: Unified versioning ----------
+# ---------- L4: Per-plugin versioning ----------
+#
+# Plugins are versioned independently — no global cross-plugin equality. For
+# each plugin we require marketplace.json[name].version ==
+# plugin.json:version. Plugins that also ship as npm packages have a workspace
+# package.json whose version must match too.
+#
+# Which plugins ship as npm packages is data-driven: presence of a
+# package.json one level above the plugin.json manifest (nested layout, e.g.
+# plugins/maven-mcp/package.json with manifest at plugins/maven-mcp/plugin/).
+# Add a new npm-publishing plugin by creating that layout; no script edits
+# needed. Same detection lives in scripts/release.mjs (packageJsonPath).
+
+# Path to the workspace package.json for a plugin whose manifest source is
+# $1. Echoes the path if the file exists and sits at the plugin's workspace
+# root (parent of manifest's source dir); echoes nothing otherwise.
+workspace_package_json() {
+  local source="$1"
+  # marketplace source entries are like "./plugins/maven-mcp/plugin" — strip
+  # the leading "./" for clean paths.
+  local clean="${source#./}"
+  local parent
+  parent=$(dirname "$clean")
+  # Only treat as a workspace package.json if it sits under plugins/<name>/
+  # (i.e. parent depth is at least plugins/something). For flat-layout plugins
+  # parent would be "plugins" which must NOT match.
+  case "$parent" in
+    plugins/*)
+      local candidate="${parent}/package.json"
+      [ -f "$candidate" ] && echo "$candidate"
+      ;;
+  esac
+}
 
 check_version_consistency() {
-  echo "--- L4: Versions consistent (marketplace.json ↔ plugin.json) ---"
+  echo "--- L4: Per-plugin version consistency ---"
   while IFS=$'\t' read -r name version source; do
     plugin_json="${source}/.claude-plugin/plugin.json"
     if [ ! -f "$plugin_json" ]; then
@@ -124,6 +160,16 @@ check_version_consistency() {
       fail "'$name' version mismatch: marketplace.json=$version, plugin.json=$plugin_version"
     else
       ok "'$name' version $version"
+    fi
+
+    pkg_json=$(workspace_package_json "$source")
+    if [ -n "$pkg_json" ]; then
+      pkg_version=$(jq -r '.version' "$pkg_json")
+      if [ "$version" != "$pkg_version" ]; then
+        fail "'$name' version mismatch: marketplace.json=$version, $pkg_json=$pkg_version"
+      else
+        ok "'$name' package.json version $pkg_version"
+      fi
     fi
   done < <(jq -r '.plugins[] | [.name, .version, .source] | @tsv' "$MARKETPLACE")
 }
@@ -143,51 +189,6 @@ check_semver() {
       fi
     fi
   done < <(jq -r '.plugins[] | [.name, .version, .source] | @tsv' "$MARKETPLACE")
-}
-
-check_tag_versions() {
-  local version="$1"
-  echo "--- L4: All versions match tag v${version} ---"
-  SEMVER='^[0-9]+\.[0-9]+\.[0-9]+$'
-  if ! echo "$version" | grep -qE "$SEMVER"; then
-    fail "Tag version is not semver: $version"
-    return
-  fi
-
-  # maven-mcp: also check package.json (npm package)
-  PKG_JSON="plugins/maven-mcp/package.json"
-  if [ -f "$PKG_JSON" ]; then
-    pkg_version=$(jq -r '.version' "$PKG_JSON")
-    if [ "$pkg_version" != "$version" ]; then
-      fail "$PKG_JSON version \"$pkg_version\" does not match tag v${version}"
-    else
-      ok "$PKG_JSON version $pkg_version"
-    fi
-  fi
-
-  # All plugin.json files — data-driven from marketplace.json
-  while IFS=$'\t' read -r name source; do
-    plugin_json="${source}/.claude-plugin/plugin.json"
-    if [ ! -f "$plugin_json" ]; then
-      fail "'$name' plugin.json not found at $plugin_json"
-      continue
-    fi
-    plugin_version=$(jq -r '.version' "$plugin_json")
-    if [ "$plugin_version" != "$version" ]; then
-      fail "'$name' plugin.json version \"$plugin_version\" does not match tag v${version}"
-    else
-      ok "'$name' plugin.json version $plugin_version"
-    fi
-  done < <(jq -r '.plugins[] | [.name, .source] | @tsv' "$MARKETPLACE")
-
-  # marketplace.json plugin versions
-  while IFS=$'\t' read -r name mkt_version; do
-    if [ "$mkt_version" != "$version" ]; then
-      fail "marketplace.json plugin '$name' version \"$mkt_version\" does not match tag v${version}"
-    else
-      ok "marketplace.json '$name' version $mkt_version"
-    fi
-  done < <(jq -r '.plugins[] | [.name, .version] | @tsv' "$MARKETPLACE")
 }
 
 # ---------- L5: plugin.json component paths ----------
@@ -291,15 +292,6 @@ check_frontmatter() {
 # ---------- Entry point ----------
 
 main() {
-  CHECK_TAG=""
-  if [ "${1-}" = "--check-tag" ]; then
-    CHECK_TAG="${2-}"
-    if [ -z "$CHECK_TAG" ]; then
-      echo "Usage: $0 --check-tag VERSION" >&2
-      exit 1
-    fi
-  fi
-
   echo "=== Marketplace & Plugin Validation ==="
   echo "Marketplace: $MARKETPLACE"
 
@@ -314,10 +306,6 @@ main() {
   check_component_paths
   check_hook_scripts
   check_frontmatter
-
-  if [ -n "$CHECK_TAG" ]; then
-    check_tag_versions "$CHECK_TAG"
-  fi
 
   echo ""
   if [ "$ERRORS" -eq 0 ]; then
