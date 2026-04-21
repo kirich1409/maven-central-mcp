@@ -189,8 +189,10 @@ describe("FileCache", () => {
       mockedFsp.writeFile.mockResolvedValue();
       mockedFsp.rename.mockResolvedValue();
 
-      const deferred = Promise.withResolvers<string>();
-      const fetchFn = vi.fn().mockImplementation(() => deferred.promise);
+      // Manual deferred — Promise.withResolvers requires Node 22+, CI runs Node 20.
+      let resolveShared!: (v: string) => void;
+      const sharedPromise = new Promise<string>((r) => { resolveShared = r; });
+      const fetchFn = vi.fn().mockImplementation(() => sharedPromise);
 
       const p1 = cache.getOrFetch("same-key", undefined, fetchFn);
       const p2 = cache.getOrFetch("same-key", undefined, fetchFn);
@@ -201,7 +203,7 @@ describe("FileCache", () => {
       await Promise.resolve();
       await Promise.resolve();
 
-      deferred.resolve("shared-value");
+      resolveShared("shared-value");
       const results = await Promise.all([p1, p2, p3]);
 
       expect(results).toEqual(["shared-value", "shared-value", "shared-value"]);
