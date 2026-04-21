@@ -145,4 +145,23 @@ describe("extractGitHubRepo", () => {
       </project>`;
     expect(extractGitHubRepo(pom)).toEqual({ owner: "owner", repo: "repo" });
   });
+
+  it("ignores URLs inside XML comments", () => {
+    const pom = `
+      <project>
+        <scm>
+          <!-- <url>https://github.com/wrong/repo</url> -->
+          <url>https://github.com/correct/repo</url>
+        </scm>
+      </project>`;
+    expect(extractGitHubRepo(pom)).toEqual({ owner: "correct", repo: "repo" });
+  });
+
+  it("returns null when the only GitHub url is inside an XML comment", () => {
+    const pom = `
+      <project>
+        <!-- <url>https://github.com/wrong/repo</url> -->
+      </project>`;
+    expect(extractGitHubRepo(pom)).toBeNull();
+  });
 });
