@@ -24,7 +24,7 @@ flowchart TD
 
     needs_research -->|No| impl
     needs_research -->|Yes| research[/research/]
-    research --> needs_clarify{Skip clarify?<br/>trivial/--no-clarify}
+    research --> needs_clarify{Skip clarify?<br/>see Clarify skip conditions}
     needs_clarify -->|Skip| needs_decompose{Multi-task?}
     needs_clarify -->|Run| clarify[/clarify/]
     clarify --> clarify_result{Gap found?}

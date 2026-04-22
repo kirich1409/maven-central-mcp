@@ -63,7 +63,7 @@ Allowed transitions between stages. Forward is default; backward transitions are
 
 ```
 Research ──→ Clarify        (lock requirements before decomposition — default-on after Research)
-Research ──→ Plan           (skip-clarify path — trivial task or --no-clarify)
+Research ──→ Plan           (skip-clarify path — --no-clarify, requirements already locked, or user opted out)
 Clarify  ──→ Plan           (locked requirements ready — proceed to decompose/plan)
 Clarify  ──→ Research       (gap exposed during Q&A — cap 1)
 Plan ──→ TestPlan           (test-plan stage not skipped)

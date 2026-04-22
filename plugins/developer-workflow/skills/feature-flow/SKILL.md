@@ -36,11 +36,11 @@ It only manages transitions, passes context between stages, and reports summarie
 Setup          -> Research         (unknown APIs, libraries, or architectural decisions)
 Setup          -> Implement        (trivial/simple task — skip research/planning)
 Research       -> Clarify         (after research — always, unless skip conditions fire)
-Research       -> Decompose        (skip-clarify path — trivial task or --no-clarify)
-Research       -> PlanReview       (skip-clarify path — trivial task or --no-clarify)
-Research       -> DesignOptions    (skip-clarify path — trivial task or --no-clarify)
-Research       -> TestPlan         (skip-clarify path — trivial task or --no-clarify)
-Research       -> Implement        (skip-clarify path — trivial task or --no-clarify)
+Research       -> Decompose        (skip-clarify path — --no-clarify / requirements already locked / user said no questions)
+Research       -> PlanReview       (skip-clarify path — --no-clarify / requirements already locked / user said no questions)
+Research       -> DesignOptions    (skip-clarify path — --no-clarify / requirements already locked / user said no questions)
+Research       -> TestPlan         (skip-clarify path — --no-clarify / requirements already locked / user said no questions)
+Research       -> Implement        (skip-clarify path — --no-clarify / requirements already locked / user said no questions)
 Clarify        -> Decompose        (large feature — split into tasks)
 Clarify        -> PlanReview       (complex single-task — needs multiexpert review)
 Clarify        -> DesignOptions    (high-arch-risk single-task — explore alternatives first)
@@ -137,8 +137,7 @@ After research completes, invoke `developer-workflow:clarify` with:
 Wait for `swarm-report/<slug>-clarify.md`.
 
 **Skip conditions (any one fires → skip Clarify):**
-- Task is trivial (same criteria as Research skip)
-- Single-file change
+- Single-file change or obviously scoped change with no architectural decisions
 - `--no-clarify` flag passed by user
 - Research report already contains a complete "Requirements" section with acceptance criteria
 - User explicitly said "no questions" / "don't ask"
@@ -147,8 +146,13 @@ When skipping: announce `Stage: Research → (Clarify skipped) → <next>` with 
 
 When running: announce `Stage: Research → Clarify`.
 
-**Pass `swarm-report/<slug>-clarify.md`** as additional context to all downstream stages:
-Decompose, PlanReview, DesignOptions, TestPlan, and Implement. Downstream stages treat locked requirements as binding constraints.
+**If Clarify ran:** pass `swarm-report/<slug>-clarify.md` as additional context to all
+downstream stages: Decompose, PlanReview, DesignOptions, TestPlan, and Implement. Downstream
+stages treat locked requirements as binding constraints.
+
+**If Clarify was skipped:** pass an explicit note — `(clarify: skipped — <reason>)` — so
+downstream stages know requirements are not locked and must not attempt to read a
+non-existent artifact.
 
 ### 1.2 Decompose (optional)
 

@@ -10,7 +10,7 @@ Rules that are not open for discussion. Violating these is an error, not a judgm
 ## Structure
 
 ```
-skills/<name>/SKILL.md    # 17 lifecycle skills, each a directory with YAML frontmatter
+skills/<name>/SKILL.md    # 18 lifecycle skills, each a directory with YAML frontmatter
 agents/manual-tester.md   # only agent in core (QA executor)
 docs/WORKFLOW.md          # Full pipeline documentation with diagrams
 docs/ORCHESTRATORS.md     # feature-flow and bugfix-flow diagrams

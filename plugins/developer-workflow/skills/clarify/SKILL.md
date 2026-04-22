@@ -40,8 +40,8 @@ identical — the output artifact lands at the same path for full downstream com
 
 Skip Clarify entirely when any of the following is true:
 
-- **Trivial task** — same threshold as Research skip: single-file change, obviously scoped change,
-  no external APIs involved, no unfamiliar libraries, no architectural decisions required
+- **Obviously scoped change** — single-file change, no architectural decisions, no external APIs
+  or unfamiliar libraries involved
 - **Explicit opt-out** — user passed `--no-clarify`, or their message contained "no questions",
   "don't ask", or equivalent
 - **Requirements already locked** — the research artifact contains a "Requirements" section
@@ -109,7 +109,7 @@ Present each question using this format:
 ```
 Q{N}: {Topic — one line}
 
-Recommendation: {One-sentence default answer or assumption}
+Recommendation: {One-sentence default answer or assumption} | none
 Alternatives:
   A. {Option A — label + consequence}
   B. {Option B — label + consequence}
@@ -117,6 +117,9 @@ Alternatives:
 
 Impact if deferred: {One sentence — what breaks or becomes ambiguous if left unresolved}
 ```
+
+For items classified as "genuine gap" in Phase 1.3 (no obvious default), use
+`Recommendation: none` and omit the Alternatives block if no clear options exist.
 
 Present all questions in a single message. Wait for the user's response before proceeding.
 
@@ -149,14 +152,16 @@ research (for example: "we don't know how the payment API handles retries"), ann
 
 > **Backward: Clarify → Research**
 > Reason: [what gap was exposed]
-> Re-invoking research on the specific gap.
+> Requested research scope: [the specific gap to investigate]
 
-Then invoke the research skill on the specific gap, read the new artifact, and continue
-Clarify from where it left off with the new information.
+Then stop Clarify and return control to the orchestrator (feature-flow). The orchestrator
+is responsible for performing the `Clarify → Research` transition, enforcing the
+backward-edge cap, and resuming Clarify with the updated research artifact.
 
-**Cap:** 1 backward transition per Clarify invocation. If the targeted re-research still
-leaves the gap unresolved — record it as an open question and continue. Do not loop back
-to Research a second time.
+**Cap:** 1 backward transition per Clarify invocation, enforced by the orchestrator. If
+the targeted re-research still leaves the gap unresolved, feature-flow resumes Clarify
+once with the best available artifact — Clarify must then record the item as an open
+question and continue. Do not request or perform a second transition to Research.
 
 ---
 
@@ -242,11 +247,16 @@ Do NOT paste the full artifact content into chat.
 
 When invoked outside feature-flow, the user must supply one of:
 - **Slug** — Clarify resolves `swarm-report/<slug>-research.md` automatically
-- **Direct artifact path** — path to a research artifact that may use a non-standard location
+- **Direct artifact path** — path to a research artifact that may use a non-standard
+  location; if the filename matches `<slug>-research.md`, derive `<slug>` from that
+  filename; otherwise the caller must also provide `slug: <slug>` explicitly
 
-If neither is provided, ask for one before proceeding. Once the artifact is located, all
-phases run identically to the inline invocation. The output path is always
-`swarm-report/<slug>-clarify.md` for downstream compatibility.
+If neither is provided, ask for one before proceeding. If a direct artifact path is
+provided and `<slug>` cannot be derived from a `<slug>-research.md` filename and no
+explicit `slug:` is supplied, stop and ask the user for the slug before proceeding.
+Once the artifact is located and `<slug>` is known, all phases run identically to the
+inline invocation. The output path is always `swarm-report/<slug>-clarify.md` for
+downstream compatibility.
 
 ---
 
