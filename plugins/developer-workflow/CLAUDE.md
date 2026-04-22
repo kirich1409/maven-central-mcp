@@ -22,7 +22,7 @@ This plugin is part of a split family. Depending on the task, Claude Code will h
 
 | Plugin | Contributes |
 |---|---|
-| `developer-workflow` (this) | 17 lifecycle skills + `manual-tester` |
+| `developer-workflow` (this) | 18 lifecycle skills + `manual-tester` |
 | `developer-workflow-experts` | `code-reviewer`, `architecture-expert`, `security-expert`, `performance-expert`, `ux-expert`, `build-engineer`, `devops-expert`, `business-analyst`, `debugging-expert` — required, auto-installed as a dependency |
 | `developer-workflow-kotlin` | `kotlin-engineer`, `compose-developer`; skills `code-migration`, `kmp-migration`, `migrate-to-compose` — install for Kotlin/Android/KMP work |
 | `developer-workflow-swift` | `swift-engineer`, `swiftui-developer` — install for Swift/iOS/macOS work |

@@ -139,7 +139,7 @@ If Clarify runs, wait for `swarm-report/<slug>-clarify.md`.
 **Skip conditions (any one fires → skip Clarify):**
 - Single-file change or obviously scoped change with no architectural decisions
 - `--no-clarify` flag passed by user
-- Research report already contains a complete "Requirements" section with acceptance criteria
+- Research artifact already documents explicit, complete requirements and ACs with no material ambiguities
 - User explicitly said "no questions" / "don't ask"
 
 When skipping: announce `Stage: Research → (Clarify skipped) → <next>` with the skip reason.
@@ -152,9 +152,9 @@ stages treat locked requirements as binding constraints.
 
 **If Clarify was skipped:** pass an explicit note — `(clarify: skipped — <reason>)` — so
 downstream stages do not attempt to read a non-existent artifact. If the skip reason is
-"requirements already locked", downstream stages must treat the research artifact's
-`Requirements` section as the binding constraints. For all other skip reasons, downstream
-stages should assume requirements are not locked.
+"requirements already locked", downstream stages must treat the requirements and acceptance
+criteria documented in the research artifact as the binding constraints. For all other skip
+reasons, downstream stages should assume requirements are not locked.
 
 ### 1.2 Decompose (optional)
 
