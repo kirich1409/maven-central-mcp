@@ -76,6 +76,9 @@ Read these files:
 ## Style reference
 Read this existing test for style and conventions: {path to example test}
 
+## Test plan (optional)
+{path to test plan from docs/testplans/, or "No test plan available"}
+
 ## Requirements
 - Use createComposeRule() or createAndroidComposeRule() as used in existing tests
 - Test UI state rendering, user interactions, and state changes

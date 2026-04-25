@@ -2,7 +2,7 @@
 name: bugfix-flow
 description: >-
   This skill should be used when the user reports a bug and wants it fixed end-to-end —
-  thin orchestrator sequencing debug → (optional plan) → implement → finalize → acceptance →
+  thin orchestrator sequencing debug → (optional plan) → implement → regression test (default-on) → finalize → acceptance →
   draft/ready PR → drive-to-merge. Delegates every stage to a separate skill; writes no
   code itself. Triggers: "/bugfix-flow", "bugfix flow", "fix this bug", "исправь баг",
   "почини", "это сломалось, почини", "fix and ship", "find and fix", "debug and fix".
@@ -39,8 +39,8 @@ Debug      -> Implement        (simple fix — root cause diagnosed, fix is clea
 Debug      -> Report           (not reproducible or escalated)
 Plan       -> Implement
 Plan       -> Debug            (multiexpert review FAIL — need more diagnostic context)
-Implement  -> RegressionTest   (non-trivial fix in testable code — see Phase 2.2)
-Implement  -> Finalize         (trivial fix or regression test skipped — see Phase 2.2)
+Implement  -> RegressionTest   (default — see Phase 2.2)
+Implement  -> Finalize         (skip conditions 1–5 hold + user confirmed — see Phase 2.2)
 RegressionTest -> Finalize
 Finalize   -> Acceptance       (PASS — no BLOCKs remain)
 Finalize   -> Implement        (ESCALATE after 3 rounds; user routes back)
@@ -155,7 +155,7 @@ substantive review of test coverage.
 
 ---
 
-## Phase 2.2: Regression Test (optional)
+## Phase 2.2: Regression Test (default-on)
 
 After the draft PR is created, evaluate whether a focused regression test is warranted.
 **Default: write the test.** Only skip with explicit user confirmation.
@@ -218,6 +218,9 @@ Invoke `developer-workflow:write-tests` with:
   - Expected vs actual behavior
   - Explicit instruction: "Regression Mode — write one focused test for this scenario.
     Do not sweep for other coverage gaps in this file."
+
+`write-tests` is responsible for committing and pushing the regression test files before
+returning. The test appears as a separate commit on the PR branch.
 
 **Route by result:**
 - **Tests pass** → **Stage: RegressionTest → Finalize**
@@ -363,6 +366,9 @@ The orchestrator **stops and waits for the user** at:
 - Profile confirmation (Phase 0.2)
 - Bug not reproducible (need more info)
 - Debug escalation (architectural issue, needs decision)
+- Regression test skip (Phase 2.2): skip conditions 1–4 hold — ask to confirm skip or write anyway
+- Regression test skip (Phase 2.2): skip condition 5 (no test infra) — ask to scaffold or skip
+- Regression test Stop Point (Phase 2.2): 3 fix attempts exhausted — surface Coverage Diagnosis, ask (a/b/c)
 - PARTIAL acceptance verdict
 - `drive-to-merge` merge gate — final `gh pr merge` / `glab mr merge` always requires
   explicit user confirmation, regardless of mode.
