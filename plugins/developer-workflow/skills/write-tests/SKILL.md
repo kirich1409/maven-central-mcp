@@ -224,7 +224,7 @@ Steps:
    git reset HEAD -- . && git checkout -- .
    ```
    Record in `swarm-report/<slug>-implement.md` (append one line):
-   `Regression contract: VERIFIED — test RED on <fix-commit-hash>, GREEN with fix.`
+   `Regression contract: VERIFIED — test RED on revert of fix commits (<hash-1>…<hash-N>), GREEN with fix.`
    Proceed to Phase 5.1 (full test suite).
 5. **If GREEN on buggy code** → the test does NOT capture the regression. It is ineffective.
    Restore: `git reset HEAD -- . && git checkout -- .`
