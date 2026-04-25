@@ -1,6 +1,6 @@
 ---
 name: write-tests
-description: "Write retroactive tests for existing code — classes, modules, or directories lacking test coverage. Also supports Regression Mode: writes one focused test for a specific bug fix scenario (pass regression-scenario from debug.md). Discovers test infrastructure (framework, assertions, mocking, naming), plans test cases, delegates generation to platform engineer agents (kotlin-engineer, compose-developer, swift-engineer, swiftui-developer) matched to the target code, verifies tests compile and pass, reports findings. Use when: \"write tests for\", \"add tests to\", \"test this class\", \"increase coverage\", \"add unit tests\", \"this code has no tests\", \"cover with tests\", \"retroactive tests\", \"add regression test for this fix\", \"write a test that catches this bug\", \"regression test after fixing\", \"test to verify the fix\". Do NOT use when: user wants a test plan document without code (use generate-test-plan), run tests on live app (use acceptance), exploratory QA (use bug-hunt), or tests are part of a new feature (the engineer agent handles tests within implement). Orchestrator — delegates actual test code to engineer agents. Consumes test plans from generate-test-plan when available."
+description: "Write retroactive tests for existing code — classes, modules, or directories lacking coverage. Also supports Regression Mode: writes one focused test for a specific bug fix (pass regression-scenario from debug.md). Discovers test infrastructure, plans test cases, delegates generation to platform engineer agents (kotlin-engineer, compose-developer, swift-engineer, swiftui-developer), verifies tests pass. Use when: \"write tests for\", \"add tests to\", \"test this class\", \"increase coverage\", \"add unit tests\", \"this code has no tests\", \"cover with tests\", \"retroactive tests\", \"add regression test for this fix\", \"write a test that catches this bug\", \"regression test after fixing\", \"test to verify the fix\". Do NOT use when: user wants a test plan document (use generate-test-plan), run tests on live app (use acceptance), exploratory QA (use bug-hunt), or tests are part of a new feature (engineer agent handles within implement)."
 ---
 
 # Write Tests
@@ -233,8 +233,9 @@ Steps:
    - What aspect of the bug the test missed (wrong entry point, wrong layer, assertion
      on a side effect rather than the cause, etc.)
    - What would need to change for the test to actually catch the regression
-   Report to `bugfix-flow` as a Production Bug, attaching the diagnosis so the next
-   Implement invocation has a concrete direction.
+   Report to `bugfix-flow` as an **Ineffective Test** (not a Production Bug — see Phase 6.5
+   status `INEFFECTIVE`), attaching the Coverage Diagnosis so the next Implement invocation
+   has a concrete direction for addressing the test design, not just the fix.
    Do NOT continue to Phase 5.1.
 
 **Conflict handling:** if `git revert` produces a merge conflict, accept the buggy side

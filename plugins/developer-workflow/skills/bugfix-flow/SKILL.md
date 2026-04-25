@@ -44,6 +44,7 @@ Implement  -> Finalize         (skip conditions 1–5 hold + user confirmed — 
 RegressionTest -> Finalize
 RegressionTest -> Implement    (write-tests Production Bug OR user chose route-back at Stop Point — see Phase 2.2)
 Finalize   -> Acceptance       (PASS — no BLOCKs remain)
+Acceptance -> Escalated        (cap exhausted on Acceptance→Implement or Acceptance→Debug)
 Finalize   -> Implement        (ESCALATE after 3 rounds; user routes back)
 Finalize   -> Escalated        (ESCALATE after 3 rounds; user picks non-implement path)
 Acceptance -> PR               (VERIFIED — bug gone)
