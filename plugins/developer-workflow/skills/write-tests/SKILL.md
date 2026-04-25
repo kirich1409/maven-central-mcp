@@ -196,11 +196,21 @@ that would have been green even before the fix. Before running the full test sui
 the contract: the test MUST fail on the original buggy code.
 
 Steps:
-1. Get the fix commit hash from `swarm-report/<slug>-implement.md` (the commit implement
-   produced — recorded in its artifact under "Commit").
-2. Temporarily revert the fix without committing:
+1. **Identify fix commits** from `swarm-report/<slug>-implement.md` (field "Commit" or
+   "Commits"). If a single hash → use it directly. If multiple hashes → collect all of them;
+   revert in reverse order (newest first). If the field is absent — use
+   `git log origin/main..HEAD --pretty=format:"%H" -- <fixed-files>` to list them.
+2. **Temporarily revert the fix** without committing. For each fix commit, check if it is a
+   merge commit (`git show --no-patch --format="%P" <hash>` returns two hashes):
    ```bash
+   # Single non-merge commit:
    git revert <fix-commit-hash> --no-commit
+
+   # Merge commit — must specify mainline parent:
+   git revert <fix-commit-hash> -m 1 --no-commit
+
+   # Multiple commits — revert in reverse order:
+   git revert <hash-N> ... <hash-1> --no-commit
    ```
 3. Run **only the new regression test** (use the narrowest filter available):
    ```bash
@@ -213,6 +223,8 @@ Steps:
    ```bash
    git reset HEAD -- . && git checkout -- .
    ```
+   Record in `swarm-report/<slug>-implement.md` (append one line):
+   `Regression contract: VERIFIED — test RED on <fix-commit-hash>, GREEN with fix.`
    Proceed to Phase 5.1 (full test suite).
 5. **If GREEN on buggy code** → the test does NOT capture the regression. It is ineffective.
    Restore: `git reset HEAD -- . && git checkout -- .`
@@ -221,9 +233,13 @@ Steps:
    Do NOT continue to Phase 5.1 — return this finding to `bugfix-flow` as a Production Bug
    so the test is revised or removed before Finalize.
 
-Note: if `git revert` produces a merge conflict (uncommon when test and fix touch different
-files), resolve it by restoring the fix side, then repeat with a manual revert of only the
-specific changed lines.
+**Conflict handling:** if `git revert` produces a merge conflict, accept the buggy side
+(`--theirs`) to ensure the working tree contains the original broken code:
+```bash
+git checkout --theirs <conflicting-file>
+git add <conflicting-file>
+```
+Then run step 3. Do NOT resolve toward the fix side — that would produce a false GREEN.
 
 ### 5.1 Run tests
 

@@ -149,6 +149,10 @@ After `implement` returns a clean Quality Loop result and the branch has been pu
 
 If a draft PR already exists for this branch (re-entry on rollback), `--draft` is idempotent — it refreshes the body instead of failing.
 
+Note: the regression test (Phase 2.2) is committed after the draft PR is created and appears
+as a follow-up commit on the same branch. Reviewers should wait for this commit before
+substantive review of test coverage.
+
 ---
 
 ## Phase 2.2: Regression Test (optional)
@@ -176,7 +180,9 @@ After the draft PR is created, evaluate whether a focused regression test is war
 > "A regression test for this fix may be impractical: [state the condition that fired].
 > Should I skip test coverage for this bug?"
 
-- User confirms skip → **Stage: Implement → Finalize (regression test skipped — user confirmed)**
+- User confirms skip → record the condition and confirmation in the draft PR body:
+  `Regression test coverage: skipped — <condition that fired> (user confirmed).`
+  **Stage: Implement → Finalize (regression test skipped — user confirmed)**
 - User wants a test despite the condition → proceed to write-tests:
   **Stage: Implement → RegressionTest**
 
@@ -186,7 +192,9 @@ After the draft PR is created, evaluate whether a focused regression test is war
 > — write-tests will scaffold the minimum setup — or (b) skip regression test coverage?"
 
 - User chooses scaffold → proceed to write-tests: **Stage: Implement → RegressionTest**
-- User chooses skip → **Stage: Implement → Finalize (regression test skipped — no infra, user confirmed)**
+- User chooses skip → record in the draft PR body:
+  `Regression test coverage: skipped — no test infrastructure in module (user confirmed).`
+  **Stage: Implement → Finalize (regression test skipped — no infra, user confirmed)**
 
 **When writing the test:**
 
@@ -321,7 +329,7 @@ Do NOT re-summarize what the skill already told the user.
 | From | To | Trigger | Max |
 |------|----|---------|-----|
 | Plan | Debug | Plan-review FAIL — plan needs more diagnostic context | 1 |
-| RegressionTest | Implement | write-tests found production bug — fix is incomplete | 1 |
+| RegressionTest | Implement | write-tests found production bug OR user chose route-back at Stop Point after 3 failed attempts — cap is shared across both triggers | 1 |
 | Finalize | Implement | ESCALATE — user routes back to fix root issues | 1 |
 | Acceptance | Implement | Bug still reproduces or new bugs | 2 |
 | Acceptance | Debug | Fix didn't address root cause (after 2 failed implementations), or acceptance finds a complex new bug that needs renewed diagnosis | 1 |
