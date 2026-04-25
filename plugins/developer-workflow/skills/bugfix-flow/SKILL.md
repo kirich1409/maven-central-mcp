@@ -2,7 +2,7 @@
 name: bugfix-flow
 description: >-
   This skill should be used when the user reports a bug and wants it fixed end-to-end —
-  thin orchestrator sequencing debug → (optional plan) → implement → finalize → acceptance →
+  thin orchestrator sequencing debug → (optional plan) → implement → regression test (default-on) → finalize → acceptance →
   draft/ready PR → drive-to-merge. Delegates every stage to a separate skill; writes no
   code itself. Triggers: "/bugfix-flow", "bugfix flow", "fix this bug", "исправь баг",
   "почини", "это сломалось, почини", "fix and ship", "find and fix", "debug and fix".
@@ -15,8 +15,9 @@ description: >-
 Thin orchestrator that routes a bug through diagnosis, fix, verification, and PR.
 Contains no implementation logic — each stage is a separate skill invocation via subagents.
 
-**STRICT RULE:** The orchestrator DOES NOT write code, run tests, or perform analysis directly.
+**STRICT RULE:** The orchestrator DOES NOT write code, run tests, or perform discovery analysis directly.
 It only manages transitions, passes context between stages, and reports summaries to the user.
+Exceptions: (1) the orchestrator may produce short gating diagnoses derived directly from subagent artifacts (e.g., the regression testability diagnosis in Phase 2.2 is synthesised from `debug.md` root cause — it is a routing decision, not independent analysis); (2) the orchestrator may push the branch as a prerequisite for `create-pr` if `implement` failed to do so — this is a recovery action, not implementation work.
 
 **Preconditions (caller's responsibility, NOT this skill's):**
 - A working branch suitable for the fix is already set up (via worktree or otherwise)
@@ -39,16 +40,20 @@ Debug      -> Implement        (simple fix — root cause diagnosed, fix is clea
 Debug      -> Report           (not reproducible or escalated)
 Plan       -> Implement
 Plan       -> Debug            (multiexpert review FAIL — need more diagnostic context)
-Implement  -> Finalize
+Implement  -> RegressionTest   (default — see Phase 2.2)
+Implement  -> Finalize         (skip conditions 1–5 hold + user confirmed — see Phase 2.2)
+RegressionTest -> Finalize
+RegressionTest -> Implement    (write-tests Production Bug OR user chose route-back at Stop Point — see Phase 2.2)
 Finalize   -> Acceptance       (PASS — no BLOCKs remain)
 Finalize   -> Implement        (ESCALATE after 3 rounds; user routes back)
-Finalize   -> escalate         (ESCALATE after 3 rounds; user picks non-implement path)
+Finalize   -> Escalated        (ESCALATE after 3 rounds; user picks non-implement path)
 Acceptance -> PR               (VERIFIED — bug gone)
 Acceptance -> Implement        (FAILED — bug still reproduces or new bugs)
 Acceptance -> Debug            (FAILED — fix didn't address root cause)
+Acceptance -> Escalated        (cap exhausted on Acceptance→Implement or Acceptance→Debug)
 PR         -> Merged           (TERMINAL — no further transitions)
 PR         -> Implement        (review feedback requires code changes)
-PR         -> escalate         (drive-to-merge blocker — DISCUSSION on P0/P1,
+PR         -> Escalated        (drive-to-merge blocker — DISCUSSION on P0/P1,
                                 unresolvable rebase, repeated same-signature CI failure)
 ```
 
@@ -143,19 +148,118 @@ Wait for `swarm-report/<slug>-implement.md` + `swarm-report/<slug>-quality.md`.
 
 ### 2.1 Create draft PR (early)
 
-After `implement` returns a clean Quality Loop result and the branch has been pushed, invoke `developer-workflow:create-pr` with the `--draft` argument:
-
-> Stage: Implement → Finalize (draft PR created)
-
-The draft PR body references the debug artifact (root cause + reproduction steps) and the fix summary. Subsequent stages run against the pushed PR branch, keeping remote state in sync.
+After `implement` returns a clean Quality Loop result and the branch has been pushed, invoke `developer-workflow:create-pr` with the `--draft` argument. (`implement` is responsible for pushing the branch before returning; if no push has occurred, push manually before invoking `create-pr`.) The draft PR body references the debug artifact (root cause + reproduction steps) and the fix summary. Subsequent stages run against the pushed PR branch, keeping remote state in sync.
 
 If a draft PR already exists for this branch (re-entry on rollback), `--draft` is idempotent — it refreshes the body instead of failing.
+
+Note: the regression test (Phase 2.2) is committed after the draft PR is created and appears
+as a follow-up commit on the same branch. Reviewers should wait for this commit before
+substantive review of test coverage.
+
+---
+
+## Phase 2.2: Regression Test (default-on)
+
+After the draft PR is created, evaluate whether a focused regression test is warranted.
+**Default: write the test.** Only skip with explicit user confirmation.
+
+**Prefer extending over creating (not a skip condition):**
+If existing tests cover the same code path, prefer **extending** one of them rather than
+writing a new test. Only skip if the reproduction scenario is fully identical to an existing
+test case and no assertion change is needed.
+
+**Conditions that make regression testing technically impractical (require user confirmation to skip):**
+1. Root cause is a typo in a display string, label, or user-facing message with no logic
+   impact (cosmetic text change only — numeric constants, thresholds, and URLs are NOT
+   in this category; they are testable)
+2. Bug is purely visual — layout, rendering, styling with no testable logic path
+3. Bug is non-deterministic — race condition, timing-dependent, OS-specific — and cannot
+   be reliably reproduced in an automated test without unrealistic mocking
+4. No test infrastructure found for the affected module
+
+**If no condition holds** → proceed directly to write-tests:
+**Stage: Implement → RegressionTest**
+
+**If conditions 1–4 hold** → before asking the user, produce a 2–3 sentence diagnosis
+explaining specifically why automated test coverage is impractical for this particular bug.
+Base it on the root cause in `swarm-report/<slug>-debug.md`. The diagnosis should name
+the concrete obstacle — not just the condition label. Examples:
+
+> "The bug is in `BluetoothManager.connect()` which relies on hardware adapter state.
+> A unit test cannot reproduce this because the adapter is not injectable and has no
+> test double in the current codebase."
+
+> "The crash occurs in a race between `onStop()` and a coroutine completing on the main
+> dispatcher. TestCoroutineDispatcher serialises all coroutines, so the interleaving that
+> triggers the bug never happens in tests."
+
+Then ask the user:
+
+> "[Diagnosis]. Should I skip regression test coverage for this bug, or write a test anyway?"
+
+- User confirms skip → record diagnosis and confirmation in the draft PR body:
+  `Regression test coverage: skipped — <diagnosis> (user confirmed).`
+  **Stage: Implement → Finalize (regression test skipped — user confirmed)**
+- User wants a test despite the condition → proceed to write-tests:
+  **Stage: Implement → RegressionTest**
+
+**If condition 5 holds (no test infrastructure)** → stop and ask:
+
+> "No test infrastructure found for [module]. Should I (a) write a regression test anyway
+> — write-tests will scaffold the minimum setup — or (b) skip regression test coverage?"
+
+- User chooses scaffold → proceed to write-tests: **Stage: Implement → RegressionTest**
+- User chooses skip → record in the draft PR body:
+  `Regression test coverage: skipped — no test infrastructure in module (user confirmed).`
+  **Stage: Implement → Finalize (regression test skipped — no infra, user confirmed)**
+
+**When writing the test:**
+
+Invoke `developer-workflow:write-tests` with:
+- **Target**: the fixed file(s) listed in `swarm-report/<slug>-implement.md`
+- **Regression scenario** assembled from `swarm-report/<slug>-debug.md`:
+  - Root cause
+  - Reproduction steps (verbatim)
+  - Expected vs actual behavior
+  - Explicit instruction: "Regression Mode — write one focused test for this scenario.
+    Do not sweep for other coverage gaps in this file."
+
+`write-tests` is responsible for committing and pushing the regression test files before
+returning. The test appears as a separate commit on the PR branch.
+
+**Route by result:**
+- **Tests pass** → **Stage: RegressionTest → Finalize**
+- **Tests fail after 3 fix attempts** (write-tests `Phase 5.3` exhausted) → **Stop Point.**
+  write-tests returns a `Coverage Diagnosis` (see `write-tests` Phase 6.5). The artifact
+  file lives under the write-tests-generated slug, not the bugfix slug — read the actual
+  path from the `write-tests` chat output or its swarm-report receipt before embedding
+  it in the PR body. Surface the diagnosis text to the user before asking them to choose:
+  (a) Delete the failing test and continue to Finalize — record the diagnosis text and the
+      Coverage Diagnosis artifact path in the PR body:
+      "Regression test coverage: attempted but not viable — [diagnosis].
+      Full diagnosis: swarm-report/<write-tests-slug>-regression-coverage.md"
+  (b) Mark test `@Ignore`/`@Disabled` with a TODO linking to a follow-up issue — record
+      diagnosis in the PR body; continue to Finalize
+  (c) Route back to Implement to address the underlying issue before re-attempting the test
+  Do NOT continue to Finalize with a failing test in the branch — it will break CI for
+  everyone and undermines the purpose of regression coverage.
+- **write-tests reports an Ineffective Test** (`write-tests` Phase 5.0 — test was GREEN on
+  reverted/buggy code, meaning it does not catch the regression) → the test design is wrong,
+  not the fix. This typically means the production code is not structured to expose the
+  regression at the test boundary (e.g., logic buried in a non-injectable dependency).
+  Route **RegressionTest → Implement** (max 1 time — see Backward Transitions) so Implement
+  can introduce the testability gap alongside the fix. Pass the Coverage Diagnosis as the
+  anchor describing what structural change is needed.
+- **write-tests reports a Production Bug** (`write-tests` Phase 5.2 — a test exposed a real
+  bug in the production code that was not caught by the fix) → the fix is incomplete; route
+  **RegressionTest → Implement** (max 1 time, shared cap — see Backward Transitions). Pass
+  the failing test assertion as the anchor for the next Implement invocation.
 
 ---
 
 ## Phase 2.5: Finalize (code-quality pass)
 
-After `implement` passes its two gates (mechanical checks + intent check), invoke `developer-workflow:finalize` with:
+After the RegressionTest stage completes (or was explicitly skipped with user confirmation — see Phase 2.2), invoke `developer-workflow:finalize` with:
 - Slug
 - Plan anchor — pass `swarm-report/<slug>-plan.md` when the Plan stage ran (Phase 1.5);
   otherwise pass `swarm-report/<slug>-debug.md`. The plan overrides debug.md as the
@@ -174,12 +278,16 @@ Wait for `swarm-report/<slug>-finalize.md`.
 
 ## Phase 3: Acceptance
 
-Bugfix-flow has no formal TestPlan stage — reproduction steps in `debug.md` act as the
-implicit test case. For bugs in critical flows that need a formal structured plan
-(regression protection, external QA handoff), run `/generate-test-plan` manually **before**
-`/bugfix-flow`, using the **same slug** as the bugfix so the saved file lands at
-`docs/testplans/<slug>-test-plan.md`. `acceptance` Branch 2 mounts by exact slug match; if
-the plan was generated under a different filename, rename it to
+Bugfix-flow has no formal TestPlan stage. Code-level regression testing is handled by
+Phase 2.2 (`write-tests` Regression Mode) — a focused test that prevents the bug from
+re-occurring in the automated test suite. Acceptance verifies the user-facing symptom:
+that the original reproduction steps no longer trigger the bug.
+
+For bugs in critical flows that additionally need a formal structured QA plan
+(external QA handoff, multi-scenario regression coverage), run `/generate-test-plan`
+manually **before** `/bugfix-flow`, using the **same slug** as the bugfix so the saved
+file lands at `docs/testplans/<slug>-test-plan.md`. `acceptance` Branch 2 mounts by
+exact slug match; if the plan was generated under a different filename, rename it to
 `docs/testplans/<slug>-test-plan.md` before running `/bugfix-flow` (see
 `acceptance/references/source-branches.md` §Branch 2).
 
@@ -253,6 +361,7 @@ Do NOT re-summarize what the skill already told the user.
 | From | To | Trigger | Max |
 |------|----|---------|-----|
 | Plan | Debug | Plan-review FAIL — plan needs more diagnostic context | 1 |
+| RegressionTest | Implement | write-tests found production bug OR user chose route-back at Stop Point after 3 failed attempts — cap is shared across both triggers | 1 |
 | Finalize | Implement | ESCALATE — user routes back to fix root issues | 1 |
 | Acceptance | Implement | Bug still reproduces or new bugs | 2 |
 | Acceptance | Debug | Fix didn't address root cause (after 2 failed implementations), or acceptance finds a complex new bug that needs renewed diagnosis | 1 |
@@ -273,6 +382,9 @@ The orchestrator **stops and waits for the user** at:
 - Profile confirmation (Phase 0.2)
 - Bug not reproducible (need more info)
 - Debug escalation (architectural issue, needs decision)
+- Regression test skip (Phase 2.2): skip conditions 1–4 hold — ask to confirm skip or write anyway
+- Regression test skip (Phase 2.2): skip condition 5 (no test infra) — ask to scaffold or skip
+- Regression test Stop Point (Phase 2.2): 3 fix attempts exhausted — surface Coverage Diagnosis, ask (a/b/c)
 - PARTIAL acceptance verdict
 - `drive-to-merge` merge gate — final `gh pr merge` / `glab mr merge` always requires
   explicit user confirmation, regardless of mode.

@@ -1,6 +1,6 @@
 ---
 name: write-tests
-description: "Write retroactive tests for existing code — classes, modules, or directories lacking test coverage. Discovers test infrastructure (framework, assertions, mocking, naming), plans test cases, delegates generation to platform engineer agents (kotlin-engineer, compose-developer, swift-engineer, swiftui-developer) matched to the target code, verifies tests compile and pass, reports findings. Use when: \"write tests for\", \"add tests to\", \"test this class\", \"increase coverage\", \"add unit tests\", \"this code has no tests\", \"cover with tests\", \"retroactive tests\". Do NOT use when: user wants a test plan document without code (use generate-test-plan), run tests on live app (use acceptance), exploratory QA (use bug-hunt), or tests are part of a new feature (the engineer agent handles tests within implement). Orchestrator — delegates actual test code to engineer agents. Consumes test plans from generate-test-plan when available."
+description: "This skill should be used to write retroactive tests for existing code — classes, modules, or directories lacking coverage — and to write a focused regression test for a specific bug fix (Regression Mode: pass regression-scenario from debug.md). Discovers test infrastructure, plans test cases, delegates generation to platform engineer agents (kotlin-engineer, compose-developer, swift-engineer, swiftui-developer), verifies tests pass. Use when: \"write tests for\", \"add tests to\", \"test this class\", \"increase coverage\", \"add unit tests\", \"this code has no tests\", \"cover with tests\", \"retroactive tests\", \"add regression test for this fix\", \"write a test that catches this bug\", \"regression test after fixing\", \"test to verify the fix\". Do NOT use when: user wants a test plan document (use generate-test-plan), run tests on live app (use acceptance), exploratory QA (use bug-hunt), or tests are part of a new feature (engineer agent handles within implement)."
 ---
 
 # Write Tests
@@ -25,6 +25,13 @@ The user provides one or more of:
 - A class or type name (`UserRepository`, `LoginService`)
 - A module or directory (`feature/auth`, `:core:network`, `Sources/Auth`, an Xcode target)
 - A vague reference ("the auth module", "this class", "the login view")
+
+**Regression Mode:** the caller may additionally pass a `regression-scenario` — a structured
+description of the bug's root cause, reproduction steps, and expected vs actual behavior
+(typically from `swarm-report/<slug>-debug.md`). When present, the skill enters **Regression
+Mode**: it skips the broad coverage sweep (Phase 1.4), uses the scenario as the sole test
+case (Phase 3.1), and skips the prioritization question (Phase 3.2). The output is one
+focused test that would fail on the original buggy code and passes with the fix applied.
 
 Resolve vague references using a code-index tool when one is available in the environment;
 fall back to `Grep` / `Glob` + `Read` otherwise. If the reference remains ambiguous after
@@ -58,6 +65,9 @@ Search for existing tests:
 - Check for `@Test` (JUnit / Swift Testing) or `XCTestCase` subclasses that exercise target functions
 
 ### 1.4 Identify untested code
+
+**Skip this phase in Regression Mode.** The test case comes from the `regression-scenario`,
+not from a coverage gap analysis.
 
 Compare the public API surface against existing test coverage:
 - Functions/classes with no test references → fully untested
@@ -93,6 +103,16 @@ Test Infrastructure Summary template.
 
 ### 3.1 Generate test cases
 
+**Regression Mode:** use the `regression-scenario` as the single test case. Derive:
+- **What to test:** the exact reproduction scenario — no broader sweep
+- **Test type:** unit (preferred); integration only if the reproduction requires real
+  collaborators (e.g., database + service interaction)
+- **Dependencies to mock/fake:** only those required for the specific scenario
+- **Pass/fail contract:** the test must fail on the original buggy code and pass with
+  the fix applied; document this expectation as a comment in the test body
+
+**Normal Mode:**
+
 For each untested or partially tested class/function, determine:
 
 - **What to test:** public API, edge cases, error paths, state transitions
@@ -101,6 +121,9 @@ For each untested or partially tested class/function, determine:
 - **Input scenarios:** happy path, boundary values, null/empty, error conditions
 
 ### 3.2 Prioritize
+
+**Skip this phase in Regression Mode** — a regression scenario is always a single focused
+test case; no prioritization is needed.
 
 If the target is large (more than 5 classes to test), ask the user which classes or areas
 to prioritize. Present the list with a brief note on each:
@@ -164,6 +187,71 @@ placeholders and keep the section headings intact.
 
 ## Phase 5: Verify
 
+### 5.0 Regression Mode: verify pass/fail contract
+
+**Regression Mode only — skip in Normal Mode.**
+
+A regression test written after the fix is green "by construction" and may assert something
+that would have been green even before the fix. Before running the full test suite, verify
+the contract: the test MUST fail on the original buggy code.
+
+Steps:
+1. **Identify fix commits** from `swarm-report/<slug>-implement.md` (field "Commit" or
+   "Commits"). If a single hash → use it directly. If multiple hashes → collect all of them;
+   revert in reverse order (newest first). If the field is absent — use
+   `git log origin/main..HEAD --pretty=format:"%H" -- <fixed-files>` to list them.
+2. **Temporarily revert the fix** without committing. For each fix commit, check if it is a
+   merge commit (`git show --no-patch --format="%P" <hash>` returns two hashes):
+   ```bash
+   # Single non-merge commit:
+   git revert <fix-commit-hash> --no-commit
+
+   # Merge commit — must specify mainline parent:
+   git revert <fix-commit-hash> -m 1 --no-commit
+
+   # Multiple commits — revert in reverse order:
+   git revert <hash-N> ... <hash-1> --no-commit
+   ```
+3. Run **only the new regression test** (use the narrowest filter available):
+   ```bash
+   # Kotlin — run single test class
+   ./gradlew :module:test --tests "*.ClassName"
+   # Swift — run single test
+   swift test --filter Suite/testMethod
+   ```
+4. **If RED** (test fails) → contract verified. Restore tracked files to pre-revert state
+   while keeping the untracked test file intact (it has not been committed yet):
+   ```bash
+   git reset --hard HEAD
+   ```
+   Record in `swarm-report/<slug>-implement.md` (append one line):
+   `Regression contract: VERIFIED — test RED on revert of fix commits (<hash-1>…<hash-N>), GREEN with fix.`
+   Proceed to Phase 5.1 (full test suite).
+5. **If GREEN on buggy code** → the test does NOT capture the regression. It is ineffective.
+   Discard both the revert changes AND the test file — the test is structurally wrong and
+   should not be salvaged; the next Implement invocation needs a different approach:
+   ```bash
+   git reset HEAD -- . && git checkout -- . && git clean -fd
+   ```
+   (`git clean -fd` intentionally removes the untracked test file here.)
+   Before returning to the caller, produce a Coverage Diagnosis (see Phase 6.5) that explains:
+   - What the test asserts and why that assertion passes even without the fix
+   - What aspect of the bug the test missed (wrong entry point, wrong layer, assertion
+     on a side effect rather than the cause, etc.)
+   - What would need to change for the test to actually catch the regression
+   Report to `bugfix-flow` as an **Ineffective Test** (not a Production Bug — see Phase 6.5
+   status `INEFFECTIVE`), attaching the Coverage Diagnosis so the next Implement invocation
+   has a concrete direction for addressing the test design, not just the fix.
+   Do NOT continue to Phase 5.1.
+
+**Conflict handling:** if `git revert` produces a merge conflict, accept the buggy side
+(`--theirs`) to ensure the working tree contains the original broken code:
+```bash
+git checkout --theirs <conflicting-file>
+git add <conflicting-file>
+```
+Then run step 3. Do NOT resolve toward the fix side — that would produce a false GREEN.
+
 ### 5.1 Run tests
 
 Run the test suite for the target module. Pick the command family that matches the project
@@ -218,8 +306,26 @@ For test bugs:
 2. Re-run the tests
 3. Repeat up to 3 times total
 
-If tests still fail after 3 attempts — stop and report the failing tests with details
-in the final report.
+If tests still fail after 3 attempts — produce a Coverage Diagnosis (see Phase 6.5)
+that summarises what was attempted in each round and what the specific technical obstacle is.
+Stop and include the diagnosis in the final report.
+
+### 5.4 Commit and push (Regression Mode only)
+
+**Regression Mode only — skip in Normal Mode.**
+
+After all tests pass (Phase 5.1 green), commit the generated test file(s) and push to the
+current branch. Normal Mode leaves file management to the user; Regression Mode is invoked
+by `bugfix-flow` which expects the test to land as a commit on the PR branch automatically.
+
+```bash
+git add <test-file-paths>
+git commit -m "Add regression test: <scenario — subject line ≤72 chars total>"
+git push
+```
+
+The commit message should name the bug scenario, not just say "add test" — it becomes part
+of the permanent history explaining why this test exists.
 
 ---
 
@@ -289,6 +395,43 @@ Target: {file/module path}
 ### 2. {short description}
 ...
 ```
+
+### 6.5 Coverage Diagnosis (Regression Mode — when test could not be completed)
+
+**Regression Mode only.** Produce this section when the regression test failed for any
+reason: ineffective test (GREEN on buggy code in Phase 5.0), tests still failing after
+3 fix attempts (Phase 5.3), or test could not be written at all.
+
+The diagnosis must answer three questions concisely:
+1. **What was tried** — what assertion / test approach was used
+2. **What blocked it** — the specific technical obstacle (not just "test failed"); e.g.:
+   - "The assertion targets the return value, but the bug is in a side effect on a
+     non-injectable static field"
+   - "The reproduction requires two threads interleaving; TestCoroutineDispatcher
+     serialises all work on one thread, preventing the race"
+   - "The affected code path is guarded by a native method with no test double"
+3. **What would make it testable** — what change to the code or test setup would
+   allow a reliable regression test in the future
+
+Save to `swarm-report/<slug>-regression-coverage.md`:
+
+```markdown
+# Regression Coverage Diagnosis: {bug slug}
+
+Date: {YYYY-MM-DD}
+Status: INEFFECTIVE | FAILED | NOT_ATTEMPTED
+
+## What was tried
+{test approach and assertion used, or why no test was written}
+
+## Technical obstacle
+{specific reason — concrete, not generic}
+
+## To make testable
+{what would need to change in code or test setup}
+```
+
+Reference this file in the PR body and in the report to `bugfix-flow`.
 
 ---
 
