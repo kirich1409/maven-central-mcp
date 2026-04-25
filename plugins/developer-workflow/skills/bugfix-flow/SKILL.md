@@ -163,17 +163,19 @@ substantive review of test coverage.
 After the draft PR is created, evaluate whether a focused regression test is warranted.
 **Default: write the test.** Only skip with explicit user confirmation.
 
-**Conditions that make regression testing technically impractical:**
+**Prefer extending over creating (not a skip condition):**
+If existing tests cover the same code path, prefer **extending** one of them rather than
+writing a new test. Only skip if the reproduction scenario is fully identical to an existing
+test case and no assertion change is needed.
+
+**Conditions that make regression testing technically impractical (require user confirmation to skip):**
 1. Root cause is a typo in a display string, label, or user-facing message with no logic
    impact (cosmetic text change only — numeric constants, thresholds, and URLs are NOT
    in this category; they are testable)
 2. Bug is purely visual — layout, rendering, styling with no testable logic path
-3. Existing tests cover the same code path but with a different assertion — in this case
-   prefer **extending** the existing test rather than writing a new one; only skip if
-   the reproduction scenario is fully identical and no assertion change is needed
-4. Bug is non-deterministic — race condition, timing-dependent, OS-specific — and cannot
+3. Bug is non-deterministic — race condition, timing-dependent, OS-specific — and cannot
    be reliably reproduced in an automated test without unrealistic mocking
-5. No test infrastructure found for the affected module
+4. No test infrastructure found for the affected module
 
 **If no condition holds** → proceed directly to write-tests:
 **Stage: Implement → RegressionTest**
@@ -228,10 +230,13 @@ returning. The test appears as a separate commit on the PR branch.
 **Route by result:**
 - **Tests pass** → **Stage: RegressionTest → Finalize**
 - **Tests fail after 3 fix attempts** (write-tests `Phase 5.3` exhausted) → **Stop Point.**
-  write-tests returns a `Coverage Diagnosis` (see `write-tests` Phase 6.5) — surface it to
-  the user before asking them to choose:
-  (a) Delete the failing test and continue to Finalize — record the diagnosis in the PR body
-      under "Regression test coverage: attempted but not viable — [diagnosis]"
+  write-tests returns a `Coverage Diagnosis` (see `write-tests` Phase 6.5; note the artifact
+  file lives under the write-tests-generated slug, not the bugfix slug) — surface the
+  diagnosis text to the user before asking them to choose:
+  (a) Delete the failing test and continue to Finalize — record the diagnosis text and the
+      Coverage Diagnosis artifact path in the PR body:
+      "Regression test coverage: attempted but not viable — [diagnosis].
+      Full diagnosis: swarm-report/<write-tests-slug>-regression-coverage.md"
   (b) Mark test `@Ignore`/`@Disabled` with a TODO linking to a follow-up issue — record
       diagnosis in the PR body; continue to Finalize
   (c) Route back to Implement to address the underlying issue before re-attempting the test
@@ -253,7 +258,7 @@ returning. The test appears as a separate commit on the PR branch.
 
 ## Phase 2.5: Finalize (code-quality pass)
 
-After `implement` passes its two gates (mechanical checks + intent check), invoke `developer-workflow:finalize` with:
+After the RegressionTest stage completes (or was explicitly skipped with user confirmation — see Phase 2.2), invoke `developer-workflow:finalize` with:
 - Slug
 - Plan anchor — pass `swarm-report/<slug>-plan.md` when the Plan stage ran (Phase 1.5);
   otherwise pass `swarm-report/<slug>-debug.md`. The plan overrides debug.md as the
