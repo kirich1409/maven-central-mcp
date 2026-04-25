@@ -187,6 +187,44 @@ placeholders and keep the section headings intact.
 
 ## Phase 5: Verify
 
+### 5.0 Regression Mode: verify pass/fail contract
+
+**Regression Mode only — skip in Normal Mode.**
+
+A regression test written after the fix is green "by construction" and may assert something
+that would have been green even before the fix. Before running the full test suite, verify
+the contract: the test MUST fail on the original buggy code.
+
+Steps:
+1. Get the fix commit hash from `swarm-report/<slug>-implement.md` (the commit implement
+   produced — recorded in its artifact under "Commit").
+2. Temporarily revert the fix without committing:
+   ```bash
+   git revert <fix-commit-hash> --no-commit
+   ```
+3. Run **only the new regression test** (use the narrowest filter available):
+   ```bash
+   # Kotlin — run single test class
+   ./gradlew :module:test --tests "*.ClassName"
+   # Swift — run single test
+   swift test --filter Suite/testMethod
+   ```
+4. **If RED** (test fails) → contract verified. Restore working tree:
+   ```bash
+   git reset HEAD -- . && git checkout -- .
+   ```
+   Proceed to Phase 5.1 (full test suite).
+5. **If GREEN on buggy code** → the test does NOT capture the regression. It is ineffective.
+   Restore: `git reset HEAD -- . && git checkout -- .`
+   Report to the caller: "Regression test passes on the original buggy code — it does not
+   verify the fix. The test should be rewritten or deleted."
+   Do NOT continue to Phase 5.1 — return this finding to `bugfix-flow` as a Production Bug
+   so the test is revised or removed before Finalize.
+
+Note: if `git revert` produces a merge conflict (uncommon when test and fix touch different
+files), resolve it by restoring the fix side, then repeat with a manual revert of only the
+specific changed lines.
+
 ### 5.1 Run tests
 
 Run the test suite for the target module. Pick the command family that matches the project

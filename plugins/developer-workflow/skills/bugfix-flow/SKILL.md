@@ -157,15 +157,21 @@ After the draft PR is created, evaluate whether a focused regression test is war
 **Default: write the test.** Only skip with explicit user confirmation.
 
 **Conditions that make regression testing technically impractical:**
-1. Root cause is a typo, wrong string constant, configuration value, or build config change
+1. Root cause is a typo in a display string, label, or user-facing message with no logic
+   impact (cosmetic text change only — numeric constants, thresholds, and URLs are NOT
+   in this category; they are testable)
 2. Bug is purely visual — layout, rendering, styling with no testable logic path
-3. Existing tests already cover the exact reproduction scenario
-4. No test infrastructure found for the affected module
+3. Existing tests cover the same code path but with a different assertion — in this case
+   prefer **extending** the existing test rather than writing a new one; only skip if
+   the reproduction scenario is fully identical and no assertion change is needed
+4. Bug is non-deterministic — race condition, timing-dependent, OS-specific — and cannot
+   be reliably reproduced in an automated test without unrealistic mocking
+5. No test infrastructure found for the affected module
 
 **If no condition holds** → proceed directly to write-tests:
 **Stage: Implement → RegressionTest**
 
-**If any condition holds** → stop and ask the user one question before proceeding:
+**If conditions 1–4 hold** → stop and ask the user one question before proceeding:
 
 > "A regression test for this fix may be impractical: [state the condition that fired].
 > Should I skip test coverage for this bug?"
@@ -173,6 +179,14 @@ After the draft PR is created, evaluate whether a focused regression test is war
 - User confirms skip → **Stage: Implement → Finalize (regression test skipped — user confirmed)**
 - User wants a test despite the condition → proceed to write-tests:
   **Stage: Implement → RegressionTest**
+
+**If condition 5 holds (no test infrastructure)** → stop and ask:
+
+> "No test infrastructure found for [module]. Should I (a) write a regression test anyway
+> — write-tests will scaffold the minimum setup — or (b) skip regression test coverage?"
+
+- User chooses scaffold → proceed to write-tests: **Stage: Implement → RegressionTest**
+- User chooses skip → **Stage: Implement → Finalize (regression test skipped — no infra, user confirmed)**
 
 **When writing the test:**
 
@@ -187,9 +201,15 @@ Invoke `developer-workflow:write-tests` with:
 
 **Route by result:**
 - **Tests pass** → **Stage: RegressionTest → Finalize**
-- **Tests fail after 3 fix attempts** (write-tests `Phase 5.3` exhausted) → continue to
-  Finalize and log the failing test as a finding in the PR body; it will be visible to
-  reviewers as a known issue.
+- **Tests fail after 3 fix attempts** (write-tests `Phase 5.3` exhausted) → **Stop Point.**
+  Ask user to choose:
+  (a) Delete the failing test and continue to Finalize — document as "regression test
+      attempted but not viable" in the PR body
+  (b) Mark test `@Ignore`/`@Disabled` with a TODO linking to a follow-up issue, then
+      continue to Finalize
+  (c) Route back to Implement to address the underlying issue before re-attempting the test
+  Do NOT continue to Finalize with a failing test in the branch — it will break CI for
+  everyone and undermines the purpose of regression coverage.
 - **write-tests reports a Production Bug** (test correctly fails on the fixed code — see
   `write-tests` Phase 5.2) → the fix is incomplete; route
   **RegressionTest → Implement** (max 1 time — see Backward Transitions). Pass the
