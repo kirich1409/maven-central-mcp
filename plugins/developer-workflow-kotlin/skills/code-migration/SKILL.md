@@ -54,6 +54,7 @@ Plan        -> Snapshot        (user chose strategy — PlanReview skipped or no
 PlanReview  -> Snapshot        (PASS or WARN)
 PlanReview  -> Research        (FAIL — knowledge gaps; cap 1)
 Snapshot    -> Migrate         (behavior-spec confirmed by user)
+Snapshot    -> Escalated       (snapshot cannot be made green — baseline broken, discussed with user)
 Migrate     -> Finalize
 Finalize    -> Acceptance      (PASS — no BLOCKs remain)
 Finalize    -> Migrate         (ESCALATE after 3 rounds; user routes back; cap 1)
@@ -231,7 +232,10 @@ Invoke `developer-workflow:acceptance` with:
 The acceptance skill saves an E2E scenario to `swarm-report/<slug>-e2e-scenario.md`.
 Completed checks (`[x]`) survive context compaction and are NOT re-run on resume.
 
-See `references/verify.md` for detailed verify procedures used during acceptance.
+See `references/verify.md` for the verify procedures that `acceptance` executes against
+`behavior-spec.md` — regression diagnosis, UI visual diff, behavior spec review, API compilation
+check. These are carried out by the acceptance skill; the orchestrator's job here is to pass
+`behavior-spec.md` as the spec source and gate on the `acceptance` verdict.
 
 Wait for `swarm-report/<slug>-acceptance.md`.
 
