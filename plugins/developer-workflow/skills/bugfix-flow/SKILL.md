@@ -15,8 +15,9 @@ description: >-
 Thin orchestrator that routes a bug through diagnosis, fix, verification, and PR.
 Contains no implementation logic — each stage is a separate skill invocation via subagents.
 
-**STRICT RULE:** The orchestrator DOES NOT write code, run tests, or perform analysis directly.
+**STRICT RULE:** The orchestrator DOES NOT write code, run tests, or perform discovery analysis directly.
 It only manages transitions, passes context between stages, and reports summaries to the user.
+Exception: the orchestrator may produce short gating diagnoses derived directly from subagent artifacts (e.g., the regression testability diagnosis in Phase 2.2 is synthesised from `debug.md` root cause — it is a routing decision, not independent analysis).
 
 **Preconditions (caller's responsibility, NOT this skill's):**
 - A working branch suitable for the fix is already set up (via worktree or otherwise)
