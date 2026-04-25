@@ -228,7 +228,12 @@ Steps:
    `Regression contract: VERIFIED — test RED on revert of fix commits (<hash-1>…<hash-N>), GREEN with fix.`
    Proceed to Phase 5.1 (full test suite).
 5. **If GREEN on buggy code** → the test does NOT capture the regression. It is ineffective.
-   Restore: `git reset HEAD -- . && git checkout -- . && git clean -fd`
+   Discard both the revert changes AND the test file — the test is structurally wrong and
+   should not be salvaged; the next Implement invocation needs a different approach:
+   ```bash
+   git reset HEAD -- . && git checkout -- . && git clean -fd
+   ```
+   (`git clean -fd` intentionally removes the untracked test file here.)
    Before returning to the caller, produce a Coverage Diagnosis (see Phase 6.5) that explains:
    - What the test asserts and why that assertion passes even without the fix
    - What aspect of the bug the test missed (wrong entry point, wrong layer, assertion

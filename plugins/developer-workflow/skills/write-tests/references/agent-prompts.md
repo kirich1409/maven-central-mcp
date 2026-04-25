@@ -11,7 +11,9 @@ Every delegation prompt must include:
 1. **Target code paths** — full file paths to the code being tested
 2. **Test Infrastructure Summary** — from Phase 2
 3. **Test cases to implement** — from Phase 3 plan
-4. **Existing test examples** — path to 1-2 representative test files for style reference
+4. **Existing test examples** — path to 1-2 representative test files for style reference.
+   If no existing tests exist (scaffolding from scratch), set the slot to:
+   `"No example available — infer conventions from build config and project naming."`
 5. **Test plan** — if one was found in Phase 1.5, include its path
 6. **Regression scenario** — in Regression Mode only: the structured bug description from
    Phase 1.1 (`regression-scenario` input). Omit or set to "N/A" in normal mode.

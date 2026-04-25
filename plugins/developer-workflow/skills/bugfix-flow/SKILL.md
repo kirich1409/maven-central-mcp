@@ -17,7 +17,7 @@ Contains no implementation logic — each stage is a separate skill invocation v
 
 **STRICT RULE:** The orchestrator DOES NOT write code, run tests, or perform discovery analysis directly.
 It only manages transitions, passes context between stages, and reports summaries to the user.
-Exception: the orchestrator may produce short gating diagnoses derived directly from subagent artifacts (e.g., the regression testability diagnosis in Phase 2.2 is synthesised from `debug.md` root cause — it is a routing decision, not independent analysis).
+Exceptions: (1) the orchestrator may produce short gating diagnoses derived directly from subagent artifacts (e.g., the regression testability diagnosis in Phase 2.2 is synthesised from `debug.md` root cause — it is a routing decision, not independent analysis); (2) the orchestrator may push the branch as a prerequisite for `create-pr` if `implement` failed to do so — this is a recovery action, not implementation work.
 
 **Preconditions (caller's responsibility, NOT this skill's):**
 - A working branch suitable for the fix is already set up (via worktree or otherwise)
@@ -230,9 +230,10 @@ returning. The test appears as a separate commit on the PR branch.
 **Route by result:**
 - **Tests pass** → **Stage: RegressionTest → Finalize**
 - **Tests fail after 3 fix attempts** (write-tests `Phase 5.3` exhausted) → **Stop Point.**
-  write-tests returns a `Coverage Diagnosis` (see `write-tests` Phase 6.5; note the artifact
-  file lives under the write-tests-generated slug, not the bugfix slug) — surface the
-  diagnosis text to the user before asking them to choose:
+  write-tests returns a `Coverage Diagnosis` (see `write-tests` Phase 6.5). The artifact
+  file lives under the write-tests-generated slug, not the bugfix slug — read the actual
+  path from the `write-tests` chat output or its swarm-report receipt before embedding
+  it in the PR body. Surface the diagnosis text to the user before asking them to choose:
   (a) Delete the failing test and continue to Finalize — record the diagnosis text and the
       Coverage Diagnosis artifact path in the PR body:
       "Regression test coverage: attempted but not viable — [diagnosis].
