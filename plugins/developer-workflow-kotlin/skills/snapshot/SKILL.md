@@ -27,7 +27,10 @@ acceptance criteria for the `code-migration` acceptance phase.
   > data/business logic), `ui` (views, screens, layouts), or `api` (public interfaces, module
   > boundaries, Gradle configs)."
 - Wait for the answer before proceeding.
-- Writes `swarm-report/<slug>-behavior-spec.md`. Generate slug from target name(s) if none provided.
+- Writes `swarm-report/<slug>-behavior-spec.md`. Slug rules when none is provided:
+  - Single target → use the class/file name in kebab-case (e.g., `UserRepository` → `user-repository`)
+  - Multiple targets → use first target name + `-et-al` (e.g., `user-repository-et-al`), or ask the
+    user for a slug if the first target name would be misleading
 
 ---
 
@@ -86,12 +89,13 @@ handling. The goal is a behavioral safety net, not a correctness audit.
 
 ## Phase 3: Produce behavior-spec.md
 
-After completing all applicable snapshot methods, write `swarm-report/<slug>-behavior-spec.md`
-using this template:
+After completing all applicable snapshot methods, write `swarm-report/<slug>-behavior-spec.md`.
+
+**Single target** — use this template:
 
 ```markdown
 # Behavior Specification: [TargetName]
-FROM: [technology] → TO: [technology]   <!-- omit TO: in standalone mode when target technology is unknown -->
+FROM: [technology] → TO: [technology]   <!-- omit TO: in standalone mode when TO is unknown -->
 
 ## Public Interface
 | Method / Property | Inputs | Output / Side Effect | Notes |
@@ -109,13 +113,50 @@ FROM: [technology] → TO: [technology]   <!-- omit TO: in standalone mode when 
 - [parsing/formatting library defaults that differ from intuition — e.g., `SimpleDateFormat.isLenient() == true`
   means invalid dates silently overflow; `DateTimeFormatter` is strict by default — callers may rely on
   the lenient behavior]
-- [thread-safety assumptions — e.g., `SimpleDateFormat` is not thread-safe; callers that share a
-  single instance across threads have hidden race conditions that must be preserved or explicitly fixed]
+- [thread-safety assumptions — e.g., `SimpleDateFormat` is not thread-safe; callers sharing a
+  single instance across threads have hidden race conditions that must be preserved or fixed]
 - [timezone implicit dependencies — methods using `TimeZone.getDefault()` silently]
 
 ## Out of Scope
 - [behaviors that will intentionally change after migration]
 ```
+
+**Multiple targets** (orchestrator mode or standalone with several files) — use H1 for the overall
+spec, H2 for each target, H3 for subsections. `FROM: → TO:` appears inside each target's `##`
+section (not at file level) when targets have different source/target technologies:
+
+```markdown
+# Behavior Specification: [migration-slug]
+
+## [TargetA — e.g., UserRepository]
+FROM: RxJava → TO: coroutines/Flow
+
+### Public Interface
+| Method / Property | Inputs | Output / Side Effect | Notes |
+|---|---|---|---|
+| `getUser(id)` | String | suspend User | throws on network error |
+
+### Normal Behaviors
+- ...
+
+### Edge Cases
+- ...
+
+### Quirks
+- ...
+
+### Out of Scope
+- ...
+
+## [TargetB — e.g., DateUtils]
+FROM: SimpleDateFormat → TO: DateTimeFormatter
+
+### Public Interface
+...
+```
+
+If all targets share the same FROM/TO pair, a single `FROM: → TO:` line at the top of the file
+(directly after the H1) is acceptable in place of repeating it in each section.
 
 ---
 
@@ -123,12 +164,15 @@ FROM: [technology] → TO: [technology]   <!-- omit TO: in standalone mode when 
 
 Present the completed spec to the user using this prompt:
 
-> "Here is the behavior spec for [TargetName]. Please review it before the migration begins:
+> "Here is the behavior spec for [TargetName / N targets: A, B, C]. Please review it before
+> the migration begins:
 > - Are the public interface signatures correct?
 > - Are there any quirks you want to mark as bugs to fix (rather than preserve)?
 > - Are there behaviors that should intentionally change after migration?
 >
 > Confirm when ready to proceed, or point out anything to correct."
+>
+> *(One GATE per file, not one per target — confirm or correct the whole file at once.)*
 
 **Do not return control until the user gives a clear affirmative** — any of: "confirmed", "yes",
 "ok", "looks good", "подтверждаю", "хорошо", "готово", or equivalent in the language they are
