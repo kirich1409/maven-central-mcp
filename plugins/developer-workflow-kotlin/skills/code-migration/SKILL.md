@@ -165,6 +165,7 @@ swarm-report/<slug>-migration-plan.md
 Route by verdict:
 - PASS or WARN → **Stage: PlanReview → Snapshot**
 - FAIL → **Stage: PlanReview → Research** (re-research gaps; cap 1)
+- FAIL after cap 1 exhausted → **Stage: PlanReview → Escalated** (TERMINAL)
 
 ---
 
@@ -181,8 +182,9 @@ on user confirmation.
 Wait for `swarm-report/<slug>-behavior-spec.md` (written by snapshot skill after user confirms).
 
 **GATE: Do not proceed to Phase 4 until the snapshot skill returns a confirmed behavior-spec.**
-If snapshot cannot be made green (tests broken, infrastructure missing): stop, discuss with user —
-never proceed with a broken or unconfirmed baseline.
+If snapshot cannot be made green (tests broken, infrastructure missing): discuss with user and,
+if no resolution is found → **Stage: Snapshot → Escalated** (TERMINAL) — never proceed with a
+broken or unconfirmed baseline.
 
 ---
 
@@ -311,6 +313,7 @@ If a missed usage is found during step 4 (something still references the old cod
 - Describe the missed usage to user
 - **Stage: Cleanup → Acceptance** (max 2 — cap reset if a full Migrate cycle happened in between)
   so Migrate can address it, then re-run Acceptance and return to Cleanup
+- Cap 2 exhausted → **Stage: Cleanup → Escalated** (TERMINAL)
 
 ---
 
@@ -338,6 +341,12 @@ via `ScheduleWakeup`. In default mode it pauses each round for `approve` / `skip
 the final merge.
 
 > Stage: PR (ready) → Drive to merge → Merged
+
+**Route by outcome:**
+- Merged → **Stage: PR → Merged** (TERMINAL)
+- Review feedback requires code changes → **Stage: PR → Migrate** (cap 2; re-run Finalize and
+  Acceptance after the fix, then promote the PR again)
+- Cap 2 exhausted → **Stage: PR → Escalated** (TERMINAL)
 
 ---
 
