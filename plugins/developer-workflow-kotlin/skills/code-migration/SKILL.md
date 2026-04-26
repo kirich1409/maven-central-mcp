@@ -49,25 +49,31 @@ Found a bug while reading or migrating code?
 Setup       -> Research        (TO technology unfamiliar, or scope unclear from description)
 Setup       -> Plan            (scope clear — FROM/TO evident from description)
 Research    -> Plan
-Plan        -> PlanReview      (optional — see PlanReview trigger below)
-Plan        -> Snapshot        (user chose strategy — PlanReview skipped or not triggered)
+Plan        -> PlanReview      (optional — scope > 500 lines, module restructure, or breaking API change; else skip)
+Plan        -> Snapshot        (user chose strategy — PlanReview skipped or conditions not met)
 PlanReview  -> Snapshot        (PASS or WARN)
 PlanReview  -> Research        (FAIL — knowledge gaps; cap 1)
+PlanReview  -> Escalated       (cap 1 exhausted; TERMINAL)
 Snapshot    -> Migrate         (behavior-spec confirmed by user)
-Snapshot    -> Escalated       (snapshot cannot be made green — baseline broken, discussed with user)
+Snapshot    -> Escalated       (snapshot cannot be made green — baseline broken, discussed with user; TERMINAL)
 Migrate     -> Finalize
-Finalize    -> Acceptance      (PASS — no BLOCKs remain)
-Finalize    -> Migrate         (ESCALATE after 3 rounds; user routes back; cap 1)
-Acceptance  -> Cleanup         (VERIFIED)
-Acceptance  -> Migrate         (FAILED — regression, cause known; cap 3)
+Finalize    -> Acceptance      (PASS — no BLOCKs remain; or ESCALATE — user accepts risks and proceeds)
+Finalize    -> Migrate         (ESCALATE — user routes back to fix root issues; cap 1)
+Finalize    -> Escalated       (ESCALATE — user re-scopes or cap 1 exhausted; TERMINAL)
+Acceptance  -> Cleanup         (VERIFIED; or PARTIAL — user decides to proceed as-is)
+Acceptance  -> Migrate         (FAILED regression known; or PARTIAL — user decides to fix; cap 3)
 Acceptance  -> Debug           (FAILED — regression, cause unclear; cap 1)
+Acceptance  -> Escalated       (any backward cap exhausted; TERMINAL)
 Debug       -> Migrate         (root cause diagnosed)
-Debug       -> Stop            (Not Reproducible — report to user, ask for more info; TERMINAL)
-Debug       -> Escalated       (Escalated — findings reported, user decision required; TERMINAL)
+Debug       -> Report          (Not Reproducible — report findings and what info is needed; TERMINAL)
+Debug       -> Escalated       (findings reported, user decision required; TERMINAL)
 Cleanup     -> Acceptance      (missed usage found during deletion; cap 2)
+Cleanup     -> Escalated       (cap 2 exhausted; TERMINAL)
 Cleanup     -> PR              (all old-tech artifacts removed, rebuild green)
 PR          -> Merged          (TERMINAL — no further transitions)
 PR          -> Migrate         (review feedback requires code changes; cap 2)
+PR          -> Escalated       (cap 2 exhausted; TERMINAL)
+Escalated   -> [none]          (TERMINAL — orchestrator exits; user must decide how to proceed)
 ```
 
 Per-transition maxima for backward edges (PlanReview → Research, Finalize → Migrate,
@@ -217,7 +223,9 @@ Wait for `swarm-report/<slug>-finalize.md`.
 Route by result:
 - **PASS** → **Stage: Finalize → Acceptance**
 - **ESCALATE** (3 rounds with BLOCKs) → stop, report to user. User decides:
-  (a) accept risks and proceed to Acceptance; (b) route back to Migrate (cap 1); (c) re-scope.
+  (a) **Finalize → Acceptance** — accept risks and proceed
+  (b) **Finalize → Migrate** — route back to fix root issues (cap 1)
+  (c) **Finalize → Escalated** — re-scope entirely (TERMINAL)
 
 ---
 
@@ -246,7 +254,10 @@ Route by result:
 - **FAILED (regression, cause known)** → **Stage: Acceptance → Migrate** (cap 3; re-run Finalize
   after fix, then back to Acceptance)
 - **FAILED (regression, cause unclear)** → **Stage: Acceptance → Debug** (cap 1; then → Migrate)
-- **PARTIAL (minor issues)** → ask user: fix now or proceed to Cleanup as-is
+- **PARTIAL (minor issues)** → ask user:
+  (a) **Acceptance → Migrate** — fix now (counts against the cap-3 Migrate cap)
+  (b) **Acceptance → Cleanup** — proceed as-is
+- **Cap exhausted** (Migrate cap 3 or Debug cap 1 reached) → **Stage: Acceptance → Escalated** (TERMINAL)
 
 ---
 
@@ -266,8 +277,10 @@ Wait for `swarm-report/<slug>-debug.md`.
 
 Route by status:
 - **Diagnosed** → **Stage: Debug → Migrate.** Pass `<slug>-debug.md` as anchor.
-- **Not Reproducible** → report to user, ask for more info. Stop.
-- **Escalated** → report findings, stop.
+- **Not Reproducible** → **Stage: Debug → Report.** Report findings and describe exactly what
+  reproduction information would be needed to re-diagnose. Orchestrator exits (TERMINAL) — a new
+  invocation is required once the user provides that information.
+- **Escalated** → **Stage: Debug → Escalated.** Report findings to user; orchestrator exits (TERMINAL).
 
 ---
 
@@ -345,6 +358,8 @@ Typical split pattern:
 | **Snapshot** | Characterization tests only — no production code changes | Reviewers verify tests are green and match existing behavior before anything moves |
 | **Migration batch(es)** | Actual code changes — split by module, layer, or file group | Each batch is independently rollbackable; CI catches regressions at each step |
 | **Bridge cleanup** | Remove `*Compat.kt` / `*Bridge.kt`, old implementations, old Gradle deps | Clearly separated; easy to verify nothing still references the old code |
+
+(These are plan-time splits recorded in `migration-plan.md`, not separate state-machine cycles — the state machine has one `PR` state covering all PRs for the migration.)
 
 For each migration PR: all Snapshot tests must be green before it merges.
 
