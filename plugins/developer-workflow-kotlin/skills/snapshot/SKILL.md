@@ -28,9 +28,11 @@ acceptance criteria for the `code-migration` acceptance phase.
   > boundaries, Gradle configs)."
 - Wait for the answer before proceeding.
 - Writes `swarm-report/<slug>-behavior-spec.md`. Slug rules when none is provided:
-  - Single target → use the class/file name in kebab-case (e.g., `UserRepository` → `user-repository`)
-  - Multiple targets → use first target name + `-et-al` (e.g., `user-repository-et-al`), or ask the
-    user for a slug if the first target name would be misleading
+  - Single target → derive from the class/file name in kebab-case (e.g., `UserRepository` →
+    `user-repository`); confirm the slug with the user in one line before writing
+  - Multiple targets → ask the user for a slug. Composite names from file lists are rarely
+    meaningful, so do not auto-generate. Suggest one (e.g., the migration topic if hinted) but
+    require user confirmation
 
 ---
 
@@ -174,10 +176,12 @@ Present the completed spec to the user using this prompt:
 >
 > *(One GATE per file, not one per target — confirm or correct the whole file at once.)*
 
-**Do not return control until the user gives a clear affirmative** — any of: "confirmed", "yes",
-"ok", "looks good", "подтверждаю", "хорошо", "готово", or equivalent in the language they are
-communicating in. A correction ("fix X" or "add Y") is not an affirmative — update the spec and
-re-present it.
+**Do not return control until the user gives a clear affirmative.** Examples (non-exhaustive):
+"confirmed", "yes", "ok", "looks good", "go", "ship it", "подтверждаю", "хорошо", "готово",
+"погнали" — or any equivalent in the language they are communicating in. Match by intent, not by
+exact phrase. If the response is ambiguous (e.g., "hmm", "maybe", a question, or a comment without
+a clear go/no-go), ask ONE clarifying question: "Confirm to proceed, or point out what to fix?".
+A correction ("fix X" or "add Y") is not an affirmative — update the spec and re-present it.
 
 If the user provides corrections: update the spec and re-present it. Repeat until confirmed.
 
