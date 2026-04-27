@@ -49,8 +49,8 @@ Found a bug while reading or migrating code?
 Setup       -> Research        (TO technology unfamiliar, or scope unclear from description)
 Setup       -> Plan            (scope clear — FROM/TO evident from description)
 Research    -> Plan
-Plan        -> PlanReview      (optional — scope > 500 lines, module restructure, or breaking API change; else skip)
-Plan        -> Snapshot        (user chose strategy — PlanReview skipped or conditions not met)
+Plan        -> PlanReview      (proposed when scope > 500 lines, module restructure, or breaking API change; only if user accepts the offer)
+Plan        -> Snapshot        (PlanReview skipped — conditions not met, user declined, or user explicitly opted out)
 PlanReview  -> Snapshot        (PASS or WARN)
 PlanReview  -> Research        (FAIL — knowledge gaps; cap 1)
 PlanReview  -> Escalated       (cap 1 exhausted; TERMINAL)
@@ -190,6 +190,10 @@ broken or unconfirmed baseline.
 
 ## Phase 4: Migrate
 
+> **Naming note:** the state-machine state is `Migrate`. Concretely it means invoking
+> `developer-workflow:implement` with migration context. The state name is domain-specific
+> (migration vs generic implementation); the underlying skill is the same one used elsewhere.
+
 **Context passing (MANDATORY):** when invoking the implement skill, pass:
 1. Original user migration request (verbatim)
 2. Path to `swarm-report/<slug>-migration-plan.md`
@@ -244,10 +248,12 @@ Invoke `developer-workflow:acceptance` with:
 The acceptance skill saves an E2E scenario to `swarm-report/<slug>-e2e-scenario.md`.
 Completed checks (`[x]`) survive context compaction and are NOT re-run on resume.
 
-See `references/verify.md` for the verify procedures that `acceptance` executes against
-`behavior-spec.md` — regression diagnosis, UI visual diff, behavior spec review, API compilation
-check. These are carried out by the acceptance skill; the orchestrator's job here is to pass
-`behavior-spec.md` as the spec source and gate on the `acceptance` verdict.
+See `references/verify.md` for the verify procedures an acceptance run should cover —
+regression diagnosis, UI visual diff, behavior spec review, API compilation check. The external
+`developer-workflow:acceptance` skill receives `behavior-spec.md` as the spec source and decides
+how to verify it; `verify.md` is reference documentation describing what such verification looks
+like for migrations, not a script the acceptance skill is required to follow verbatim. The
+orchestrator's job here is to pass `behavior-spec.md` and gate on the `acceptance` verdict.
 
 Wait for `swarm-report/<slug>-acceptance.md`.
 
@@ -347,6 +353,13 @@ the final merge.
 - Review feedback requires code changes → **Stage: PR → Migrate** (cap 2; re-run Finalize and
   Acceptance after the fix, then promote the PR again)
 - Cap 2 exhausted → **Stage: PR → Escalated** (TERMINAL)
+
+**Cap reset rule:** when entering Migrate via `PR → Migrate`, the `Acceptance → Migrate` (cap 3)
+and `Acceptance → Debug` (cap 1) counters reset. Rationale: a full Migrate → Finalize → Acceptance
+cycle re-runs from a clean state because review-driven changes are scoped to a different problem
+than earlier acceptance regressions. The `PR → Migrate` cap (2) itself is NOT reset — it counts
+review-feedback rounds end-to-end across the migration. Same principle applies to `Cleanup →
+Acceptance` (cap 2): it resets when a full Migrate cycle has happened in between.
 
 ---
 
