@@ -13,13 +13,9 @@ For coroutines, Flow, dispatchers, cancellation, and coroutine testing, see `cor
 
 ## Visibility
 
-Visibility discipline is **project-config-dependent**, not a generic rule:
+Match the project's existing visibility patterns. The Kotlin compiler enforces `explicitApi("strict")` when the project enables it — the build will fail on missing modifiers, no preemptive checking required.
 
-- If the project enables `explicitApi("strict")` or `kotlin { explicitApi() }` in `build.gradle.kts` — the compiler forces every public declaration to be explicit. Choose visibility deliberately for each symbol; `internal` is the right default for non-API code, `public` is an intentional contract.
-- If the flag is not enabled — match the project's existing visibility patterns. Do not impose `internal` everywhere just because it "feels right" — many Kotlin projects work fine with `public` default.
-- `private` always — for implementation details inside a class.
-
-Detect this during Step 1 (Project Discovery) and act accordingly.
+`private` always for implementation details inside a class.
 
 ## Value Class Validation
 

@@ -62,7 +62,6 @@ Read at least 2–3 existing ViewModels with their UseCases and Repositories, th
 - **Data layer** — Network (Retrofit/Ktor), DB (Room/SQLDelight), serialization, caching strategy, DTO/Entity mapping
 - **Module structure** — feature modules vs layer modules vs hybrid; shared `core:*` modules; convention plugins
 - **Testing** — framework (JUnit 4/5, Kotest), mocking (MockK / fakes), coroutine testing (`runTest`, Turbine), assertion lib, naming convention
-- **Visibility discipline** — check `build.gradle.kts` for `explicitApi("strict")` or `kotlin { explicitApi() }`. If enabled, every public declaration must be intentional. If not enabled, match the project's existing visibility patterns (do not impose `internal` everywhere)
 
 ### Output: Pattern Summary
 
@@ -77,7 +76,6 @@ Pattern Summary
 - Database: Room with Flow-returning DAOs
 - Modules: feature modules + core:common, core:network, core:data
 - Testing: JUnit 5 + MockK + Turbine, backtick test names
-- Visibility: explicitApi("strict") enabled — pick visibility deliberately for every symbol
 ```
 
 If any area can't be determined from existing code, mark as `TBD — ask user` and ask one clarifying question before proceeding.
@@ -106,7 +104,7 @@ Write layer by layer, applying project conventions discovered in Step 1.
 
 ### 3.1 Domain models
 
-Visibility — match the project's discovered convention (Step 1.10). With `explicitApi("strict")` enabled: pick `internal` for non-API types in feature modules, no modifier (public) for types in shared domain modules consumed by other modules. Without the flag: follow the existing project's pattern.
+Match the project's existing visibility patterns. The Kotlin compiler enforces `explicitApi` when the project enables it — Step 4 build verification will catch missing modifiers.
 
 For `@JvmInline value class` wrappers around primitives — add `init { require(...) }` when the wrapper enforces a constraint (non-blank, format, range). See `references/kotlin-style.md` for the full rule.
 
