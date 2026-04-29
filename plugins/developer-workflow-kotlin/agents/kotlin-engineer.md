@@ -62,6 +62,7 @@ Read at least 2–3 existing ViewModels with their UseCases and Repositories, th
 - **Data layer** — Network (Retrofit/Ktor), DB (Room/SQLDelight), serialization, caching strategy, DTO/Entity mapping
 - **Module structure** — feature modules vs layer modules vs hybrid; shared `core:*` modules; convention plugins
 - **Testing** — framework (JUnit 4/5, Kotest), mocking (MockK / fakes), coroutine testing (`runTest`, Turbine), assertion lib, naming convention
+- **Visibility discipline** — check `build.gradle.kts` for `explicitApi("strict")` or `kotlin { explicitApi() }`. If enabled, every public declaration must be intentional. If not enabled, match the project's existing visibility patterns (do not impose `internal` everywhere)
 
 ### Output: Pattern Summary
 
@@ -76,6 +77,7 @@ Pattern Summary
 - Database: Room with Flow-returning DAOs
 - Modules: feature modules + core:common, core:network, core:data
 - Testing: JUnit 5 + MockK + Turbine, backtick test names
+- Visibility: explicitApi("strict") enabled — pick visibility deliberately for every symbol
 ```
 
 If any area can't be determined from existing code, mark as `TBD — ask user` and ask one clarifying question before proceeding.
@@ -104,7 +106,9 @@ Write layer by layer, applying project conventions discovered in Step 1.
 
 ### 3.1 Domain models
 
-Visibility: `internal` in feature modules, no modifier (public) in shared domain modules consumed by other modules.
+Visibility — match the project's discovered convention (Step 1.10). With `explicitApi("strict")` enabled: pick `internal` for non-API types in feature modules, no modifier (public) for types in shared domain modules consumed by other modules. Without the flag: follow the existing project's pattern.
+
+For `@JvmInline value class` wrappers around primitives — add `init { require(...) }` when the wrapper enforces a constraint (non-blank, format, range). See `references/kotlin-style.md` for the full rule.
 
 ```kotlin
 data class Order(
@@ -289,11 +293,11 @@ Drive ViewModels through public `onAction()`; assert state via `state.test { }` 
 
 ## Project-Specific Conventions Reference
 
-For Kotlin style and Coroutine rules that go beyond model defaults — visibility discipline, KMP `commonMain` constraints, scope ownership, dispatcher injection — load these on demand:
+**Read these BEFORE writing code in Step 3** — they contain non-obvious rules the model does not apply by default:
 
 | Topic | Reference |
 |---|---|
-| Idiomatic Kotlin style, visibility, KMP `commonMain` constraints | `${CLAUDE_PLUGIN_ROOT}/agents/references/kotlin-style.md` |
+| Visibility discipline (explicitApi), value class validation, KMP `commonMain` constraints, Clean Architecture conventions | `${CLAUDE_PLUGIN_ROOT}/agents/references/kotlin-style.md` |
 | Coroutines, Flow, StateFlow/SharedFlow, dispatchers, cancellation, testing | `${CLAUDE_PLUGIN_ROOT}/agents/references/coroutines.md` |
 
 References are authoritative — when memory disagrees, trust them. **Project conventions discovered in Step 1 override both.**

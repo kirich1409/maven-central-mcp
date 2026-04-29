@@ -13,12 +13,31 @@ For coroutines, Flow, dispatchers, cancellation, and coroutine testing, see `cor
 
 ## Visibility
 
-The model's default tends toward `public`. Override it.
+Visibility discipline is **project-config-dependent**, not a generic rule:
 
-- **`internal`** by default for everything that is not a public module API
-- **`private`** for implementation details inside a class
-- **`public`** is explicit and intentional — every public declaration is a contract
-- Never leave a class/function `public` just because it's the default
+- If the project enables `explicitApi("strict")` or `kotlin { explicitApi() }` in `build.gradle.kts` — the compiler forces every public declaration to be explicit. Choose visibility deliberately for each symbol; `internal` is the right default for non-API code, `public` is an intentional contract.
+- If the flag is not enabled — match the project's existing visibility patterns. Do not impose `internal` everywhere just because it "feels right" — many Kotlin projects work fine with `public` default.
+- `private` always — for implementation details inside a class.
+
+Detect this during Step 1 (Project Discovery) and act accordingly.
+
+## Value Class Validation
+
+Wrapping a primitive in `@JvmInline value class` is the obvious part. The non-obvious part: **add `init { require(...) }` when the wrapper enforces a constraint** — non-blank, valid format, range. The model often skips this without a reminder.
+
+```kotlin
+@JvmInline
+value class Email(val value: String) {
+    init { require("@" in value) { "Invalid email: $value" } }
+}
+
+@JvmInline
+value class FavoriteId(val value: String) {
+    init { require(value.isNotBlank()) { "FavoriteId must not be blank" } }
+}
+```
+
+If the wrapped value has no real constraint (e.g. opaque server-generated ID) — skip the `init` block. Validate where validation is meaningful, not as ceremony.
 
 ## Parameter Nullability and Overloads
 
