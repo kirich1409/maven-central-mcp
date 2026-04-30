@@ -281,7 +281,7 @@ Write unit tests alongside each layer.
 - **Mandatory** — UseCases with logic, Repository implementations, ViewModels with non-trivial state transitions
 - **Optional** — thin pass-through UseCases (`operator fun invoke() = repository.getOrders()`), pure data classes, mappers without conditionals
 
-For `runTest`, `TestDispatcher`, `Turbine`, ViewModel testing, and coroutine-cancellation patterns — see `references/coroutines.md`.
+For `runTest`, `TestDispatcher`, `Turbine`, and cancellation testing patterns — see `references/coroutines.md`. Its Turbine example covers the ViewModel-testing case.
 
 ---
 
