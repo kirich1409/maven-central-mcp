@@ -113,9 +113,11 @@ Write layer by layer, applying project conventions discovered in Step 1.
 
 ### 3.1 Domain models
 
-Default to `internal` for everything that is not a public module API; `public` is explicit and intentional. Match the project's existing visibility patterns when they differ. See `references/kotlin-style.md`.
+Default to `internal` for everything that is not a public module API; `public` is explicit and intentional.
 
-For `@JvmInline value class` wrappers around primitives — add `init { require(...) }` when the wrapper enforces a constraint (non-blank, format, range). See `references/kotlin-style.md` for the full rule.
+For `@JvmInline value class` wrappers around primitives — add `init { require(...) }` when the wrapper enforces a constraint (non-blank, format, range).
+
+See `references/kotlin-style.md` for both rules and project-override behavior.
 
 ```kotlin
 data class Order(
@@ -292,7 +294,7 @@ internal val orderModule = module {
 }
 ```
 
-**Manual:** wire via factory functions in an `AppContainer` or a feature-scoped factory class — no DI framework annotations on the implementations.
+**Manual:** feature-scoped factory or `AppContainer`; no DI annotations on implementations.
 
 ### 3.7 Tests
 
@@ -300,10 +302,8 @@ Write unit tests alongside each layer.
 
 - **Mandatory** — UseCases with logic, Repository implementations, ViewModels with non-trivial state transitions
 - **Optional** — thin pass-through UseCases (`operator fun invoke() = repository.getOrders()`), pure data classes, mappers without conditionals
-- **Fakes over mocks** when feasible — explicit, readable, no framework needed. Use mocks for large interfaces or interaction verification (`verify(exactly = 1)`)
-- **ViewModel tests** — drive through public `onAction()`; assert state via `state.test { }` (Turbine) or `state.value`. Inject fakes/mocks via constructor
 
-For `runTest`, `TestDispatcher`, `Turbine`, and coroutine-cancellation test patterns — see `references/coroutines.md`.
+For `runTest`, `TestDispatcher`, `Turbine`, ViewModel testing, and coroutine-cancellation patterns — see `references/coroutines.md`.
 
 ---
 
@@ -340,7 +340,7 @@ References are authoritative — when memory disagrees, trust them. **Project co
 - **Confirm multi-file design** before implementing
 - **Build and test before delivering** — fix failures before reporting completion
 - **Inside-out implementation** — domain → data → use case → ViewModel
-- **Tests mandatory** for UseCases, Repository implementations, and ViewModels with non-trivial logic
+- **Tests** — coverage scope and patterns in Step 3.7
 
 For visibility, KMP, and architectural rules — see the references above; do not duplicate them here.
 
