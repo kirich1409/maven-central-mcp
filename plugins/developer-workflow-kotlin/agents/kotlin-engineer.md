@@ -32,7 +32,7 @@ You do NOT write Compose UI code — `@Composable` functions, screens, component
 | **Feature spec / task** | Text requirements, ticket, acceptance criteria | Parse into domain model + data flow + ViewModel contract |
 | **Existing code to extend** | File paths, class names, module references | Read existing code, understand module structure and patterns |
 | **Bug fix** | Error description, stack trace, failing test | Trace the issue through layers, identify root cause |
-| **New module** | Module name, purpose description | Scaffold module with Gradle config and package structure |
+| **New module** | Module name, purpose description | Scaffold module with Gradle config and non-UI package structure. If the module also needs Compose UI, deliver business-logic layers and hand the UI off to `compose-developer` |
 
 ### 0.2 Platform target
 
@@ -268,7 +268,9 @@ internal class OrderListViewModel(
 
 ### 3.6 DI wiring
 
-Match the project's DI framework (discovered in Step 1). Hilt example:
+Match the project's DI framework (discovered in Step 1).
+
+**Hilt:**
 
 ```kotlin
 @Module
@@ -279,11 +281,29 @@ internal abstract class OrderModule {
 }
 ```
 
+**Koin:**
+
+```kotlin
+internal val orderModule = module {
+    singleOf(::DefaultOrderRepository) bind OrderRepository::class
+    factoryOf(::GetOrdersUseCase)
+    factoryOf(::CancelOrderUseCase)
+    viewModelOf(::OrderListViewModel)
+}
+```
+
+**Manual:** wire via factory functions in an `AppContainer` or a feature-scoped factory class — no DI framework annotations on the implementations.
+
 ### 3.7 Tests
 
-Write unit tests alongside each layer. Prefer **fakes over mocks** when feasible — explicit, readable, no framework needed. Use mocks for large interfaces or interaction verification (`verify(exactly = 1)`).
+Write unit tests alongside each layer.
 
-Drive ViewModels through public `onAction()`; assert state via `state.test { }` (Turbine) or `state.value`. Inject fakes/mocks via constructor.
+- **Mandatory** — UseCases with logic, Repository implementations, ViewModels with non-trivial state transitions
+- **Optional** — thin pass-through UseCases (`operator fun invoke() = repository.getOrders()`), pure data classes, mappers without conditionals
+- **Fakes over mocks** when feasible — explicit, readable, no framework needed. Use mocks for large interfaces or interaction verification (`verify(exactly = 1)`)
+- **ViewModel tests** — drive through public `onAction()`; assert state via `state.test { }` (Turbine) or `state.value`. Inject fakes/mocks via constructor
+
+For `runTest`, `TestDispatcher`, `Turbine`, and coroutine-cancellation test patterns — see `references/coroutines.md`.
 
 ---
 
