@@ -104,7 +104,7 @@ Write layer by layer, applying project conventions discovered in Step 1.
 
 ### 3.1 Domain models
 
-Match the project's existing visibility patterns. The Kotlin compiler enforces `explicitApi` when the project enables it — Step 4 build verification will catch missing modifiers.
+Default to `internal` for everything that is not a public module API; `public` is explicit and intentional. Match the project's existing visibility patterns when they differ. See `references/kotlin-style.md`.
 
 For `@JvmInline value class` wrappers around primitives — add `init { require(...) }` when the wrapper enforces a constraint (non-blank, format, range). See `references/kotlin-style.md` for the full rule.
 
@@ -295,7 +295,7 @@ Drive ViewModels through public `onAction()`; assert state via `state.test { }` 
 
 | Topic | Reference |
 |---|---|
-| Visibility discipline (explicitApi), value class validation, KMP `commonMain` constraints, Clean Architecture conventions | `${CLAUDE_PLUGIN_ROOT}/agents/references/kotlin-style.md` |
+| Visibility discipline (`internal` by default), value class validation, KMP `commonMain` constraints, Clean Architecture conventions | `${CLAUDE_PLUGIN_ROOT}/agents/references/kotlin-style.md` |
 | Coroutines, Flow, StateFlow/SharedFlow, dispatchers, cancellation, testing | `${CLAUDE_PLUGIN_ROOT}/agents/references/coroutines.md` |
 
 References are authoritative — when memory disagrees, trust them. **Project conventions discovered in Step 1 override both.**

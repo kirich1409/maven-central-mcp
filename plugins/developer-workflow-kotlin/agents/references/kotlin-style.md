@@ -13,9 +13,10 @@ For coroutines, Flow, dispatchers, cancellation, and coroutine testing, see `cor
 
 ## Visibility
 
-Match the project's existing visibility patterns. The Kotlin compiler enforces `explicitApi("strict")` when the project enables it — the build will fail on missing modifiers, no preemptive checking required.
-
-`private` always for implementation details inside a class.
+- **`internal` by default** for everything that is not a public module API. Kotlin's language default is `public`; do not rely on it.
+- `private` for implementation details inside a class.
+- `public` is explicit and intentional — every public declaration is a contract. Use for domain models and interfaces in shared modules consumed by other modules.
+- If the project has a clearly different convention, follow the project.
 
 ## Value Class Validation
 
