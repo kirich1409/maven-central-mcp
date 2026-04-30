@@ -270,31 +270,9 @@ internal class OrderListViewModel(
 
 ### 3.6 DI wiring
 
-Match the project's DI framework (discovered in Step 1).
+Wire repositories, use cases, and ViewModels through the project's DI framework discovered in Step 1 — match its module organization, scoping, and naming conventions. Read 1–2 existing DI modules to confirm the binding style.
 
-**Hilt:**
-
-```kotlin
-@Module
-@InstallIn(ViewModelComponent::class)
-internal abstract class OrderModule {
-    @Binds
-    abstract fun bindOrderRepository(impl: DefaultOrderRepository): OrderRepository
-}
-```
-
-**Koin:**
-
-```kotlin
-internal val orderModule = module {
-    singleOf(::DefaultOrderRepository) bind OrderRepository::class
-    factoryOf(::GetOrdersUseCase)
-    factoryOf(::CancelOrderUseCase)
-    viewModelOf(::OrderListViewModel)
-}
-```
-
-**Manual:** feature-scoped factory or `AppContainer`; no DI annotations on implementations.
+If the project uses manual DI, expose factories from a feature-scoped container; do not put DI annotations on implementations.
 
 ### 3.7 Tests
 
