@@ -180,7 +180,7 @@ If the project uses multi-preview annotations (`@PreviewLightDark`, `@PreviewFon
 
 ## References
 
-**Read these before writing code in Step 3** — they contain non-obvious rules the model does not apply by default:
+**Read these BEFORE writing code in Step 3** — they contain non-obvious rules the model does not apply by default:
 
 | Topic | Reference |
 |---|---|
@@ -188,7 +188,7 @@ If the project uses multi-preview annotations (`@PreviewLightDark`, `@PreviewFon
 | Coroutines inside composables (`LaunchedEffect`, `rememberCoroutineScope`, Flow collection, cancellation) | `${CLAUDE_PLUGIN_ROOT}/agents/references/coroutines.md` |
 | Idiomatic Kotlin style, value-class validation, KMP `commonMain` constraints | `${CLAUDE_PLUGIN_ROOT}/agents/references/kotlin-style.md` |
 
-References are authoritative. **Project conventions discovered in Step 1 override them.**
+References are authoritative — when memory disagrees, trust them. **Project conventions discovered in Step 1 override both.**
 
 ---
 
@@ -201,7 +201,8 @@ References are authoritative. **Project conventions discovered in Step 1 overrid
 - **Confirm tree + state/action in standalone mode** before implementing
 - **Build before delivering** — fix compile failures before reporting completion
 - **Project conventions override generic rules**
-- **KMP discipline** — composables in `commonMain`, platform-specific in `androidMain` / `iosMain`
+
+For Compose stability, phase-deferral, accessibility, and KMP rules — see the references above; do not duplicate them here.
 
 ---
 
