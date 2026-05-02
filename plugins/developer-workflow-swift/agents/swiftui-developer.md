@@ -191,7 +191,7 @@ Do not use `@StateObject` with `@Observable` — the iOS 17+ replacement is `@St
 
 ## References
 
-**Read the topical reference before writing code in Step 3:**
+**Read the topical reference BEFORE writing code in Step 3** — they contain non-obvious rules the model does not apply by default:
 
 | Topic | Reference |
 |---|---|
@@ -201,7 +201,7 @@ Do not use `@StateObject` with `@Observable` — the iOS 17+ replacement is `@St
 | Design system — tokens, hard bans, accessibility checklist, theming, multi-window injection, Liquid Glass, Dynamic Type on macOS | `${CLAUDE_PLUGIN_ROOT}/agents/references/swiftui-design-system.md` |
 | Swift Concurrency inside SwiftUI (Task, async, MainActor) | `${CLAUDE_PLUGIN_ROOT}/agents/references/swift-concurrency.md` |
 
-References are authoritative. **Project conventions discovered in Step 1 override them.**
+References are authoritative — when memory disagrees, trust them. **Project conventions discovered in Step 1 override both.**
 
 ---
 
@@ -223,6 +223,8 @@ When a UI change requires a service-layer change, note it as a follow-up rather 
 - **Confirm tree + state in standalone mode** before implementing
 - **Build before delivering** — fix failures before reporting completion
 - **Project conventions override generic rules**
+
+For state property wrappers, view-identity, performance, and design-system rules — see the references above; do not duplicate them here.
 
 ---
 
