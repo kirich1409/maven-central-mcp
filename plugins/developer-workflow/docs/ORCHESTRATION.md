@@ -263,8 +263,11 @@ Review these changes and produce a structured verdict.
 | `security-expert` | Auth, encryption, token/secret storage, network requests, permissions, user data handling |
 | `performance-expert` | RecyclerView/LazyColumn adapters, database queries, image loading, coroutine dispatchers, hot loops, large collections |
 | `architecture-expert` | New modules created, dependency direction changed, public API modified, new abstractions introduced |
+| `test-coverage-expert` (engineer-agent role, no separate file) | New public API in the diff with no matching test, `<slug>-test-plan.md` declares Test Cases not implemented in the test code, data layer / repository / service files modified without new test files, or `--coverage-audit` override |
 
 If no trigger matches — skip Phase D entirely.
+
+`test-coverage-expert` is not a new agent file. Phase D launches one of the existing engineer agents (`kotlin-engineer` / `swift-engineer` / `compose-developer` / `swiftui-developer`) with a coverage-audit prompt. The platform routing follows the same rules as `implement`. The full skip / output / cross-link rules live in [`skills/finalize/SKILL.md`](../skills/finalize/SKILL.md#test-coverage-expert-conditional).
 
 ### Exit criteria
 
