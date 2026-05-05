@@ -38,6 +38,8 @@ The caller (orchestrator or user) provides:
   - `--allow-warn` — stop after 1 round even if WARN findings remain (default: still exit PASS on WARN-only, but keep iterating BLOCKs until resolved or round budget runs out)
   - `--skip-experts` — omit Phase D (rarely useful; experts auto-skip if no triggers match)
   - `--max-rounds N` — override the default 3-round cap. Use when the user wants one more round after an ESCALATE, without restarting the whole stage. Must be ≥ 1.
+  - `--coverage-audit` — force-on the Phase D `test-coverage-expert` trigger even when none of the diff conditions match. Useful for explicit pre-release coverage sweeps.
+  - `--skip-coverage-audit` — turn off the Phase D `test-coverage-expert` trigger for this round. Discouraged; recorded verbatim with the user reason in the finalize report's `acknowledged risks` section.
 
 ---
 
@@ -159,6 +161,77 @@ Experts produce deeper, higher-risk findings. Apply the same severity × confide
 - For security-critical findings that come in at confidence 50, rely on the code-reviewer's **Critical-risk exception** (see `developer-workflow-experts/agents/code-reviewer.md` § Critical-risk exception): the finding is included with a `[please verify]` marker prefixed to the `issue` field. Treat such findings as BLOCK and attempt a fix; if fix is out-of-scope, escalate.
 - performance / architecture + critical at confidence ≥ 75: fix if local to the diff; escalate if requires broader rework.
 - Do not introduce a parallel "always fix at 50" rule — the rubric is defined once in `code-reviewer.md` and inherited by Phase D experts.
+
+### `test-coverage-expert` (conditional)
+
+Late-stage coverage audit that complements the early `/check` Phase 3.5 gate (#154). Catches cases the early gate cannot — declared Test Cases that were not implemented, data-layer changes that landed without integration tests, and gaps that the engineer agent missed.
+
+**Trigger when ANY:**
+
+1. The diff adds a new public API symbol that has no matching test file.
+2. `docs/testplans/<slug>-test-plan.md` declares Test Cases that have no matching implementation in the test sources for this slug. Cross-reference is by Test Case `Type` (#153) plus name / file mention — interpreted by the engineer agent, not regex.
+3. The diff touches data layer / repository / service / use-case files without introducing or updating tests for them.
+4. The caller passed `--coverage-audit` (force-on).
+
+**Skip when ANY:**
+
+1. The diff is trivial (single file, < 50 LOC, no new public API, refactor-only).
+2. The caller passed `--skip-coverage-audit` (recorded in the finalize report verbatim with the user reason; required for the orchestrator-driven invocation, see [`docs/TESTING-STRATEGY.md`](../../docs/TESTING-STRATEGY.md#skip-rules)).
+3. The project has no test infrastructure for the affected module — short-circuit with a follow-up issue ("add test harness for X"). Do NOT silently skip.
+
+**Implementation note — no new agent role.** This trigger reuses the existing engineer agents. Phase D launches the matching engineer (`kotlin-engineer` / `swift-engineer` / `compose-developer` / `swiftui-developer`) with a coverage-audit prompt instead of a code-review prompt. The platform routing follows the same rules as `implement`. This honours the [Min-bar checklist](../../docs/ORCHESTRATION.md#min-bar-for-a-new-orchestrator-stage) item 3 (no duplication) — the existing agents already understand the codebase's test conventions; a new agent role would duplicate them.
+
+**What the audit produces.** The engineer agent reads `docs/testplans/<slug>-test-plan.md`, the diff, and the test files in the diff, then produces `swarm-report/<slug>-coverage-audit.md` with the schema below. If gaps are found, the agent (in the same Task call) writes the missing tests and re-runs `/check` — same author-fixes-tests rule (#157) that applies to `implement`.
+
+**Schema for `swarm-report/<slug>-coverage-audit.md`:**
+
+```markdown
+# Coverage audit: <slug>
+
+**Date:** <ISO date>
+**Slug:** <slug>
+**Triggered by:** new-public-api | tp-tc-mismatch | data-layer-no-tests | --coverage-audit
+**Verdict:** PASS | GAPS_RESOLVED | ESCALATE
+
+## Inputs
+
+- Test plan: `docs/testplans/<slug>-test-plan.md` (or `N/A: no test plan`)
+- Diff against: `origin/<base>` (commit hash range)
+- Test files in diff: <list>
+
+## Cross-reference
+
+| TC ID | Type | Status | Test file |
+|---|---|---|---|
+| TC-1 | unit | covered | `src/test/.../FooSpec.kt` |
+| TC-2 | ui-instrumentation | gap | — |
+| ... |
+
+## Public API audit
+
+| Symbol | File | Status | Test file |
+|---|---|---|---|
+| `LoginViewModel` | `feature/auth/.../LoginViewModel.kt` | covered | `LoginViewModelTest.kt` |
+| `RateLimiter.allow()` | `core/.../RateLimiter.kt` | gap | — |
+
+## Gaps and resolution
+
+- (gap-1) TC-2 `Login error state` (ui-instrumentation) — added `LoginScreenInstrumentedTest` covering the error state.
+- (gap-2) `RateLimiter.allow()` had no unit test — added `RateLimiterTest.allow_blocks_after_threshold`.
+
+## /check after fixes
+
+verdict: PASS
+passed: [build, lint, typecheck, tests, coverage]
+```
+
+The verdict drives Phase D outcome:
+
+- `PASS` — all cross-reference and public-API rows covered before audit. Phase D continues with other experts.
+- `GAPS_RESOLVED` — gaps existed, agent wrote missing tests, `/check` returned PASS. Treated as PASS for Phase D round-end exit; the audit file lists the fixes for the finalize report.
+- `ESCALATE` — gaps existed, agent could not write a viable test in 3 attempts, OR a gap is structurally untestable (covered by the same diagnosis path the regression-test stage uses). Treated as a BLOCK finding; round budget rules apply.
+
+The override flag `--skip-coverage-audit` is documented in §Inputs (Tolerance flags); when set it records the skip reason in the finalize report's `acknowledged risks` section.
 
 ---
 
