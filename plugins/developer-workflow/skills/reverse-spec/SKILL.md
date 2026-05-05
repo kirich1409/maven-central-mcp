@@ -84,8 +84,9 @@ The user may specify the feature in several ways:
   autocomplete".
 
 For path/symbol inputs, verify the target exists and resolve it to a concrete location.
-Use ast-index where available (see global code-search rules) to expand a class name into
-all related files. Grep / Glob are fallbacks only.
+Use ast-index where available (see [`docs/ORCHESTRATION.md`](../../docs/ORCHESTRATION.md)
+for the canonical code-navigation tooling order) to expand a class name into all related
+files. Grep / Glob are fallbacks only.
 
 For prose inputs, run a short discovery pass:
 
@@ -431,11 +432,12 @@ draft is presented.
 
 ### Definition of Done
 
-The three passes above are mechanical checks. The spec is only ready to hand off when
-the full **Definition of Done** checklist passes — eleven binary gates covering section
-presence, the three Pass results, Open Questions and Known Defects completeness, Code
-map coverage, header fill, and user review. See `references/definition-of-done.md`
-for the detailed gates, rationale, and the handoff-format rules.
+The five passes plus the typo sweep above are mechanical checks. The spec is only ready
+to hand off when the full **Definition of Done** checklist passes — eleven binary gates
+covering section presence, the five Pass results plus typo sweep, Open Questions and
+Known Defects completeness, Code map coverage, header fill, and user review. See
+`references/definition-of-done.md` for the detailed gates, rationale, and the
+handoff-format rules.
 
 A half-satisfied checklist is not a ready spec — it is a progress report. Never
 declare the draft ready unless all eleven gates pass.
