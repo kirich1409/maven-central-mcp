@@ -101,18 +101,17 @@ Test Infrastructure Summary template.
 
 Engineer agents (`kotlin-engineer`, `compose-developer`, `swift-engineer`, `swiftui-developer`) follow this fixed order. Stop at the first step that yields a definite answer.
 
-1. **Inspect the build file** for test-framework dependencies.
+1. **Inspect existing test files** in the **module being modified** first, then the wider project, in conventional locations: `src/test/`, `src/androidTest/`, `Tests/`, `spec/`. Identify framework, assertion library, mocking approach, naming convention, and arrange-act-assert / given-when-then style. Existing tests are the strongest signal — they win over build-file dependencies, since a project may keep multiple test libraries declared but actually use only one.
+2. **Inspect the build file** for test-framework dependencies (used only when the module under change has no existing tests).
    - `build.gradle.kts` / `build.gradle` — JUnit 4/5, MockK, Mockito, `kotlin.test`, Kotest, `androidx.compose.ui:ui-test-junit4`, Paparazzi, Robolectric.
    - `Package.swift` / `Podfile` / `*.xcodeproj` — XCTest, `swift-testing` (Apple), Quick / Nimble, ViewInspector, swift-snapshot-testing.
-   - `package.json` — Vitest, Jest, Mocha, Playwright.
    - `pom.xml` — JUnit, Mockito, TestNG.
-   - `Cargo.toml` — built-in `#[test]`, `proptest`.
-2. **Inspect existing test files** in conventional locations: `src/test/`, `src/androidTest/`, `Tests/`, `spec/`, `__tests__/`.
-   - Identify framework, assertion library, mocking approach, naming convention, and arrange-act-assert / given-when-then style.
 3. **Match the existing project**, even when multiple frameworks coexist.
    - In a mixed project, follow the framework already in use **in the module being modified**.
    - Never introduce a new framework or style without explicit user approval.
-4. **Apply the platform default** only when no signal exists in the project.
+4. **Apply the platform default** only when no signal exists in the project (no tests, no test-framework deps).
+
+Other ecosystems (Java-only, JS/TS, Rust, etc.) are out of scope for `write-tests` delegation in this plugin; surface them to the user.
 
 #### Platform defaults
 
@@ -123,8 +122,7 @@ Engineer agents (`kotlin-engineer`, `compose-developer`, `swift-engineer`, `swif
 | Compose UI | `androidx.compose.ui:ui-test-junit4` |
 | iOS / Swift, toolchain ≥ 5.9 | `swift-testing` |
 | iOS / Swift, toolchain < 5.9 | XCTest |
-| SwiftUI | XCUITest, ViewInspector, or preview-based tests — match what is already in the project |
-| Web / JavaScript / TypeScript | Vitest (default); Jest if the project already pins Jest |
+| SwiftUI | engineer asks one question to choose between XCUITest (end-to-end UI flow), ViewInspector (view-tree assertions), or preview-based snapshot — there is no single SwiftUI testing default; record the answer in the Test Infrastructure Summary |
 
 #### Escalation rules
 
