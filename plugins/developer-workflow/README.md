@@ -126,7 +126,7 @@ Full pipeline with diagrams and gate-level detail:
 
 ## Aggregating run telemetry
 
-Both orchestrators write `swarm-report/<slug>-metrics.json` after every run (best-effort, local-only — full schema in the linked document). Three baseline `jq` queries to mine the local history:
+Both orchestrators write `swarm-report/<slug>-metrics.json` after every run (best-effort, local-only — full schema in the linked document). Three baseline `jq` queries to mine the local history (each requires at least one metrics file under `swarm-report/`; with no files the shell may pass the literal glob to `jq` and produce a confusing error — run the queries after at least one orchestrator run completes):
 
 Average wall-clock seconds across all runs:
 

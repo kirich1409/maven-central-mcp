@@ -4,7 +4,7 @@ Schema for `swarm-report/<slug>-metrics.json`, the post-run telemetry artifact w
 
 ## When the file is written
 
-- **Success** (VERIFIED → Merged) — at the end of the run.
+- **Success** — at the end of the run, when the orchestrator transitions `VERIFIED → stage Merged` (outcome: `merged`). Note the case distinction: `Merged` is a stage label in the orchestrator state machine; `merged` (lowercase) is the value of the `outcome` enum.
 - **Escalation** — when the orchestrator stops with an escalation reason.
 - **User interruption** — best-effort write inside the orchestrator's cleanup hook (`/exit`, `Ctrl+C`, abandoned worktree, etc.). Missing fields are recorded as `null` rather than omitted.
 
@@ -24,7 +24,7 @@ A failure to write the metrics file **does not break the orchestrator**. The run
 | `stages` | array of stage records | yes | One entry per stage, in execution order |
 | `backward_transitions` | array of transition records | yes | Empty array if none |
 | `overrides` | array of strings | yes | E.g. `["--skip-test-plan", "--skip-coverage-audit"]` |
-| `review_verdicts` | object | yes | Map of review-stage name → `PASS` \| `WARN` \| `FAIL` |
+| `review_verdicts` | object | yes | Map of review-stage name → `PASS` \| `WARN` \| `FAIL`. Empty object `{}` when no review stages ran (e.g. `bugfix-flow` runs that skip `PlanReview` / `TestPlanReview`). Consumers must treat `{}` as "no review stages executed", not as a schema violation |
 | `finalize_rounds` | integer \| null | yes (null when finalize did not run) | Count of rounds executed |
 | `acceptance_verdict` | string \| null | yes (null when acceptance did not run) | `VERIFIED` \| `FAILED` \| `PARTIAL` |
 | `pr_number` | integer \| null | yes (null when no PR) | GitHub / GitLab PR / MR number |
@@ -46,7 +46,7 @@ A failure to write the metrics file **does not break the orchestrator**. The run
 
 | Field | Type | Notes |
 |---|---|---|
-| `name` | string | Canonical stage name (`Research`, `Clarify`, `Plan`, `TestPlan`, `Implement`, `Finalize`, `Acceptance`, `PR`, `Debug`, `RegressionTest`, …) |
+| `name` | string | Canonical stage name. Examples (non-exhaustive — orchestrators may add stages over time): `Research`, `Clarify`, `DesignOptions`, `Decompose`, `Plan`, `PlanReview`, `TestPlan`, `TestPlanReview`, `Implement`, `Finalize`, `Acceptance`, `PR`, `DriveToMerge`, `Debug`, `RegressionTest`. Canonical names are owned by the orchestrator definitions in `skills/feature-flow/` and `skills/bugfix-flow/`; aggregation across runs should treat unknown names as opaque labels rather than error out |
 | `started_at` | ISO-8601 string | When the orchestrator entered the stage |
 | `ended_at` | ISO-8601 string | When the stage produced its receipt or was skipped |
 | `duration_seconds` | integer | Convenience precomputation |

@@ -413,7 +413,7 @@ Each backward transition:
 
 ## Post-run Telemetry (best-effort hook)
 
-After the run terminates — `Merged`, escalated, or interrupted — the orchestrator writes `swarm-report/<slug>-metrics.json`. The schema is shared with `feature-flow` and lives in [`docs/METRICS-SCHEMA.md`](../../docs/METRICS-SCHEMA.md).
+After the run terminates (outcome: `merged` / `escalated` / `interrupted`) — i.e. the orchestrator reaches stage `Merged`, hits an escalation Stop Point, or is cut by the user — the orchestrator writes `swarm-report/<slug>-metrics.json`. Stage labels (e.g. `Merged`) are TitleCase; outcome enum values (e.g. `merged`) are lowercase. The schema is shared with `feature-flow` and lives in [`docs/METRICS-SCHEMA.md`](../../docs/METRICS-SCHEMA.md).
 
 - Local-only artifact under the gitignored `swarm-report/` directory. Not sent off the machine.
 - Best-effort: a write failure logs once to chat and **does not break the orchestrator**. The run's outcome is unaffected.
