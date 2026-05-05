@@ -215,6 +215,8 @@ Example:
 
 ```markdown
 #### TC-3: Token refresh succeeds before expiry
+| **Type** | integration |
+| **Type rationale** | Real `TokenManager` + test HTTP server to assert end-to-end refresh + scope preservation; pure-unit scope cannot reach the network call |
 | **Priority** | P0 Critical |
 | **Tier** | Feature |
 | **Preconditions** | Valid refresh token stored, access token within 60s of expiry |

@@ -178,9 +178,9 @@ Every test case declares an explicit `Type` plus a one-line `Type rationale` (se
 | `unit` | One class/function with mocked collaborators | Pure logic, transform, validator, mapper, parser, state-holder math |
 | `integration` | Several classes plus real / in-memory dependencies | Repository + DB, service + test API, data pipeline, multi-class interaction |
 | `ui-instrumentation` | One UI component inside its framework (Compose UI test, XCUITest single screen, ViewInspector) | Single screen / component user action with visible state assertion |
-| `ui-scenario` | Running app driven by `mobile` / `playwright` MCP, re-runnable scripted journey | Multi-screen user journey, cross-platform critical flow |
+| `ui-scenario` | Running app driven by an MCP-based device / browser automation runner, re-runnable scripted journey | Multi-screen user journey, cross-platform critical flow |
 | `screenshot` | Visual render comparison (Paparazzi, swift-snapshot-testing) | Visual fidelity is part of the contract — additive, never the sole coverage |
-| `e2e` / `application` | Whole application end-to-end | Release-critical journey that cannot be split into smaller types — keep the count small |
+| `e2e` | Whole application end-to-end | Release-critical journey that cannot be split into smaller types — keep the count small |
 
 #### Selection heuristic
 

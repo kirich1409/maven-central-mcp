@@ -66,7 +66,7 @@ A single critical from any agent with medium-or-higher confidence is enough to t
 
 ## Prompt augmentation
 
-Every agent reviewing a test-plan receives the following checklist verbatim in their Step 3 prompt (the engine substitutes this section into `{PROFILE_PROMPT_AUGMENTATION}` literally — not by reference to the Rubric section above). Each agent must explicitly report the status of each item (satisfied / violated, with rationale). The engine parses these into the severity mapping.
+Every agent reviewing a test-plan receives the following 7-item checklist verbatim in their Step 3 prompt (the engine substitutes this section into `{PROFILE_PROMPT_AUGMENTATION}` literally — not by reference to the Rubric section above). Each agent must explicitly report the status of each item (satisfied / violated, with rationale). The engine parses these into the severity mapping.
 
 ---
 
@@ -88,7 +88,7 @@ After Step 4 synthesis, the engine updates `swarm-report/<slug>-test-plan.md` (t
 
 - `review_verdict: PASS | WARN | FAIL`
 - On WARN: `review_warnings:` list enumerating violated items from `(d)`, `(e)`, `(g)` with one-line rationale each
-- On FAIL: `review_blockers:` list enumerating violated items from `(a)–(c)` with the blocking finding and suggested fix
+- On FAIL: `review_blockers:` list enumerating violated items from `(a)`, `(b)`, `(c)`, `(f)` with the blocking finding and suggested fix
 
 The receipt format is owned by the `generate-test-plan` skill — this profile only writes the three fields listed in `receipt.fields_to_update`.
 
