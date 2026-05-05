@@ -147,9 +147,9 @@ Runs after the test category has executed. Even when build / lint / typecheck / 
 
 ### When the gate runs
 
-- Current branch differs from the remote default branch — derive the base the same way `finalize` does (`git remote show origin | grep "HEAD branch"`, fallbacks `main` / `master` / `develop`), then operate on `git diff $(git merge-base origin/<base> HEAD)..HEAD`.
+- Current branch differs from the remote default branch — derive the base the same way `finalize` does (`git remote show origin | grep "HEAD branch" | awk '{print $NF}'`, fallbacks `main` / `master` / `develop`), then operate on `git diff $(git merge-base origin/<base> HEAD)..HEAD`.
 - Branch is at the default branch (no diff against base) → skip silently.
-- `--no-coverage-gate` flag passed by the caller → skip and record `coverage: skipped` in the verdict block.
+- `--no-coverage-gate` flag passed by the caller → skip and add `coverage` to the `skipped: [...]` array of the verdict block.
 
 ### What counts as a "new public symbol"
 
@@ -171,9 +171,9 @@ For each new public symbol, succeed on the FIRST match:
 1. Test file added or modified in the same diff with name `<Symbol>Test*`, `<Symbol>Spec*`, `<Symbol>Tests*`, `Test<Symbol>*`, or platform variants.
 2. Test file added or modified in the same diff whose contents reference the symbol's qualified name (substring match in source — language-aware enough to ignore comments).
 3. Symbol carries an explicit no-test annotation:
-   - Kotlin: `@NoTestRequired` / `@Suppress("MissingTest")`
-   - Swift: `// no-test-required: <reason>`
-   - TS/Py/Rust/Go: `// no-test-required: <reason>` or equivalent line comment
+   - Kotlin: `@NoTestRequired` annotation, or `@Suppress("MissingTest")`.
+   - Swift / Rust / Go / TS / JS: `// no-test-required: <reason>` line comment on the symbol declaration.
+   - Python: `# no-test-required: <reason>` line comment on the symbol declaration.
    - or the symbol's file lives under a directory named `no-test-harness/` (escape hatch for legacy modules).
 
 If none of the three matches → the symbol is reported as a coverage failure.
@@ -225,7 +225,7 @@ The report has two parts: a human-readable body and a mandatory machine-readable
 
 ~~~
 verdict: FAIL
-passed: [build]
+passed: [build, coverage]
 failed: [lint]
 skipped: [tests]
 ~~~
