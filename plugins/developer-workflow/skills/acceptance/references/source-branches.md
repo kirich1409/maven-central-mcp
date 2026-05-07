@@ -32,42 +32,26 @@ compatibility.
 Before branching, read the following in a single batched Read call set. Each may
 error-as-absent — that is expected:
 
-- `swarm-report/<slug>-test-plan.md` (receipt)
-- `docs/testplans/<slug>-test-plan.md` (permanent)
+- `docs/testplans/<slug>-test-plan.md` (permanent test plan)
 - `swarm-report/<slug>-debug.md` (bug-fix reproduction steps)
 
 Combined with inline inputs and spec sources, one of the branches below fires. Record the
 selected branch as `test_plan_source` in the receipt.
 
-### Branch 1 — Receipt present (`test_plan_source: receipt`)
+### Branch 1 — Permanent test plan exists (`test_plan_source: mounted`)
 
-**Condition:** `swarm-report/<slug>-test-plan.md` exists.
+**Condition:** `docs/testplans/<slug>-test-plan.md` exists on disk.
 
-Read the receipt's YAML frontmatter and load `permanent_path`. Treat `review_verdict`
-values `PASS` / `WARN` / `skipped` as proceed; `FAIL` and `pending` as blockers that
-escalate back to the user, recommending revision via `multiexpert-review` before
-acceptance runs again. Pass the **permanent file** to `manual-tester` as the primary
-test-plan source. If the receipt has a `platform:` field, use it as an additional input
-to Step 0's override policy.
+Pass the permanent file to `manual-tester` as the primary test-plan source. Read its YAML
+frontmatter; if it carries a `platform:` field, use that as an additional input to Step 0's
+override policy.
 
-### Branch 2 — Permanent file exists without receipt (`test_plan_source: mounted`)
+### Branch 2 — Inline test plan, spec, or `debug.md` available (`test_plan_source: on-the-fly`)
 
-**Condition:** Branch 1 did not fire **and** `docs/testplans/<slug>-test-plan.md` exists
-on disk without a matching receipt.
-
-Acceptance owns the mount-receipt. Emit a mount-receipt at
-`swarm-report/<slug>-test-plan.md` with frontmatter fields `status: Mounted`,
-`review_verdict: skipped`, `source_spec: existing`, and `permanent_path:
-docs/testplans/<slug>-test-plan.md`. Derive `phase_coverage` from the permanent file's
-phase headings; omit the field if coverage cannot be determined reliably. Pass the
-permanent file to `manual-tester`.
-
-### Branch 3 — Inline test plan, spec, or `debug.md` available (`test_plan_source: on-the-fly`)
-
-**Condition:** Branches 1 and 2 did not fire **and** the invocation provides a test plan
+**Condition:** Branch 1 did not fire **and** the invocation provides a test plan
 inline, a spec source, `swarm-report/<slug>-debug.md`, or any combination of these.
-`debug.md` is treated as a spec-like source for bug-fix verification when no receipt or
-permanent test plan exists, so this branch also covers the standalone "debug-only" case.
+`debug.md` is treated as a spec-like source for bug-fix verification when no permanent
+test plan exists, so this branch also covers the standalone "debug-only" case.
 
 Four modes:
 
@@ -83,9 +67,9 @@ Four modes:
   steps (Step 2 owns the inversion); record `test_plan_source: on-the-fly`. No on-the-fly
   TC generation beyond what Step 2 already produces.
 
-### Branch 4 — Nothing available (`test_plan_source: absent`)
+### Branch 3 — Nothing available (`test_plan_source: absent`)
 
-**Condition:** no receipt, no permanent file, no inline test plan, no spec source, and no
+**Condition:** no permanent file, no inline test plan, no spec source, and no
 `swarm-report/<slug>-debug.md` (bug-fix path).
 
 Proceed to SKILL.md §Step 1.5 Source-Missing Gate. Do not run any checks.

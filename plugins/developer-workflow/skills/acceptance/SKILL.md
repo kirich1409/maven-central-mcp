@@ -22,7 +22,7 @@ SKILL.md stays the stable orchestration contract.
 
 | File | Covers |
 |---|---|
-| [`references/source-branches.md`](references/source-branches.md) | Step 1 spec frontmatter handling and the four `test_plan_source` branches (receipt / mounted / on-the-fly / absent), mount-receipt overrides |
+| [`references/source-branches.md`](references/source-branches.md) | Step 1 spec frontmatter handling and the three `test_plan_source` branches (mounted / on-the-fly / absent) |
 | [`references/subcheck-prompts.md`](references/subcheck-prompts.md) | Step 3.1–3.10 per-agent prompt contracts — `manual-tester`, `code-reviewer`, build smoke, `business-analyst`, `ux-expert`, `security-expert`, `performance-expert`, `architecture-expert`, `build-engineer`, `devops-expert` |
 | [`references/aggregation.md`](references/aggregation.md) | Step 4 PoLL aggregation rules, Aggregated Status table, full receipt template, downstream routing |
 | [`references/re-verification.md`](references/re-verification.md) | Re-verification Loop `diff_hash` decision table, spec/test-plan change overrides, back-compat rules |
@@ -77,15 +77,14 @@ frontmatter (`platform`, `surfaces`, `risk_areas`, `non_functional`,
 
 Probe artifacts in a single batched Read call set:
 
-- `swarm-report/<slug>-test-plan.md` (receipt)
-- `docs/testplans/<slug>-test-plan.md` (permanent)
+- `docs/testplans/<slug>-test-plan.md` (permanent test plan)
 - `swarm-report/<slug>-debug.md` (bug-fix reproduction)
 
-The selected source fires one of four branches — `test_plan_source: receipt | mounted |
+The selected source fires one of three branches — `test_plan_source: mounted |
 on-the-fly | absent`. If `swarm-report/<slug>-debug.md` is the only available verification
-source, it qualifies Branch 3 (`on-the-fly`) — bug-fix verification treats `debug.md` as a
-spec-like input. Full branch semantics, mount-receipt overrides, and spec frontmatter
-consumers (including the `surfaces` invariant guards) live in
+source, it qualifies Branch 2 (`on-the-fly`) — bug-fix verification treats `debug.md` as a
+spec-like input. Full branch semantics and spec frontmatter consumers (including the
+`surfaces` invariant guards) live in
 [`references/source-branches.md`](references/source-branches.md). Record the selected
 branch as `test_plan_source` in the receipt.
 
@@ -158,15 +157,15 @@ incomplete step.
 
 ## Step 2.5: Dedup Probe
 
-Read `swarm-report/<slug>-quality.md` (produced by `finalize`). Three cases:
+Read `swarm-report/<slug>-finalize.md` (produced by `finalize`). Three cases:
 
 - **`Status: PASS`**, receipt from the current branch head → `code-reviewer` is skipped.
   Freshness is inferred from the receipt's `Date:` field vs the branch commit window; if
   it cannot be confirmed, do **not** skip — run `code-reviewer` normally. On skip, write a
   stub at `swarm-report/<slug>-acceptance-code.md` with `verdict: SKIPPED`,
-  `blocked_on: null`, one-line body referencing `<slug>-quality.md`.
+  `blocked_on: null`, one-line body referencing `<slug>-finalize.md`.
 - **`Status: FAIL`** → finalize failed upstream. Run `code-reviewer` anyway, surface
-  `blocked_on: finalize failed — see <slug>-quality.md` in the Step 4 Summary. The
+  `blocked_on: finalize failed — see <slug>-finalize.md` in the Step 4 Summary. The
   aggregated Status is forced to `PARTIAL` at minimum (or `FAILED` if `code-reviewer`
   itself returns `FAIL`).
 - **Receipt missing** → run `code-reviewer` normally. No skip.

@@ -233,9 +233,11 @@ the contract: the test MUST fail on the original buggy code.
 
 Steps:
 1. **Identify fix commits.** Use the commit hashes the caller passed in the
-   `regression-scenario`, or run
-   `git log origin/main..HEAD --pretty=format:"%H" -- <fixed-files>` to list them.
-   If a single hash → use it directly. If multiple hashes → collect all of them and revert
+   `regression-scenario`, or derive them from git: first resolve the remote default branch
+   (`git remote show origin | grep "HEAD branch" | awk '{print $NF}'`, with `main` /
+   `master` / `develop` as ordered fallbacks), then run
+   `git log origin/<base>..HEAD --pretty=format:"%H" -- <fixed-files>` to list them. If
+   a single hash → use it directly. If multiple hashes → collect all of them and revert
    in reverse order (newest first).
 2. **Temporarily revert the fix** without committing. For each fix commit, check if it is a
    merge commit (`git show --no-patch --format="%P" <hash>` returns two hashes):

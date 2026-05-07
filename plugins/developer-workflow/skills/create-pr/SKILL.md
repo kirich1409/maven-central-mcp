@@ -117,9 +117,9 @@ git diff $BASE...HEAD                  # full diff (for description reasoning)
 
 ---
 
-## Step 5: Discover pipeline artifacts
+## Step 5: Discover artifacts
 
-Look for artifacts in `./swarm-report/` that match the current branch/task slug. Read those that exist:
+Look for the artifacts below that match the current branch/task slug. Read those that exist:
 
 | Artifact | Location | Purpose in body |
 |---|---|---|
@@ -127,16 +127,15 @@ Look for artifacts in `./swarm-report/` that match the current branch/task slug.
 | spec | `docs/specs/<YYYY-MM-DD>-<slug>.md` (written by `write-spec`) | Reference as "Specification" |
 | plan | `swarm-report/<slug>-plan.md` | Reference as "Plan"; acceptance criteria extracted for "How to test" |
 | debug | `swarm-report/<slug>-debug.md` | Root cause + reproduction steps — primary context for bug-fix PRs |
-| test plan | `swarm-report/<slug>-test-plan.md` | Reference; test cases become checklist in "How to test" |
-| quality | `swarm-report/<slug>-quality.md` | Gate pass/fail summary for status table |
-| finalize | `swarm-report/<slug>-finalize.md` | Round-by-round summary for status table (available once the `finalize` skill has run) |
+| test plan | `docs/testplans/<slug>-test-plan.md` (written by `generate-test-plan`) | Reference; test cases become checklist in "How to test" |
+| finalize | `swarm-report/<slug>-finalize.md` (written by `finalize`) | Round-by-round quality summary for status table |
 | acceptance | `swarm-report/<slug>-acceptance.md` | Pass/fail + verified scenarios for "Verification" section |
 
 Slug resolution:
 1. Prefer slug if the caller passed it as argument
 2. Fallback to branch name with common prefix stripped: `feature/`, `fix/`, `hotfix/`, `bug/`, `chore/`, `refactor/`, `docs/`
 
-Artifacts are gitignored (in `swarm-report/`), so they won't appear in diff — include them as *references* in the body (e.g., "See `swarm-report/my-slug-plan.md`"), not as inlined content. Reviewers working on the PR locally can read them; CI cannot, but the body remains readable without them.
+`swarm-report/` files are gitignored, so they won't appear in diff — include them as *references* in the body (e.g., "See `swarm-report/my-slug-plan.md`"), not as inlined content. Reviewers working on the PR locally can read them; CI cannot, but the body remains readable without them. The spec and test-plan files (under `docs/`) are committed and visible in the diff.
 
 ---
 
