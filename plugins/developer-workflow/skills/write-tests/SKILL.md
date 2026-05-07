@@ -1,6 +1,6 @@
 ---
 name: write-tests
-description: "This skill should be used to write retroactive tests for existing code — classes, modules, or directories lacking coverage — and to write a focused regression test for a specific bug fix (Regression Mode: pass regression-scenario from debug.md). Discovers test infrastructure, plans test cases, delegates generation to platform engineer agents (kotlin-engineer, compose-developer, swift-engineer, swiftui-developer), verifies tests pass. Use when: \"write tests for\", \"add tests to\", \"test this class\", \"increase coverage\", \"add unit tests\", \"this code has no tests\", \"cover with tests\", \"retroactive tests\", \"add regression test for this fix\", \"write a test that catches this bug\", \"regression test after fixing\", \"test to verify the fix\". Do NOT use when: user wants a test plan document (use generate-test-plan), run tests on live app (use acceptance), exploratory QA (use bug-hunt), or tests are part of a new feature (engineer agent handles within implement)."
+description: "This skill should be used to write retroactive tests for existing code — classes, modules, or directories lacking coverage — and to write a focused regression test for a specific bug fix (Regression Mode: pass regression-scenario describing root cause and reproduction). Discovers test infrastructure, plans test cases, delegates generation to platform engineer agents (kotlin-engineer, compose-developer, swift-engineer, swiftui-developer), verifies tests pass. Use when: \"write tests for\", \"add tests to\", \"test this class\", \"increase coverage\", \"add unit tests\", \"this code has no tests\", \"cover with tests\", \"retroactive tests\", \"add regression test for this fix\", \"write a test that catches this bug\", \"regression test after fixing\", \"test to verify the fix\". Do NOT use when: user wants a test plan document (use generate-test-plan), run tests on live app (use acceptance), exploratory QA (use bug-hunt), or tests are written alongside a new feature (engineer agent handles inline)."
 ---
 
 # Write Tests
@@ -30,10 +30,11 @@ The user provides one or more of:
 
 **Regression Mode:** the caller may additionally pass a `regression-scenario` — a structured
 description of the bug's root cause, reproduction steps, and expected vs actual behavior
-(typically from `swarm-report/<slug>-debug.md`). When present, the skill enters **Regression
-Mode**: it skips the broad coverage sweep (Phase 1.4), uses the scenario as the sole test
-case (Phase 3.1), and skips the prioritization question (Phase 3.2). The output is one
-focused test that would fail on the original buggy code and passes with the fix applied.
+(e.g. notes captured in plan mode or stored in `swarm-report/<slug>-debug.md`). When
+present, the skill enters **Regression Mode**: it skips the broad coverage sweep (Phase 1.4),
+uses the scenario as the sole test case (Phase 3.1), and skips the prioritization question
+(Phase 3.2). The output is one focused test that would fail on the original buggy code and
+passes with the fix applied.
 
 Resolve vague references using a code-index tool when one is available in the environment;
 fall back to `Grep` / `Glob` + `Read` otherwise. If the reference remains ambiguous after
@@ -231,10 +232,11 @@ that would have been green even before the fix. Before running the full test sui
 the contract: the test MUST fail on the original buggy code.
 
 Steps:
-1. **Identify fix commits** from `swarm-report/<slug>-implement.md` (field "Commit" or
-   "Commits"). If a single hash → use it directly. If multiple hashes → collect all of them;
-   revert in reverse order (newest first). If the field is absent — use
+1. **Identify fix commits.** Use the commit hashes the caller passed in the
+   `regression-scenario`, or run
    `git log origin/main..HEAD --pretty=format:"%H" -- <fixed-files>` to list them.
+   If a single hash → use it directly. If multiple hashes → collect all of them and revert
+   in reverse order (newest first).
 2. **Temporarily revert the fix** without committing. For each fix commit, check if it is a
    merge commit (`git show --no-patch --format="%P" <hash>` returns two hashes):
    ```bash
@@ -259,7 +261,8 @@ Steps:
    ```bash
    git reset --hard HEAD
    ```
-   Record in `swarm-report/<slug>-implement.md` (append one line):
+   Record one line of evidence in the regression report (`swarm-report/<slug>-regression-coverage.md`
+   if it exists, otherwise inline in the chat report):
    `Regression contract: VERIFIED — test RED on revert of fix commits (<hash-1>…<hash-N>), GREEN with fix.`
    Proceed to Phase 5.1 (full test suite).
 5. **If GREEN on buggy code** → the test does NOT capture the regression. It is ineffective.
@@ -274,9 +277,9 @@ Steps:
    - What aspect of the bug the test missed (wrong entry point, wrong layer, assertion
      on a side effect rather than the cause, etc.)
    - What would need to change for the test to actually catch the regression
-   Report to `bugfix-flow` as an **Ineffective Test** (not a Production Bug — see Phase 6.5
-   status `INEFFECTIVE`), attaching the Coverage Diagnosis so the next Implement invocation
-   has a concrete direction for addressing the test design, not just the fix.
+   Surface this to the user as an **Ineffective Test** (not a Production Bug — see Phase 6.5
+   status `INEFFECTIVE`), attaching the Coverage Diagnosis so the next iteration has a
+   concrete direction for addressing the test design, not just the fix.
    Do NOT continue to Phase 5.1.
 
 **Conflict handling:** if `git revert` produces a merge conflict, accept the buggy side
@@ -350,8 +353,8 @@ Stop and include the diagnosis in the final report.
 **Regression Mode only — skip in Normal Mode.**
 
 After all tests pass (Phase 5.1 green), commit the generated test file(s) and push to the
-current branch. Normal Mode leaves file management to the user; Regression Mode is invoked
-by `bugfix-flow` which expects the test to land as a commit on the PR branch automatically.
+current branch so the regression test lands as a commit on the PR branch automatically.
+Normal Mode leaves file management to the user.
 
 ```bash
 git add <test-file-paths>
@@ -466,7 +469,7 @@ Status: INEFFECTIVE | FAILED | NOT_ATTEMPTED
 {what would need to change in code or test setup}
 ```
 
-Reference this file in the PR body and in the report to `bugfix-flow`.
+Reference this file in the PR body and in the user-facing report.
 
 ---
 

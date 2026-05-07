@@ -267,9 +267,8 @@ When escalating, state what was detected, what was attempted, and what the calle
 
 ## Integration notes for callers
 
-- `implement` — call `/check` inside its Quality Loop after each code change; fix based on the report, re-run until PASS.
 - `finalize` — call `/check` after each Phase's fix round in the multi-round loop.
-- Migration skills (`code-migration`, `kmp-migration`, `migrate-to-compose`) — call `/check` after every migration step to verify the step preserved build health.
+- Migration skills (`kmp-migration`, `migrate-to-compose`) — call `/check` after every migration step to verify the step preserved build health.
 - User-invoked — run standalone at any time to verify the current branch state (`/check`, `/check --fast`, etc.).
 
 Callers pass the detected slug and working directory; this skill does not manage artifacts. Output is returned to the caller, who decides what to record.

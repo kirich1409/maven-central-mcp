@@ -56,7 +56,7 @@ Group related test cases by feature area, screen, or workflow
 
 | Field | Value |
 |-------|-------|
-| **Type** | unit / integration / ui-instrumentation / ui-scenario / screenshot / e2e |
+| **Type** | unit / integration / ui-instrumentation / screenshot / e2e |
 | **Type rationale** | One short line — why this type catches the AC failure with the smallest scope |
 | **Priority** | P0 Critical / P1 High / P2 Medium / P3 Low |
 | **Tier** | Smoke / Feature / Regression |
@@ -132,14 +132,11 @@ Test cases that are good candidates for automated testing.
 
 ## Phase Segmentation
 
-When the feature reaches this skill via `decompose-feature` with phases (e.g. T-1..T-3 in
-Phase 1, T-4..T-6 in Phase 2), the permanent file splits the `## Test Cases` section by
-phase so each phase can ship and be re-verified independently. One permanent document per
-feature remains the rule — phases are sections inside it, not separate files.
-
-Apply segmentation when the decomposition artifact contains two or more phases **and** test
-cases can be grouped by which phase introduces the behavior they cover. Otherwise keep a
-single flat `## Test Cases` section.
+When the feature has two or more phases (e.g. T-1..T-3 in Phase 1, T-4..T-6 in Phase 2)
+and test cases can be grouped by which phase introduces the behavior they cover, split the
+`## Test Cases` section by phase so each phase can ship and be re-verified independently.
+One permanent document per feature remains the rule — phases are sections inside it, not
+separate files. Otherwise keep a single flat `## Test Cases` section.
 
 Example for a feature with two phases:
 
@@ -171,8 +168,8 @@ Example for a feature with two phases:
 #### TC-4: Request reset email from login screen
 | Field | Value |
 |-------|-------|
-| **Type** | ui-scenario |
-| **Type rationale** | Multi-screen journey (login → forgot → confirmation); cheaper to maintain as a re-runnable scripted scenario than a full e2e suite. |
+| **Type** | e2e |
+| **Type rationale** | Multi-screen journey (login → forgot → confirmation); a full end-to-end test is the smallest scope that catches a regression in this flow. |
 | **Priority** | P0 Critical |
 | **Tier** | Feature |
 | **Preconditions** | User account exists |
@@ -186,10 +183,6 @@ Example for a feature with two phases:
 #### TC-6: Reset flow rejects reused link
 ...
 ```
-
-When segmentation is applied, the receipt's `phase_coverage` field lists the phase labels
-present (e.g. `[Phase 1, Phase 2]`), and the TC ranges covered by each phase appear in the
-receipt's Phase Coverage section.
 
 ## Lightweight template (non-UI features)
 
@@ -209,7 +202,7 @@ for non-interactive surfaces.
 | **Source** | [Spec §section / inferred from code] |
 ```
 
-Non-UI features are typically `unit` or `integration`. UI types (`ui-instrumentation`, `ui-scenario`, `screenshot`, `e2e`) do not appear in the lightweight template — if a UI type is needed, switch back to the full TC template.
+Non-UI features are typically `unit` or `integration`. UI types (`ui-instrumentation`, `screenshot`, `e2e`) do not appear in the lightweight template — if a UI type is needed, switch back to the full TC template.
 
 Example:
 

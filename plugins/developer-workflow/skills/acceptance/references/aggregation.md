@@ -28,10 +28,10 @@ Acceptance uses the same aggregation protocol as `multiexpert-review` (see
 | **`minor` severity** or **`low` confidence** from a single check | → Note, not blocker. Does not affect aggregated Status. |
 | **`low` domain_relevance** check flagging an issue | → Note, weight lower. |
 
-**Bug severities (P0–P3) remain the primary routing axis** for
-`feature-flow`/`bugfix-flow`. Any P0/P1 bug reported by any sub-check maps directly to
-`FAILED` regardless of the PoLL above; PoLL layers additional rules on top for cases not
-covered by bug severity alone (e.g. AC coverage FAIL without an associated P0 bug).
+**Bug severities (P0–P3) remain the primary routing axis.** Any P0/P1 bug reported by any
+sub-check maps directly to `FAILED` regardless of the PoLL above; PoLL layers additional
+rules on top for cases not covered by bug severity alone (e.g. AC coverage FAIL without
+an associated P0 bug).
 
 ## Aggregated Status — final table
 
@@ -58,15 +58,14 @@ Save to `swarm-report/<slug>-acceptance.md`. Legacy fields preserved; new sectio
 **Spec source:** [what was used]
 **Test plan:** [resolved permanent path / generated on-the-fly / none]
 **test_plan_source:** receipt | mounted | on-the-fly | absent
-**Context artifacts:** [paths to research.md, debug.md, implement.md, quality.md used as input]
+**Context artifacts:** [paths to research.md, debug.md, quality.md used as input]
 
 ## Idempotency Hashes
 - `diff_hash`: <sha256 of `git diff <base>...HEAD`>
 - `spec_hash`: <sha256 of the spec file bytes, or `null` if no file spec>
 - `test_plan_hash`: <sha256 of the permanent test plan, or `null`>
 
-These three hashes drive the Re-verification Loop decision table; downstream orchestrators
-don't need to read them.
+These three hashes drive the Re-verification Loop decision table.
 
 ## Check Plan
 - list of checks that ran, one per line, with their trigger

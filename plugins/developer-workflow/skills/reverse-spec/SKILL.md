@@ -84,9 +84,8 @@ The user may specify the feature in several ways:
   autocomplete".
 
 For path/symbol inputs, verify the target exists and resolve it to a concrete location.
-Use ast-index where available (see [`docs/ORCHESTRATION.md`](../../docs/ORCHESTRATION.md)
-for the canonical code-navigation tooling order) to expand a class name into all related
-files. Grep / Glob are fallbacks only.
+Use `ast-index` when available to expand a class name into all related files. Grep / Glob
+are fallbacks only.
 
 For prose inputs, run a short discovery pass:
 
@@ -481,8 +480,7 @@ The spec already lives at `docs/spec/<slug>.md`. Final steps:
   Обновлять не стал — вне scope текущей фичи."*. The skill never silently edits
   the project overview.
 - If the user intends to use this spec for reimplementation on another stack, mention
-  that `write-spec` and `decompose-feature` can take this spec as input for the new
-  implementation.
+  that `write-spec` can take this spec as input for the new implementation.
 
 ---
 

@@ -43,26 +43,24 @@ selected branch as `test_plan_source` in the receipt.
 
 **Condition:** `swarm-report/<slug>-test-plan.md` exists.
 
-Read the receipt's YAML frontmatter and load `permanent_path`. Interpret `review_verdict`
-per the canonical definition in `generate-test-plan/SKILL.md` §Receipt: treat
-`PASS` / `WARN` / `skipped` as proceed; `FAIL` and `pending` as blockers that escalate
-back to the invoking orchestrator or the user (acceptance is called from `feature-flow`,
-`bugfix-flow`, or standalone — it does not assume which), recommending revision via
-`multiexpert-review` before acceptance runs again. Pass the **permanent file** to
-`manual-tester` as the primary test-plan source. If the receipt has a `platform:` field,
-use it as an additional input to Step 0's override policy.
+Read the receipt's YAML frontmatter and load `permanent_path`. Treat `review_verdict`
+values `PASS` / `WARN` / `skipped` as proceed; `FAIL` and `pending` as blockers that
+escalate back to the user, recommending revision via `multiexpert-review` before
+acceptance runs again. Pass the **permanent file** to `manual-tester` as the primary
+test-plan source. If the receipt has a `platform:` field, use it as an additional input
+to Step 0's override policy.
 
 ### Branch 2 — Permanent file exists without receipt (`test_plan_source: mounted`)
 
 **Condition:** Branch 1 did not fire **and** `docs/testplans/<slug>-test-plan.md` exists
 on disk without a matching receipt.
 
-Acceptance owns the mount-receipt when invoked outside `feature-flow`. Emit a
-mount-receipt at `swarm-report/<slug>-test-plan.md` following the canonical format in
-`generate-test-plan/SKILL.md` §Receipt. Apply the mount overrides: `status: Mounted`,
-`review_verdict: skipped`, `source_spec: existing (pre-orchestration)`. Derive
-`phase_coverage` from the permanent file's phase headings; omit the field if coverage
-cannot be determined reliably. Pass the permanent file to `manual-tester`.
+Acceptance owns the mount-receipt. Emit a mount-receipt at
+`swarm-report/<slug>-test-plan.md` with frontmatter fields `status: Mounted`,
+`review_verdict: skipped`, `source_spec: existing`, and `permanent_path:
+docs/testplans/<slug>-test-plan.md`. Derive `phase_coverage` from the permanent file's
+phase headings; omit the field if coverage cannot be determined reliably. Pass the
+permanent file to `manual-tester`.
 
 ### Branch 3 — Inline test plan, spec, or `debug.md` available (`test_plan_source: on-the-fly`)
 

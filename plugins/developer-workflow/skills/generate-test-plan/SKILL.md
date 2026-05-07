@@ -29,37 +29,20 @@ docs/testplans/<slug>-test-plan.md
 ```
 
 Create the `docs/testplans/` directory if it doesn't exist. The slug is the canonical
-filename anchor — downstream stages (`feature-flow` Phase 1.5, `acceptance` Branch 2)
-mount by exact slug match, so the filename must be slug-based regardless of invocation
-mode.
+filename anchor — `acceptance` mounts the plan by exact slug match.
 
 Slug resolution rules (apply in order):
 
-1. **Orchestrator invocation** — when this skill is invoked from `feature-flow`, a
-   `slug` argument is passed explicitly. Use it as-is.
-2. **Standalone invocation, slug provided inline** — the user or caller may supply
-   a slug directly (e.g. `"slug: login-flow"`). Use it as-is.
-3. **Standalone invocation, no slug** — derive one from the feature name with the
-   stable kebab-case convention used elsewhere in workflow docs: lowercase the
-   name, replace runs of spaces or punctuation with `-`, trim leading/trailing `-`.
+1. **Slug provided inline** — the user or caller may supply a slug directly
+   (e.g. `"slug: login-flow"`). Use it as-is.
+2. **No slug** — derive one from the feature name with the stable kebab-case
+   convention used elsewhere in workflow docs: lowercase the name, replace runs
+   of spaces or punctuation with `-`, trim leading/trailing `-`.
 
-Examples of derivation (rule 3): `"User authentication"` → `user-authentication`,
+Examples of derivation: `"User authentication"` → `user-authentication`,
 `"Cart & checkout"` → `cart-checkout`, `"Token refresh (auth)"` → `token-refresh-auth`.
 The resulting filename is then `docs/testplans/<slug>-test-plan.md` (for example,
 `docs/testplans/user-authentication-test-plan.md`).
-
-### Receipt (when invoked from orchestrator with a slug)
-
-When invoked from `feature-flow` with a `slug` argument, also emit a receipt at
-`swarm-report/<slug>-test-plan.md` so `multiexpert-review` and `acceptance` can mount
-the artifact via receipt-based gating. The permanent file remains the source of truth;
-the receipt is metadata + pointer. Standalone invocations (no slug passed) skip the
-receipt entirely and write only the canonical `docs/testplans/<slug>-test-plan.md` file.
-
-See [`references/receipt-format.md`](references/receipt-format.md) for the full YAML schema, field conventions
-(`status`, `review_verdict`, `review_warnings` / `review_blockers`, `phase_coverage`,
-`platform`, `created` / `updated`), and the standalone-without-slug backward-compatibility
-rules.
 
 ## Input Discovery
 
@@ -74,11 +57,9 @@ Read the document. Extract:
 - User roles and permissions mentioned
 
 **Spec frontmatter (when the source is a file with YAML frontmatter).** Read the frontmatter
-block first. If it contains a `platform:` list, copy that list verbatim into the receipt's
-`platform:` field (same canonical values as `write-spec` and ORCHESTRATION.md §Project type
-detection). When the orchestrator invokes this skill without a file-based spec, or the spec
-has no frontmatter, leave `platform:` empty in the receipt — `acceptance` will fall back to
-its project-type heuristic.
+block first. If it contains a `platform:` list, note the value — `acceptance` reads the same
+field to pick its project-type heuristic. If the spec has no frontmatter, `acceptance` falls
+back to its own detection.
 
 ### 2. Figma mockup
 
@@ -159,10 +140,9 @@ Two variants exist:
   collapse Steps and Expected Result into a single `Scenario (Given/When/Then)` row.
   All other sections are unchanged.
 
-When the feature arrives via `decompose-feature` with two or more phases and test cases can
-be grouped by phase, split the `## Test Cases` section into `### Phase N (T-i..T-j) — <label>`
-subsections (still one permanent file per feature). The receipt's `phase_coverage` then lists
-the phase labels present.
+When the feature has two or more phases and test cases can be grouped by phase, split the
+`## Test Cases` section into `### Phase N (T-i..T-j) — <label>` subsections (still one
+permanent file per feature).
 
 See [`references/format-templates.md`](references/format-templates.md) for the full standard and lightweight templates (verbatim
 markdown), the phase-segmentation worked example, and the rules for when each variant applies.
@@ -171,16 +151,15 @@ markdown), the phase-segmentation worked example, and the rules for when each va
 
 ### Type
 
-Every test case declares an explicit `Type` plus a one-line `Type rationale` (see `references/format-templates.md`). Downstream stages (`finalize` Phase D coverage audit, `multiexpert-review` test-plan profile, engineer agents in `implement`) read this field — it is not optional.
+Every test case declares an explicit `Type` plus a one-line `Type rationale` (see `references/format-templates.md`). Downstream consumers (`finalize` Phase D coverage audit, `multiexpert-review` test-plan profile, engineer agents) read this field — it is not optional.
 
 | Type | Scope | Pick when |
 |------|-------|-----------|
 | `unit` | One class/function with mocked collaborators | Pure logic, transform, validator, mapper, parser, state-holder math |
 | `integration` | Several classes plus real / in-memory dependencies | Repository + DB, service + test API, data pipeline, multi-class interaction |
 | `ui-instrumentation` | One UI component inside its framework (Compose UI test, XCUITest single screen, ViewInspector) | Single screen / component user action with visible state assertion |
-| `ui-scenario` | Running app driven by an MCP-based device / browser automation runner, re-runnable scripted journey | Multi-screen user journey, cross-platform critical flow |
 | `screenshot` | Visual render comparison (Paparazzi, swift-snapshot-testing) | Visual fidelity is part of the contract — additive, never the sole coverage |
-| `e2e` | Whole application end-to-end | Release-critical journey that cannot be split into smaller types — keep the count small |
+| `e2e` | Whole application end-to-end | Release-critical multi-screen journey that cannot be split into smaller types — keep the count small |
 
 #### Selection heuristic
 
@@ -191,7 +170,7 @@ Per acceptance criterion: pick the **smallest scope that catches a real failure 
 | Value transform / pure computation | `unit` |
 | Component interaction with real or fake collaborators | `integration` |
 | Single-screen user action with visible state change | `ui-instrumentation` |
-| Multi-screen journey | `ui-scenario` |
+| Multi-screen journey | `e2e` |
 | Release-critical journey + visual fidelity matters | `screenshot` (additive) and/or `e2e` |
 | Release-critical end-to-end flow that cannot be split | `e2e` |
 
