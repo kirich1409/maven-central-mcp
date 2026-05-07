@@ -16,14 +16,14 @@ Shared reference material in `agents/references/`:
 
 | Skill | Purpose |
 |---|---|
-| `code-migration` | Safe, verifiable migrations — library swaps, async rewrites, Java→Kotlin, Gradle upgrades |
 | `kmp-migration` | Android module → Kotlin Multiplatform — source set restructuring, iOS exposure |
 | `migrate-to-compose` | View-based UI → Jetpack Compose, one screen at a time, with visual baseline |
+| `snapshot` | Capture current code behavior as a baseline before any migration or refactor |
 
 ## Dependencies
 
-- [`developer-workflow`](../developer-workflow/) — lifecycle orchestration (`implement`, `write-tests`, etc. call into this plugin's engineers)
-- [`developer-workflow-experts`](../developer-workflow-experts/) — expert agents used by skills in this plugin and by the lifecycle pipeline
+- [`developer-workflow`](../developer-workflow/) — workflow toolbox (`write-tests`, `acceptance`, `finalize`, etc. call into this plugin's engineers)
+- [`developer-workflow-experts`](../developer-workflow-experts/) — expert agents used by skills in this plugin and by the workflow toolbox
 
 Both dependencies are installed automatically when this plugin is installed:
 
