@@ -1,7 +1,7 @@
 {
   "name": "developer-workflow",
-  "version": "0.13.0",
-  "description": "Developer workflow pipeline \u2014 research, decomposition, specification, multiexpert review, implementation, debugging, QA (test plans, acceptance, bug hunt, retroactive tests), PR creation and autonomous drive-to-merge (CI monitor, review handler, re-request, poll), feature-flow and bugfix-flow orchestrators. Platform-neutral; platform-specific engineers live in developer-workflow-kotlin and developer-workflow-swift.",
+  "version": "0.14.0",
+  "description": "Toolbox of on-demand workflow skills \u2014 research, multiexpert review, finalize, create-pr, drive-to-merge, write-spec, reverse-spec, acceptance, generate-test-plan, bug-hunt, write-tests, check. Platform-neutral; pair with developer-workflow-kotlin / developer-workflow-swift for engineer agents.",
   "author": {
     "name": "kirich1409"
   },
@@ -9,16 +9,16 @@
   "category": "development",
   "keywords": [
     "developer-workflow",
-    "lifecycle",
+    "toolbox",
     "pr",
     "qa",
     "research",
-    "migration"
+    "review"
   ],
   "dependencies": [
     {
       "name": "developer-workflow-experts",
-      "version": "^0.13.0"
+      "version": "^0.14.0"
     }
   ]
 }

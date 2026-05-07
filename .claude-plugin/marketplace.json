@@ -12,7 +12,7 @@
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.13.0",
+      "version": "0.14.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/maven-mcp/plugin"
@@ -23,18 +23,18 @@
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.13.0",
+      "version": "0.14.0",
       "category": "security",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/sensitive-guard"
     },
     {
       "name": "developer-workflow",
-      "description": "Developer workflow pipeline \u2014 research, decomposition, specification, multiexpert review, implementation, debugging, QA (test plans, acceptance, bug hunt, retroactive tests), PR creation and autonomous drive-to-merge (CI monitor, review handler, re-request, poll), feature-flow and bugfix-flow orchestrators. Platform-neutral; platform-specific engineers live in developer-workflow-kotlin and developer-workflow-swift.",
+      "description": "Toolbox of on-demand workflow skills \u2014 research, multiexpert review, finalize, create-pr, drive-to-merge, write-spec, reverse-spec, acceptance, generate-test-plan, bug-hunt, write-tests, check. Platform-neutral; pair with developer-workflow-kotlin / developer-workflow-swift for engineer agents.",
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.13.0",
+      "version": "0.14.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/developer-workflow"
@@ -45,18 +45,18 @@
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.13.0",
+      "version": "0.14.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/developer-workflow-experts"
     },
     {
       "name": "developer-workflow-kotlin",
-      "description": "Kotlin, Android, and KMP specialist agents and migration skills \u2014 kotlin-engineer, compose-developer, code-migration, kmp-migration, migrate-to-compose. Extends developer-workflow for Kotlin/Android projects.",
+      "description": "Kotlin, Android, and KMP specialist agents and migration skills \u2014 kotlin-engineer, compose-developer, kmp-migration, migrate-to-compose, snapshot. Extends developer-workflow for Kotlin/Android projects.",
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.13.0",
+      "version": "0.14.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/developer-workflow-kotlin"
@@ -67,7 +67,7 @@
       "author": {
         "name": "kirich1409"
       },
-      "version": "0.13.0",
+      "version": "0.14.0",
       "category": "development",
       "homepage": "https://github.com/kirich1409/krozov-ai-tools",
       "source": "./plugins/developer-workflow-swift"
