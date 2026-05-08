@@ -1,6 +1,6 @@
 ---
 name: research
-description: "Research Consortium — parallel expert investigation of a topic, idea, problem, or technology before implementation. Launches up to 5 domain experts simultaneously (codebase, web, docs, dependencies, architecture), synthesizes findings into a structured report, auto-reviews via business-analyst. Use when: \"research\", \"investigate\", \"explore this idea\", \"technical spike\", \"feasibility\", \"can we do X?\", \"what are the options for\", \"compare approaches\", \"evaluate alternatives\", \"pros and cons of\", \"before we start — let's understand\", \"what do we need to know before\". Do NOT use for: code review (use code-reviewer agent), multiexpert review (use multiexpert-review), library version lookup (use maven-mcp:latest-version), debugging existing bugs."
+description: "Research Consortium — parallel expert investigation of a topic, idea, problem, or technology before implementation. Launches up to 5 domain experts simultaneously (codebase, web, docs, dependencies, architecture), synthesizes findings into a structured report, optionally auto-reviews via business-analyst. Use when: \"research\", \"investigate options\", \"investigate approaches\", \"explore this idea\", \"technical spike\", \"feasibility\", \"can we do X?\", \"what are the options for\", \"compare approaches\", \"evaluate alternatives\", \"pros and cons of\", \"before we start — let's understand\", \"what do we need to know before\". Do NOT use for: code review (use code-reviewer agent), multiexpert review (use multiexpert-review), narrow codebase lookup (\"how is X done in our code\" — use Explore agent directly), single-library version or changelog lookup (use maven-mcp:latest-version / dependency-changes), debugging existing bugs."
 disable-model-invocation: true
 ---
 
@@ -28,12 +28,26 @@ Select expert tracks:
 | Track | Include when |
 |---|---|
 | **Codebase** | Topic touches existing code, patterns, or modules |
-| **Web** | Always (mandatory — every research must produce ≥1 web-sourced insight) |
+| **Web** | Topic compares against industry practices outside our code; involves external libraries/frameworks/protocols whose best practices may diverge from the codebase; benchmarks, post-mortems, or articles on similar problems are needed; or the question explicitly asks about "industry consensus" / "how big projects do it". Skip when all signals are internal-only |
 | **Docs** | Topic involves specific libraries/frameworks with external documentation |
 | **Dependencies** | Topic involves adding, replacing, or evaluating JVM/KMP deps |
 | **Architecture** | Topic affects module boundaries, layer design, or API contracts |
 
 **If scope is genuinely ambiguous** (multiple valid interpretations), state the assumed scope and ask **one** clarifying question. Otherwise proceed — the auto-review step catches major gaps.
+
+### Minimum-2-tracks rule
+
+If the topic resolves to **only one** expert track after applying selection criteria, do NOT launch the consortium. The synthesis-bias prevention machinery only pays off when ≥2 independent perspectives are merged. Redirect instead:
+
+| Single track | Redirect to |
+|---|---|
+| Codebase only | Delegate to a single `Explore` agent inline |
+| Docs only | Use `Context7` / library-docs lookup directly |
+| Dependencies only | Use `maven-mcp:check-deps` or `latest-version` |
+| Architecture only | Delegate to `architecture-expert` agent directly |
+| Web only | Answer inline with `WebSearch` / `WebFetch` |
+
+Report the redirect in one line ("Topic is narrow — handing off to {target} instead of running the consortium"), then exit. Do not create state or report artifacts for redirected topics.
 
 Generate kebab-case slug from the topic (e.g., `ktor-migration`, `push-notifications`):
 - Artifact: `./swarm-report/<slug>-research.md`
@@ -68,7 +82,7 @@ Started: {date}
 
 ## Expert Tracks
 - [ ] Codebase — {launched | skipped: reason}
-- [ ] Web — launched (mandatory)
+- [ ] Web — {launched | skipped: reason}
 - [ ] Docs — {launched | skipped: reason}
 - [ ] Dependencies — {launched | skipped: reason}
 - [ ] Architecture — {launched | skipped: reason}
@@ -98,6 +112,7 @@ Save to `./swarm-report/<slug>-research.md`:
 
 Date: {date}
 Experts consulted: {tracks that ran}
+Auto-review mode: {business-analyst | tech-sanity}
 
 ## Problem / Question Summary
 {2–3 sentences: what was investigated and why}
@@ -148,6 +163,23 @@ Skip the table when one approach dominates on every dimension.
 
 ## Phase 4: Auto-Review
 
+Pick the review mode based on the topic profile, then record it in the report header as
+`Auto-review mode: business-analyst | tech-sanity`.
+
+### Mode selection
+
+Use **`business-analyst`** when the topic has a product / scope angle:
+- Decision affects feature scope, MVP boundaries, time-to-market, or user-facing trade-offs.
+- The question contains an implicit or explicit "what to build" component (not only "how to build").
+- The decision touches SLA / SLO / cost / business risk.
+
+Use **`tech-sanity`** (lightweight self-check, no agent launch) when the topic is purely
+technical with no product angle — e.g. "which DI", "which serializer", "which test runner",
+"sync vs async retries". Running business-analyst here adds tokens and latency without
+producing actionable output.
+
+### Mode `business-analyst`
+
 Launch the `business-analyst` agent against the synthesized report. The reviewer holds a
 distinct perspective from the gatherers — they check completeness, product sense,
 practical viability:
@@ -169,7 +201,24 @@ List gaps with severity (critical / major / minor).
 Respond in the same language as the research topic description.
 ```
 
-Handle findings:
+### Mode `tech-sanity`
+
+Run a self-check pass on the report against this checklist (no agent — direct verification):
+
+1. **Approaches evaluated ≥2** — at least two viable options laid out side-by-side, or an
+   explicit justification why only one survived.
+2. **Risks listed** — each approach has its risks called out with severity.
+3. **Recommendation justified** — the chosen option cites specific expert findings, not
+   "feels right".
+4. **Sources cited** — every non-obvious claim links to a codebase location, doc URL, or
+   dependency coordinate.
+
+If any item fails, fix the report before saving (re-run a track or fill the gap from the
+existing findings). Do not promote to `business-analyst` mode just because the checklist
+fails — the failure is a content gap, not a mode mismatch.
+
+### Handle findings (both modes)
+
 - **No issues** → save artifact
 - **Minor** → incorporate inline, note changes
 - **Major/critical, fillable** → re-run the relevant expert track
