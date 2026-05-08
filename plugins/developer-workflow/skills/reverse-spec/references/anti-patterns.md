@@ -36,9 +36,9 @@ downstream when someone treats it as truth.
 ## Batching questions on the first pass
 
 The user's preference by default is one question per round, because later questions
-depend on earlier answers. Batch only when the user explicitly asks ("задавай всё
-сразу"). Batching feels efficient but commonly produces shallower clarifications and
-a queue of questions that needed the previous answers to formulate.
+depend on earlier answers. Batch only when the user explicitly asks ("ask them all at
+once" / "batch"). Batching feels efficient but commonly produces shallower clarifications
+and a queue of questions that needed the previous answers to formulate.
 
 ## Hiding absent conventions
 
@@ -81,6 +81,6 @@ to be done anyway — but now mid-document, which is harder.
 
 Phase 3 is the live interview with the user — questions get answers and close
 immediately. §8 Open Questions is the section for questions that could *not* be
-resolved in interview (user said "не знаю", no authoritative source available). Do
-not dump every Phase 3 question into §8 — only the ones that remain open after the
-interview.
+resolved in interview (user said "don't know", no authoritative source available).
+Do not dump every Phase 3 question into §8 — only the ones that remain open after
+the interview.
