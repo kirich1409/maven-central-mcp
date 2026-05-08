@@ -1,6 +1,6 @@
 ---
 name: reverse-spec
-description: "Reverse-engineers an existing feature into a tech-agnostic specification — reads the code, maps behavior, interviews the user for missing intent, and produces a PM/BA-grade spec that a developer on any stack could use to reimplement the feature identically. Use when: \"reverse spec\", \"extract spec from code\", \"document this feature from code\", \"reverse engineer this screen\", \"turn this code into a spec\", \"build a spec for existing feature\", \"what does this feature actually do\", \"write docs for this module\", \"recreate this feature on <other stack>\", \"migrate this feature — first document it\". Input can be a file/class/directory path or a prose description of the feature. Output: single versioned markdown in docs/spec/. Do NOT use for: new features (use write-spec), high-level architecture overview of a whole project (too broad), library API docs (use the library's own docs), bug investigation (use debug)."
+description: "Reverse-engineers an existing feature into a tech-agnostic specification — reads the code, maps behavior, interviews the user for missing intent, and produces a PM/BA-grade spec that a developer on any stack could use to reimplement the feature identically. Use when: \"reverse spec\", \"extract spec from code\", \"document this feature from code\", \"reverse engineer this screen\", \"turn this code into a spec\", \"build a spec for existing feature\", \"what does this feature actually do\", \"write docs for this module\", \"recreate this feature on <other stack>\", \"migrate this feature — first document it\". Input can be a file/class/directory path or a prose description of the feature. Output: single versioned markdown in docs/spec/. Do NOT use for: new features (use write-spec), high-level architecture overview of a whole project (too broad), library API docs (use the library's own docs), bug investigation (use plan mode)."
 ---
 
 # Reverse Spec
@@ -84,9 +84,8 @@ The user may specify the feature in several ways:
   autocomplete".
 
 For path/symbol inputs, verify the target exists and resolve it to a concrete location.
-Use ast-index where available (see [`docs/ORCHESTRATION.md`](../../docs/ORCHESTRATION.md)
-for the canonical code-navigation tooling order) to expand a class name into all related
-files. Grep / Glob are fallbacks only.
+Use ast-index where available to expand a class name into all related files.
+Grep / Glob are fallbacks only.
 
 For prose inputs, run a short discovery pass:
 
@@ -471,18 +470,17 @@ The spec already lives at `docs/spec/<slug>.md`. Final steps:
   concerns that did not qualify for §9 Known Defects (hardcoded strings, weak PRNG
   for security values, plaintext token storage, log leakage, code-style issues),
   save them to `docs/spec/<slug>-hygiene.md` per `references/analysis-checklist.md`
-  §14. Mention the artefact in the handoff: *"Также сохранил implementation-hygiene
-  findings в `docs/spec/<slug>-hygiene.md` (N items) — это backlog для команды,
-  поведения фичи не касается."* If no hygiene findings exist, mention briefly
-  (*"Hygiene artefact: не понадобился."*) and do not create the file.
+  §14. Mention the artefact in the handoff: *"Also saved implementation-hygiene
+  findings to `docs/spec/<slug>-hygiene.md` (N items) — backlog for the team,
+  unrelated to feature behavior."* If no hygiene findings exist, mention briefly
+  (*"Hygiene artefact: not needed."*) and do not create the file.
 - **Project overview update flag.** If Phase 0.6 surfaced discrepancies between the
   observed code and the existing project-overview document, mention them once:
-  *"В `docs/project-overview.md` поле <X> может быть устаревшим — наблюдаемое <Y>.
-  Обновлять не стал — вне scope текущей фичи."*. The skill never silently edits
+  *"In `docs/project-overview.md`, field <X> may be stale — observed <Y>.
+  Did not update — out of scope for the current feature."*. The skill never silently edits
   the project overview.
 - If the user intends to use this spec for reimplementation on another stack, mention
-  that `write-spec` and `decompose-feature` can take this spec as input for the new
-  implementation.
+  that `write-spec` can take this spec as input for the new implementation.
 
 ---
 

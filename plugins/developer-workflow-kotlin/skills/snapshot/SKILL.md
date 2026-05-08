@@ -1,13 +1,13 @@
 ---
 name: snapshot
-description: "Captures current behavior of code targets as a shared contract before any migration or refactoring begins. Produces behavior-spec.md using characterization tests (logic), screenshots or manual checklist (ui), and public surface listing (api). Standalone triggers: \"snapshot\", \"зафиксируй поведение\", \"сними базлайн\", \"задокументируй как работает\", \"capture behavior\", \"baseline before migration\", \"record current behavior\". In orchestrator mode: called by code-migration after Plan — reads targets from migration-plan.md, writes behavior-spec.md, gates until user confirms. GATE: does not hand control back until user confirms the spec is accurate. Do NOT use for: post-migration verification (see verify.md in code-migration references), writing tests beyond characterization (use write-tests), or codebase discovery (use research)."
+description: "Captures current behavior of code targets as a shared contract before any migration or refactoring begins. Produces behavior-spec.md using characterization tests (logic), screenshots or manual checklist (ui), and public surface listing (api). Triggers: \"snapshot\", \"capture behavior\", \"baseline before migration\", \"record current behavior\", \"document how it works\", \"freeze current behavior\". GATE: does not hand control back until user confirms the spec is accurate. Do NOT use for: post-migration verification, writing tests beyond characterization (use write-tests), or codebase discovery (use research)."
 ---
 
 # Snapshot
 
 Captures what code *currently does* — not what it should do — before any migration or refactoring
 begins. Produces a `behavior-spec.md` that becomes the shared contract for the migration and the
-acceptance criteria for the `code-migration` acceptance phase.
+acceptance criteria.
 
 **GATE: Does not return control until the user has explicitly confirmed the behavior spec.**
 
@@ -15,13 +15,6 @@ acceptance criteria for the `code-migration` acceptance phase.
 
 ## Input Contract
 
-**Orchestrator mode** (called from `developer-workflow-kotlin:code-migration`):
-- Reads targets and categories from `swarm-report/<slug>-migration-plan.md`
-- Writes a single `swarm-report/<slug>-behavior-spec.md` containing all targets (one `##` section
-  per target); the slug comes from the orchestrator's migration slug. Multiple targets in one file
-  prevents slug collision and keeps the acceptance contract as a single reviewable artifact.
-
-**Standalone mode** (user invokes directly):
 - If the user has not specified what to snapshot, ask ONE question:
   > "What should I snapshot? Please list the files or classes and their categories: `logic` (pure
   > data/business logic), `ui` (views, screens, layouts), or `api` (public interfaces, module
@@ -123,7 +116,7 @@ FROM: [technology] → TO: [technology]   <!-- omit TO: in standalone mode when 
 - [behaviors that will intentionally change after migration]
 ```
 
-**Multiple targets** (orchestrator mode or standalone with several files) — use H1 for the overall
+**Multiple targets** (several files) — use H1 for the overall
 spec, H2 for each target, H3 for subsections. `FROM: → TO:` appears inside each target's `##`
 section (not at file level) when targets have different source/target technologies:
 
@@ -177,15 +170,13 @@ Present the completed spec to the user using this prompt:
 > *(One GATE per file, not one per target — confirm or correct the whole file at once.)*
 
 **Do not return control until the user gives a clear affirmative.** Examples (non-exhaustive):
-"confirmed", "yes", "ok", "looks good", "go", "ship it", "подтверждаю", "хорошо", "готово",
-"погнали" — or any equivalent in the language they are communicating in. Match by intent, not by
-exact phrase. If the response is ambiguous (e.g., "hmm", "maybe", a question, or a comment without
+"confirmed", "yes", "ok", "looks good", "go", "ship it", "approved", "ready" — or any
+equivalent in the language they are communicating in. Match by intent, not by exact phrase.
+If the response is ambiguous (e.g., "hmm", "maybe", a question, or a comment without
 a clear go/no-go), ask ONE clarifying question: "Confirm to proceed, or point out what to fix?".
 A correction ("fix X" or "add Y") is not an affirmative — update the spec and re-present it.
 
 If the user provides corrections: update the spec and re-present it. Repeat until confirmed.
 
 The confirmation is the shared contract for the migration. After confirmation, the spec is final —
-any further changes require an explicit new snapshot invocation or user override. In orchestrator
-mode, the skill signals readiness by returning with the confirmed `behavior-spec.md` written to
-disk; the orchestrator treats file presence + return as the completion signal.
+any further changes require an explicit new snapshot invocation or user override.
