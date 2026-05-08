@@ -114,12 +114,12 @@ Started: {date}
 - [ ] Docs — {launched | skipped: reason}
 - [ ] Dependencies — {launched | skipped: reason}
 - [ ] Architecture — {launched | skipped: reason}
-
-## Findings
-(populated as agents report back)
 ```
 
-Update as each agent completes.
+The state file is a **progress checklist only** — track which expert launched/finished,
+status (`investigating` / `done`), and a slug for resume. Do **not** dump expert findings
+or clarification answers here; those live in working memory and only the finished report
+ever lands on disk. Update the checklist as each agent completes.
 
 ---
 
