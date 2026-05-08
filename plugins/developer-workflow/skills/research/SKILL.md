@@ -48,7 +48,20 @@ Select expert tracks:
 Skipping Web on purely internal topics avoids generic web noise and saves a track for
 something that adds signal.
 
-**If scope is genuinely ambiguous** (multiple valid interpretations), state the assumed scope and ask **one** clarifying question. Otherwise proceed — the auto-review step catches major gaps.
+### Clarifying questions (round-loop)
+
+Use plan-mode pacing for any clarification: **one question per round**, wait for the answer, then re-evaluate. Multiple rounds are fine; multiple questions in one round are not. Each question must be the single most blocking ambiguity right now — not a checklist of mild curiosities.
+
+When to ask:
+- **Scope is genuinely ambiguous** (multiple valid interpretations that lead to different expert tracks or different success criteria).
+- **A constraint is missing without which the redirect / consortium decision flips** (e.g. KMP-only vs Android-only changes which tracks are relevant).
+
+When NOT to ask:
+- Mild gaps the consortium can fill itself (let agents gather, surface gaps in Open Questions).
+- Stylistic preferences that don't change the recommendation.
+- Anything the auto-review step (Phase 4) would catch.
+
+State the assumed scope when proceeding without asking. Resume Phase 1 from the top after each answered round in case the answer reshuffles track selection or triggers the min-2-tracks redirect.
 
 ### Minimum-2-tracks rule
 
@@ -257,8 +270,11 @@ Post a chat summary that lets the user decide without opening the file:
 
 1. One sentence: topic, tracks ran, overall recommendation.
 2. 3–5 bullets: most decision-relevant findings/blockers/constraints.
-3. If open questions block next steps: ask exactly ONE now, labeled "Question 1 of N:".
-   Save the rest in the report — present subsequent questions only after the user answers.
+3. If open questions block the next step: enter the same plan-mode round-loop as Phase 1
+   — ask exactly ONE now, labeled `"Question 1 of N:"`, wait for the answer, then ask the
+   next blocker on the next round. The rest stay in the report's Open Questions until
+   their round comes. Stop the loop the moment no blockers remain — non-blocking gaps
+   ride along in the report.
 4. One line: suggested next step.
 
 **Hard limit:** ≤30 lines in chat. No tables, no source lists, no inline citations.
