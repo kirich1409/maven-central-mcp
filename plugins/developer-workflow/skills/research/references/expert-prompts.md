@@ -31,7 +31,7 @@ then findings grouped by category.
 
 ## Web Expert
 
-Mandatory track. If web search is unavailable, note it as a limitation in the report.
+Conditional track — launch only when the topic needs an external perspective (industry practices, third-party library best practices, benchmarks, post-mortems). Skip for purely internal questions. If web search is unavailable but the track was selected, note it as a limitation in the report.
 
 ```
 Research: {topic}
