@@ -19,7 +19,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@krozov/maven-central-mcp@^0.14.0"
+        "@krozov/maven-central-mcp@^0.16.0"
       ]
     }
   }
