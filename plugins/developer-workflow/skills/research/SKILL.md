@@ -125,7 +125,9 @@ Update as each agent completes.
 
 ## Phase 3: Synthesize Findings
 
-Combine findings into a structured report. Cross-reference for:
+Combine findings into a structured synthesis held in working memory. **Do not write any
+file in this phase** — the synthesis is mutable until Phase 5 closes the clarification
+round-loop. Cross-reference findings for:
 - **Convergence** — multiple experts independently agree (strongest signal)
 - **Contradictions** — surface explicitly, do not paper over
 - **Gaps** — what no expert covered
@@ -133,7 +135,8 @@ Combine findings into a structured report. Cross-reference for:
 
 ### Report structure
 
-Save to `./swarm-report/<slug>-research.md`:
+Use this exact structure when Phase 5.2 writes the final report to
+`./swarm-report/<slug>-research.md`:
 
 ```markdown
 # Research: {topic}
