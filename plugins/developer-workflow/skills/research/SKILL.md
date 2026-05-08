@@ -1,6 +1,6 @@
 ---
 name: research
-description: "Research Consortium — parallel expert investigation of a topic, idea, problem, or technology before implementation. Launches up to 5 domain experts simultaneously (codebase, web, docs, dependencies, architecture), synthesizes findings into a structured report, optionally auto-reviews via business-analyst. Use when: \"research\", \"investigate options\", \"investigate approaches\", \"explore this idea\", \"technical spike\", \"feasibility\", \"can we do X?\", \"what are the options for\", \"compare approaches\", \"evaluate alternatives\", \"pros and cons of\", \"before we start — let's understand\", \"what do we need to know before\". Do NOT use for: code review (use code-reviewer agent), multiexpert review (use multiexpert-review), narrow codebase lookup (\"how is X done in our code\" — use Explore agent directly), single-library version or changelog lookup (use maven-mcp:latest-version / dependency-changes), debugging existing bugs."
+description: "Research Consortium — parallel expert investigation of a topic, idea, problem, or technology before implementation. Launches up to 5 domain experts simultaneously (codebase, web, docs, dependencies, architecture), synthesizes findings into a structured report, optionally auto-reviews via business-analyst (product-angled topics) or a tech-sanity self-check (purely technical topics). Use when: \"research\", \"investigate options\", \"investigate approaches\", \"explore this idea\", \"technical spike\", \"feasibility\", \"can we do X?\", \"what are the options for\", \"compare approaches\", \"evaluate alternatives\", \"pros and cons of\", \"before we start — let's understand\", \"what do we need to know before\". Do NOT use for: code review (use code-reviewer agent), multiexpert review (use multiexpert-review), narrow codebase lookup (\"how is X done in our code\" — use Explore agent directly), single-library version or changelog lookup (use a dependency/version lookup tool directly), debugging existing bugs."
 disable-model-invocation: true
 ---
 
@@ -18,7 +18,7 @@ consortium worth the cost; preserve it across every change.
 A second, optional layer is the post-synthesis review: in product-angled topics a separate
 `business-analyst` agent challenges the merged report (Phase 4 `business-analyst` mode);
 in purely technical topics the orchestrator runs a self-check against a fixed checklist
-(`tech-sanity` mode). The reviewer layer is a defence-in-depth, not the core value.
+(`tech-sanity` mode). The reviewer layer is a defense-in-depth, not the core value.
 
 ---
 
@@ -70,20 +70,22 @@ If the topic resolves to **only one** expert track after applying selection crit
 | Single track | Redirect to |
 |---|---|
 | Codebase only | Delegate to a single `Explore` agent inline |
-| Docs only | Use `Context7` / library-docs lookup directly |
-| Dependencies only | Use `maven-mcp:check-deps` or `latest-version` |
+| Docs only | Use a library-docs lookup tool (Context7-style) directly |
+| Dependencies only | Use a dependency/version lookup tool directly (e.g. the `maven-mcp` skill family if installed) |
 | Architecture only | Delegate to `architecture-expert` agent directly |
-| Web only | Answer inline with `WebSearch` / `WebFetch` |
+| Web only | Answer inline with the available web-search tool |
 
 Report the redirect in one line ("Topic is narrow — handing off to {target} instead of running the consortium"), then exit. Do not create state or report artifacts for redirected topics.
-
-Generate kebab-case slug from the topic (e.g., `ktor-migration`, `push-notifications`):
-- Artifact: `./swarm-report/research/research-<slug>.md`
-- State: `./swarm-report/research-<slug>-state.md`
 
 ---
 
 ## Phase 2: Launch Research Consortium
+
+Generate a kebab-case slug from the topic (e.g., `ktor-migration`, `push-notifications`)
+— this is the first thing that happens once the consortium is committed (post-redirect).
+Paths:
+- Artifact: `./swarm-report/research/research-<slug>.md`
+- State:    `./swarm-report/research-<slug>-state.md`
 
 Launch all selected agents **in a single message** for maximum parallelism. Each works
 independently — never share findings between agents.
@@ -156,7 +158,7 @@ Use this exact structure when Phase 5.2 writes the final report to
 
 Date: {date}
 Experts consulted: {tracks that ran}
-Auto-review mode: {business-analyst | tech-sanity}
+Auto-review mode: {business-analyst or tech-sanity}
 
 ## Problem / Question Summary
 {2–3 sentences: what was investigated and why}
