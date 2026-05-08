@@ -139,9 +139,8 @@ session.
 
 Combine findings into a structured synthesis held primarily in working memory. The
 synthesis is mutable until Phase 5 closes the clarification round-loop, so **do not write
-the final report here** — that is exclusively Phase 5.2. Internal temp files at the
-`./swarm-report/` root (state file, inter-phase buffers) are allowed if they help survive
-compaction. Cross-reference findings for:
+the final report here** — that is exclusively Phase 5.2. (Internal temp files allowed at
+the `./swarm-report/` root per the Phase 2 rules.) Cross-reference findings for:
 - **Convergence** — multiple experts independently agree (strongest signal)
 - **Contradictions** — surface explicitly, do not paper over
 - **Gaps** — what no expert covered
@@ -273,12 +272,16 @@ If any item fails, fix the report before saving (re-run a track or fill the gap 
 existing findings). Do not promote to `business-analyst` mode just because the checklist
 fails — the failure is a content gap, not a mode mismatch.
 
+The self-check produces no chat output; any fixes go into the synthesis silently. The
+report's prose stays in the same language as the research topic description (consistent
+with the gather-agent prompts).
+
 ### Handle findings (both modes)
 
 - **No issues** → proceed to Phase 5
 - **Minor** → incorporate inline, note changes, proceed to Phase 5
 - **Major/critical, fillable** → re-run the relevant expert track, then re-review
-- **Major/critical, not fillable from research alone** → record in the synthesis as an Open Question (item that genuinely cannot be resolved without an external decision or future input — not a question to ask the user in dialogue right now)
+- **Major/critical, not fillable from research alone** → record in the synthesis as an Open Question (semantics defined in the report template — not a chat-time clarification)
 
 The report is not saved at this phase; saving happens in Phase 5 after any user-blocking
 clarifications have been resolved in dialogue.
@@ -292,8 +295,8 @@ is on disk yet. This phase walks through three steps in order.
 
 ### 5.1 Clarification round-loop (dialogue)
 
-If the synthesis surfaces a question whose answer would change the recommendation or any
-top-3 finding, ask it in chat — same plan-mode round-loop as Phase 1: **one question per
+If the synthesis surfaces a question whose answer would materially change the recommendation
+or a key finding, ask it in chat — same plan-mode round-loop as Phase 1: **one question per
 round**, wait for the answer, fold it into the synthesis, then check if any blocker
 remains. Multiple rounds are fine; multiple questions in one round are not. Stop the
 moment no blocker remains.
@@ -306,9 +309,8 @@ the chat session.
 What does **not** belong in the round-loop:
 - Stylistic preferences that don't change the recommendation.
 - Mild gaps the consortium could plausibly fill on a re-run (re-run instead).
-- Items that genuinely cannot be resolved without external input (decisions only the user
-  can make, future deps, external SLAs) — those land in the report's Open Questions
-  section as the artifact's record of unresolved-by-design items.
+- Items unresolvable-by-research → land in the report's Open Questions (semantics in the
+  report template).
 
 ### 5.2 Save the final report
 
@@ -333,7 +335,7 @@ lets the user decide without opening the file:
 | Feature is clear, single task, ready to build | Plan mode + start implementing |
 | Complex approach, needs validation | Plan mode → `/multiexpert-review` |
 | Research revealed a bug, not a feature need | Plan mode for the fix |
-| Open questions block progress | List, ask user to resolve |
+| Open Questions remain (by-design unresolvable by research) | Note them in the summary, suggest who/when can resolve |
 | Multiple viable approaches, no clear winner | Present trade-offs, ask user to pick |
 
 Frame as actionable proposal, not a question.
