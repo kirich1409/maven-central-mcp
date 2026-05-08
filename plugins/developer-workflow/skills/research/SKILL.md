@@ -50,7 +50,7 @@ something that adds signal.
 
 ### Clarifying questions (round-loop)
 
-Use plan-mode pacing for any clarification: **one question per round**, wait for the answer, then re-evaluate. Multiple rounds are fine; multiple questions in one round are not. Each question must be the single most blocking ambiguity right now — not a checklist of mild curiosities.
+Use plan-mode pacing for any clarification: **one question per round** in chat, wait for the answer, then re-evaluate. Multiple rounds are fine; multiple questions in one round are not. Each question must be the single most blocking ambiguity right now — not a checklist of mild curiosities. The dialogue stays in chat — questions and answers are not parked in any artifact.
 
 When to ask:
 - **Scope is genuinely ambiguous** (multiple valid interpretations that lead to different expert tracks or different success criteria).
@@ -181,7 +181,10 @@ Skip the table when one approach dominates on every dimension.
 {Preferred approach with reasoning, citing specific expert findings.}
 
 ## Open Questions
-- {What needs user decision or could not be determined}
+- {Items the research itself cannot answer — user decisions, external SLA/cost data,
+  future-dated dependencies, etc. NOT a parking lot for clarifications already resolved
+  in dialogue, and NOT a queue of pending questions — those are handled in Phase 5.1 and
+  do not survive into the final report.}
 
 ## Sources
 - {URLs, doc references, codebase locations}
@@ -255,29 +258,55 @@ fails — the failure is a content gap, not a mode mismatch.
 
 ### Handle findings (both modes)
 
-- **No issues** → save artifact
-- **Minor** → incorporate inline, note changes
-- **Major/critical, fillable** → re-run the relevant expert track
-- **Major/critical, not fillable** → add to Open Questions, flag for user
+- **No issues** → proceed to Phase 5
+- **Minor** → incorporate inline, note changes, proceed to Phase 5
+- **Major/critical, fillable** → re-run the relevant expert track, then re-review
+- **Major/critical, not fillable from research alone** → record in the synthesis as an Open Question (item that genuinely cannot be resolved without an external decision or future input — not a question to ask the user in dialogue right now)
+
+The report is not saved at this phase; saving happens in Phase 5 after any user-blocking
+clarifications have been resolved in dialogue.
 
 ---
 
-## Phase 5: Save & Summarize
+## Phase 5: Resolve, Save, Summarize
 
-Save the report to `./swarm-report/<slug>-research.md`. Mark state file `done`.
+The synthesis from Phase 3 (refined by Phase 4) is held in working memory only — nothing
+is on disk yet. This phase walks through three steps in order.
 
-Post a chat summary that lets the user decide without opening the file:
+### 5.1 Clarification round-loop (dialogue)
+
+If the synthesis surfaces a question whose answer would change the recommendation or any
+top-3 finding, ask it in chat — same plan-mode round-loop as Phase 1: **one question per
+round**, wait for the answer, fold it into the synthesis, then check if any blocker
+remains. Multiple rounds are fine; multiple questions in one round are not. Stop the
+moment no blocker remains.
+
+The dialogue lives in chat, not in any file. Don't park "pending" questions in the report
+or the state file — those are working buffers for findings, not for unresolved
+clarifications. State-file `Status: investigating` covers the in-progress signal.
+
+What does **not** belong in the round-loop:
+- Stylistic preferences that don't change the recommendation.
+- Mild gaps the consortium could plausibly fill on a re-run (re-run instead).
+- Items that genuinely cannot be resolved without external input (decisions only the user
+  can make, future deps, external SLAs) — those land in the report's Open Questions
+  section as the artifact's record of unresolved-by-design items.
+
+### 5.2 Save the final report
+
+Once the loop exits, write `./swarm-report/<slug>-research.md`. The report is a finished
+deliverable, not a scratchpad — every section reflects the post-clarification synthesis,
+and Open Questions contains only the genuinely-not-resolvable-by-research items from
+above. Mark the state file `Status: done`.
+
+### 5.3 Chat summary
+
+Post a compact summary (≤30 lines, no tables, no source lists, no inline citations) that
+lets the user decide without opening the file:
 
 1. One sentence: topic, tracks ran, overall recommendation.
-2. 3–5 bullets: most decision-relevant findings/blockers/constraints.
-3. If open questions block the next step: enter the same plan-mode round-loop as Phase 1
-   — ask exactly ONE now, labeled `"Question 1 of N:"`, wait for the answer, then ask the
-   next blocker on the next round. The rest stay in the report's Open Questions until
-   their round comes. Stop the loop the moment no blockers remain — non-blocking gaps
-   ride along in the report.
-4. One line: suggested next step.
-
-**Hard limit:** ≤30 lines in chat. No tables, no source lists, no inline citations.
+2. 3–5 bullets: most decision-relevant findings / blockers / constraints.
+3. One line: suggested next step.
 
 ### Suggest next action
 
