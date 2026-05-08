@@ -316,7 +316,7 @@ effect.
 
 The translation rule drops *code identifiers*. It does not drop:
 
-- **Exact user-visible copy** — quote verbatim: `"Cancel"`, `"Не удалось загрузить заказ"`.
+- **Exact user-visible copy** — quote verbatim: `"Cancel"`, `"Failed to load order"`.
 - **Exact numbers** — retry count 3, timeout 5 minutes, buffer 60 seconds.
 - **Exact external contracts** — URL patterns, query parameter names (they are the
   *contract* with an external system, not internal code).

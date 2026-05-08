@@ -246,12 +246,12 @@ Any failure blocks the DoD gate for §13.
 
 A trailing pass, light but mandatory. Run through the body and catch:
 
-- stray orphan spaces inside words (`«не заверш ается»`)
+- stray orphan spaces inside words (`"does not fin ish"`)
 - common misspellings in the document's working language
 - inconsistent punctuation around code spans / quotes
-- accidentally doubled words ("the the", "для для")
-- mixed Latin / Cyrillic characters that look identical (e.g., Latin `a` inside a
-  Cyrillic word)
+- accidentally doubled words (`"the the"`, `"and and"`)
+- mixed Latin / non-Latin characters that look identical (e.g., a Cyrillic `a`
+  (U+0430) inside a Latin word, only relevant when the document mixes scripts)
 
 This is not a rigorous spell-check pass — it is the equivalent of a quick proofread.
 A spec with typos in the body reads as sloppy and erodes reader trust in the more

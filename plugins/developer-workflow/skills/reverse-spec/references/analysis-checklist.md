@@ -385,9 +385,9 @@ final spec writes itself.
 
 ### States
 - loading: spinner centered, no copy; triggered while order fetch is in flight
-- error (network): ErrorBanner with "Не удалось загрузить заказ. Проверьте интернет.";
+- error (network): ErrorBanner with "Failed to load order. Check your connection.";
   retry action present
-- error (order not found): full-screen empty state with "Заказ не найден" and "Назад"
+- error (order not found): full-screen empty state with "Order not found" and "Back"
 …
 ```
 

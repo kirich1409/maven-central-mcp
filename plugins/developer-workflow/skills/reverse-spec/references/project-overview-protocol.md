@@ -89,9 +89,9 @@ In Phase 0.6 (between output-path resolution and static analysis), the skill:
    b. Captures relevant excerpts in the state file.
    c. Notes the path so the feature spec can cross-reference instead of duplicate.
 3. If not found:
-   a. Tells the user — *"Не нашёл project-overview в `docs/project-overview.md` или
-      аналогах. Хотел бы предложить набросок (минут на 5 чтения), чтобы фича-спека
-      могла на него ссылаться вместо дублирования. Создать?"*
+   a. Tells the user — *"No project-overview found at `docs/project-overview.md` or
+      its aliases. I'd like to draft one (about 5 minutes of reading) so the feature
+      spec can reference it instead of duplicating context. Create it?"*
    b. If the user agrees, the skill drafts a project-overview from what it can
       observe in the repo (README, package metadata, top-level config files, source
       layout). The draft is **explicit about confidence** — every claim is sourced
@@ -129,16 +129,16 @@ content (e.g., the overview says "supported languages: en, ru" but the app added
 de), the skill:
 
 1. Flags the discrepancy in the state file.
-2. Mentions it once in the handoff: *"Замечено в project-overview.md: <field> может
-   быть устаревшим — наблюдаемое в коде <X>, в документе <Y>. Обновлять не стал —
-   это вне scope текущей фичи."*
+2. Mentions it once in the handoff: *"Noticed in project-overview.md: <field> may be
+   stale — observed in code: <X>, document says: <Y>. Did not update — out of scope for
+   the current feature."*
 
 The skill never silently edits the project overview. Updates are user-driven, like
 the document's initial creation.
 
 ## When to skip Phase 0.6
 
-- The user explicitly says "пропусти project-overview" or "у меня одиночный спек".
+- The user explicitly says "skip project-overview" / "single-feature repo, no overview needed" (or any equivalent phrasing).
 - The repo is a single-feature library (no cross-feature context to share).
 - The skill is being run for retrospective documentation of a feature in a repo
   that has no plans for additional features.

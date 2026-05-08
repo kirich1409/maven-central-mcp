@@ -117,10 +117,10 @@ Then **propose** a boundary to the user in one line:
 - **Out of scope** — unrelated modules surfaced by the scout but not part of this
   feature.
 
-Ask the user for confirmation with a single question: *"Вот что я отношу к фиче: [in
-scope]. Зависимости: [deps]. Вне скоупа: [out]. Подтверждаешь границы?"*. Adjust based
-on the answer before proceeding. A wrong boundary at this step cascades: too narrow
-misses behaviors, too wide drowns the spec in unrelated detail.
+Ask the user for confirmation with a single question: *"Here is what I'm including in
+the feature: [in scope]. Dependencies: [deps]. Out of scope: [out]. Do these boundaries
+look right?"*. Adjust based on the answer before proceeding. A wrong boundary at this
+step cascades: too narrow misses behaviors, too wide drowns the spec in unrelated detail.
 
 **Scope sanity check** (soft gate). After the boundary is confirmed, evaluate against
 these heuristics:
@@ -132,10 +132,10 @@ these heuristics:
 - Scope includes **more than one screen** with distinct purposes (onboarding carousel
   across 4 screens is one flow; sign-in + profile-edit + settings is three).
 
-If any of these trip, surface to the user: *"Scope на [N flows / N features / N
-screens] — это, скорее, набор фич, чем одна. Хочешь одну большую спеку или
-per-flow спеки? Рекомендация — разбить: каждая отдельная спека полезнее
-реимплементатору, чем аггрегат."*. A large aggregate spec produces a Phase 1 state
+If any of these trip, surface to the user: *"This scope covers [N flows / N features
+/ N screens] — that's more like a set of features than one. Do you want one big spec
+or per-flow specs? Recommendation: split — each separate spec is more useful to the
+re-implementer than an aggregate."*. A large aggregate spec produces a Phase 1 state
 file and §10.1 Network operations table that are unusable in practice. Split first,
 then spec each piece.
 
@@ -155,8 +155,8 @@ context compaction and holds:
 
 **If the state file already exists** when the skill starts — that means this feature
 has been started before. Read the file and present a one-line summary to the user:
-*"Нашёл незавершённый state на фичу `<slug>` (Phase N, queue: K open questions).
-Продолжить с того же места или начать заново?"*. Default is **continue**; restart wipes
+*"Found an unfinished state for feature `<slug>` (Phase N, queue: K open questions).
+Continue from where we left off, or start over?"*. Default is **continue**; restart wipes
 answers already given and is rarely what the user wants.
 
 If the user confirms restart, delete the old state file and start fresh. Otherwise
@@ -173,8 +173,9 @@ Check the project for signals of working language:
 - CLAUDE.md — any language directive?
 
 Pick the dominant project language as the default. Announce it to the user in one line
-and offer to override: *"По умолчанию пишу спеку на русском (как остальные доки проекта).
-Другой язык?"* A single yes/no check is enough; do not escalate if the user says nothing.
+and offer to override: *"Defaulting to <language> for the spec (matching the rest of the
+project docs). Different language?"* A single yes/no check is enough; do not escalate if
+the user says nothing.
 
 ### 0.5 Output path
 
@@ -196,7 +197,7 @@ Full protocol — when to check, what the overview contains, how the feature spe
 short-circuits when an overview exists, update discipline — in
 `references/project-overview-protocol.md`.
 
-Override: *"пропусти project-overview"* skips this phase entirely.
+Override: *"skip project-overview"* (or any equivalent phrasing) skips this phase entirely.
 
 ---
 
@@ -262,11 +263,11 @@ interviews — it produces better questions because each follow-up is informed b
 previous answer.
 
 **Before the first question, set expectation.** Announce the queue size in one line so
-the user can make an informed choice about pacing: *"Нашёл ~N пробелов после анализа.
-Пойду по одному вопросу за раунд (так лучше формируются следующие вопросы). Скажи
-«батчем» если хочешь получить всё сразу."*. This prevents the common failure mode where
-the user patiently answers 10 questions in a row, then at the end says "could have done
-that in one message".
+the user can make an informed choice about pacing: *"Found ~N gaps after the analysis.
+I'll go one question per round (follow-ups land better that way). Say "batch" if you'd
+rather get them all at once."*. This prevents the common failure mode where the user
+patiently answers 10 questions in a row, then at the end says "could have done that in
+one message".
 
 For each open question in the state queue:
 
@@ -277,14 +278,14 @@ For each open question in the state queue:
 3. Ask it, with a **pre-filled default** derived from the code or from project
    convention. Example: *"Retry count is 3 in code. Is that an intentional product
    requirement, or an implementation default? (default: intentional — keep in spec as
-   requirement)"*. The user accepts, overrides, or says "не знаю" (which itself is a
+   requirement)"*. The user accepts, overrides, or says "don't know" (which itself is a
    valid answer and goes into Open Questions).
 4. Update the state file with the answer.
 5. Repeat until the queue is empty.
 
 If the queue is large (>8 questions) and the user signals impatience or explicitly asks
-to batch ("задавай всё сразу"), switch to batched mode for the remainder. Always respect
-an explicit override.
+to batch ("ask them all at once" / "batch"), switch to batched mode for the remainder.
+Always respect an explicit override.
 
 Question categories that typically need user input:
 
@@ -464,7 +465,7 @@ The spec already lives at `docs/spec/<slug>.md`. Final steps:
 - Confirm the file exists and is readable.
 - Delete the state file (`./swarm-report/reverse-spec-<slug>-state.md`) — operational,
   no longer needed.
-- Offer to commit: *"Спека сохранена в `docs/spec/<slug>.md`. Закоммитить?"*. Do not
+- Offer to commit: *"Spec saved to `docs/spec/<slug>.md`. Want me to commit it?"*. Do not
   commit without explicit confirmation.
 - **Hygiene artefact (optional).** If the analysis surfaced implementation-level
   concerns that did not qualify for §9 Known Defects (hardcoded strings, weak PRNG
