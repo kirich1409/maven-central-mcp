@@ -64,12 +64,13 @@ If the topic resolves to **only one** expert track after applying selection crit
 
 Report the redirect in one line ("Topic is narrow — handing off to {target} instead of running the consortium"), then exit. Do not create state or report artifacts for redirected topics.
 
-**Caller contract.** Skills that invoke `research` as a subroutine (e.g. `write-spec` Phase 1)
-must handle two outcomes: (a) full report at `./swarm-report/<slug>-research.md` — proceed
-normally; (b) inline redirect notice with no artifact — fold the redirect target's output
-into the caller's flow inline, do not block waiting for a file. Callers that cannot accept
-the inline outcome must either widen their input to ensure ≥2 tracks or pre-validate scope
-before invoking research.
+**Caller contract.** No skill currently invokes `research` as a subroutine — `write-spec`
+runs its own research orchestration inline. This contract is defensive documentation for
+any future subskill caller. Such a caller must handle two outcomes: (a) full report at
+`./swarm-report/<slug>-research.md` — proceed normally; (b) inline redirect notice with no
+artifact — fold the redirect target's output into the caller's flow inline, do not block
+waiting for a file. Callers that cannot accept the inline outcome must either widen their
+input to ensure ≥2 tracks or pre-validate scope before invoking research.
 
 Generate kebab-case slug from the topic (e.g., `ktor-migration`, `push-notifications`):
 - Artifact: `./swarm-report/<slug>-research.md`
@@ -185,8 +186,9 @@ Skip the table when one approach dominates on every dimension.
 
 ## Phase 4: Auto-Review
 
-Pick the review mode based on the topic profile, then record it in the report header as
-`Auto-review mode: business-analyst | tech-sanity`.
+Pick the review mode based on the topic profile, then record it in the report header
+`Auto-review mode:` field as one of `business-analyst` or `tech-sanity` (not the literal
+pipe — pick one).
 
 ### Mode selection
 
