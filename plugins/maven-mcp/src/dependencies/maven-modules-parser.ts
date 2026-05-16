@@ -1,9 +1,4 @@
-// Extracts Maven submodule directory names from a parent pom.xml — the
-// <module> entries inside <modules>. Regex-based, mirroring the idiom in
-// discovery/maven-parser.ts. Limitations: profile-activated <modules> blocks
-// are still scanned (worst case = false-positive scan), but the resulting
-// paths must exist on disk to be picked up.
-
+// Profile-activated <modules> blocks are also returned; non-existent paths are filtered later.
 export function parseMavenModules(content: string): string[] {
   const modulesBlockRegex = /<modules>([\s\S]*?)<\/modules>/g;
   const out: string[] = [];

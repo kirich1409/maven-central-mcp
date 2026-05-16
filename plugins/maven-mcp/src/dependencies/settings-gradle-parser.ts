@@ -1,8 +1,4 @@
-// Extracts Gradle submodule paths (e.g. ":app", ":lib:core") from
-// settings.gradle / settings.gradle.kts. Regex-based — same idiom as
-// discovery/gradle-parser.ts. Limitations: composite builds (includeBuild),
-// project layout overrides (project(":foo").projectDir = ...) are not supported.
-
+// Composite builds (`includeBuild`) and layout overrides are not supported.
 export function parseSettingsGradleModules(content: string): string[] {
   const modules: string[] = [];
 

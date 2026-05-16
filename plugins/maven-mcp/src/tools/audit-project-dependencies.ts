@@ -3,6 +3,7 @@ import type { MavenMetadata } from "../maven/types.js";
 import type { UpgradeType } from "../version/types.js";
 import { scanProjectWithSubmodules } from "../dependencies/scan.js";
 import type { ScanResult } from "../dependencies/scan.js";
+import { PRODUCTION_CONFIGURATIONS } from "../dependencies/gradle-deps-parser.js";
 import { findProjectRoot } from "../project/find-project-root.js";
 import { resolveAll } from "../maven/resolver.js";
 import { findLatestVersionForCurrent } from "../version/classify.js";
@@ -15,9 +16,8 @@ export interface AuditInput {
   productionOnly?: boolean;
 }
 
-// Configurations that ship in the final artifact. Test, build-time, and annotation-processor
-// configurations are excluded by default — a CVE in junit/kapt is not a deployed risk.
-const PRODUCTION_CONFIGS = new Set(["implementation", "api", "compileOnly", "runtimeOnly"]);
+// CVEs in test / kapt / ksp / annotationProcessor are not deployed risks — exclude by default.
+const PRODUCTION_CONFIGS = new Set<string>(PRODUCTION_CONFIGURATIONS);
 
 export interface AuditDependency {
   groupId: string;

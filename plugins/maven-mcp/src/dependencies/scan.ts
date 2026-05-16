@@ -24,8 +24,7 @@ export interface ScanResult {
 const GRADLE_BUILD_FILES = ["build.gradle.kts", "build.gradle"] as const;
 const GRADLE_SETTINGS_FILES = ["settings.gradle.kts", "settings.gradle"] as const;
 
-// Cap recursion depth for Maven aggregator chains so a circular / malformed
-// <modules> tree cannot lock the scanner up.
+// Guards against circular / malformed <modules> trees in Maven reactor projects.
 const MAX_MODULE_DEPTH = 5;
 
 function resolveCatalogRef(ref: string, catalog: Map<string, CatalogEntry>): CatalogEntry | undefined {
@@ -39,10 +38,8 @@ function readCatalog(projectRoot: string): Map<string, CatalogEntry> {
   return parseVersionCatalog(readFileSync(catalogPath, "utf-8"));
 }
 
-// Scans a single module directory. The `label` is propagated as ScannedDependency.module —
-// undefined for the root project, ":foo" / ":foo:bar" for Gradle subprojects, and the relative
-// directory name (possibly nested as "core/sub") for Maven modules. The shared `catalog`
-// (libs.versions.toml) belongs to the root and is reused across all Gradle subprojects.
+// `label` becomes ScannedDependency.module: undefined for the root, ":foo" / "core/sub" for
+// Gradle / Maven submodules. `catalog` is the root's libs.versions.toml shared across modules.
 function scanSingleModule(
   modulePath: string,
   label: string | undefined,
@@ -124,8 +121,7 @@ export function scanProjectWithSubmodules(projectRoot: string): ScanResult {
         dependencies.push(...scanSingleModule(dir, modulePath, catalog));
       }
     }
-    // Root build.gradle[.kts] is still scanned — multi-module Gradle projects often keep
-    // platform / convention dependencies at the root.
+    // Root build.gradle[.kts] often carries platform / convention deps in multi-module setups.
     dependencies.push(...scanSingleModule(projectRoot, undefined, catalog));
   } else if (buildSystem === "maven") {
     scanMavenRecursive(projectRoot, undefined, dependencies, 0);
@@ -142,8 +138,7 @@ function readGradleSettings(projectRoot: string): string | null {
   return null;
 }
 
-// Gradle module path ":foo:bar" → projectRoot/foo/bar (default layout). Layout overrides
-// via project(":foo").projectDir = ... are not supported — rare and a non-goal for v1.
+// Default Gradle layout only — `project(":foo").projectDir = ...` overrides are not supported.
 function gradleModulePathToDir(projectRoot: string, modulePath: string): string {
   const parts = modulePath.replace(/^:/, "").split(":").filter(Boolean);
   return join(projectRoot, ...parts);
@@ -155,14 +150,17 @@ function scanMavenRecursive(
   acc: ScannedDependency[],
   depth: number,
 ): void {
-  acc.push(...scanSingleModule(modulePath, label, new Map()));
-  if (depth >= MAX_MODULE_DEPTH) return;
-
   const pomPath = join(modulePath, "pom.xml");
   if (!existsSync(pomPath)) return;
 
-  const submodules = parseMavenModules(readFileSync(pomPath, "utf-8"));
-  for (const sub of submodules) {
+  const content = readFileSync(pomPath, "utf-8");
+  for (const dep of parseMavenDependencies(content)) {
+    acc.push({ ...dep, module: label });
+  }
+
+  if (depth >= MAX_MODULE_DEPTH) return;
+
+  for (const sub of parseMavenModules(content)) {
     const childPath = join(modulePath, sub);
     const childLabel = label == null ? sub : `${label}/${sub}`;
     scanMavenRecursive(childPath, childLabel, acc, depth + 1);
