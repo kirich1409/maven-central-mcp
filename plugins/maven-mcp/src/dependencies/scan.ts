@@ -13,6 +13,9 @@ export interface ScannedDependency {
   version: string | null;
   configuration: string;
   source: string;
+  // Submodule label: ":foo" / ":foo:bar" for Gradle subprojects, "foo" / "foo/sub" for Maven
+  // submodules, undefined for the root project. Formats differ because Gradle paths are
+  // colon-separated by spec; consumers must handle both shapes.
   module?: string;
 }
 

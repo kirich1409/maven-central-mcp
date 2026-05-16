@@ -37,4 +37,13 @@ include ":lib:core", ":feature:auth"
 `;
     expect(parseSettingsGradleModules(content)).toEqual([":app", ":lib:core", ":feature:auth"]);
   });
+
+  it("ignores commented-out include calls", () => {
+    const content = `
+// include(":legacy")
+/* include(":blocked") */
+include(":app")
+`;
+    expect(parseSettingsGradleModules(content)).toEqual([":app"]);
+  });
 });

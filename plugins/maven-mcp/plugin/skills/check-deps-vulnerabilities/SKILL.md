@@ -155,4 +155,11 @@ State these once at the top of the report when relevant:
   build files. A direct dependency that pulls a vulnerable transitive will
   not appear in the report; investigate via `./gradlew dependencies` /
   `mvn dependency:tree` when in doubt.
+- Android variant-prefixed configurations (`releaseImplementation`,
+  `debugImplementation`, `<flavor>ReleaseImplementation`, etc.) ship in the
+  final artifact but are not recognized by the underlying parser today, so
+  CVEs declared only on variant-specific configurations are silently
+  invisible to this scan. Workaround: declare security-critical deps on
+  plain `implementation` / `api`, or run `./gradlew dependencies` for the
+  target variant and audit the result manually.
 - OSV does not cover shaded/uber JARs.

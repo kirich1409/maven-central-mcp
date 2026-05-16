@@ -26,6 +26,9 @@ export interface AuditDependency {
   latestVersion?: string;
   upgradeType?: UpgradeType;
   vulnerabilities?: { id: string; severity?: string; fixedVersion?: string }[];
+  // Submodule label: ":foo" / ":foo:bar" for Gradle, "foo" / "foo/sub" for Maven,
+  // undefined for the root project. The two formats differ by design (Gradle paths are
+  // colon-separated by spec); consumers must handle both shapes.
   module?: string;
 }
 
