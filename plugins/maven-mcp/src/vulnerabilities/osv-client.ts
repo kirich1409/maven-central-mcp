@@ -54,6 +54,7 @@ interface OsvVulnerability {
   affected?: OsvAffected[];
   references?: OsvReference[];
   database_specific?: { severity?: string };
+  withdrawn?: string;
 }
 
 interface OsvBatchResponse {
@@ -68,8 +69,10 @@ function cvssToSeverity(score: number): string {
 }
 
 function extractSeverity(vuln: OsvVulnerability): string | undefined {
-  // Prefer database_specific.severity (GitHub Advisory provides this)
-  const dbSeverity = vuln.database_specific?.severity?.toUpperCase();
+  // GHSA reports "MODERATE" while OSV CVSS-derived severity uses "MEDIUM" —
+  // normalize so downstream sort/UI never sees both spellings for the same band.
+  const rawSeverity = vuln.database_specific?.severity?.toUpperCase();
+  const dbSeverity = rawSeverity === "MODERATE" ? "MEDIUM" : rawSeverity;
   if (dbSeverity && ["CRITICAL", "HIGH", "MEDIUM", "LOW"].includes(dbSeverity)) {
     return dbSeverity;
   }
@@ -120,7 +123,9 @@ export async function queryOsvBatch(deps: DependencyRef[]): Promise<DependencyVu
     const data = (await response.json()) as OsvBatchResponse;
 
     return deps.map((dep, i) => {
-      const vulns = data.results[i]?.vulns ?? [];
+      // Drop withdrawn advisories — once OSV marks a record withdrawn it is
+      // superseded, retracted, or known-incorrect; surfacing it is noise.
+      const vulns = (data.results[i]?.vulns ?? []).filter((v) => v.withdrawn == null);
       return {
         ...dep,
         vulnerabilities: vulns.map((v) => ({

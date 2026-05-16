@@ -4,6 +4,8 @@ import { parseGradleDependencies } from "./gradle-deps-parser.js";
 import { parseMavenDependencies } from "./maven-deps-parser.js";
 import { parseVersionCatalog } from "./toml-parser.js";
 import type { CatalogEntry } from "./toml-parser.js";
+import { parseSettingsGradleModules } from "./settings-gradle-parser.js";
+import { parseMavenModules } from "./maven-modules-parser.js";
 
 export interface ScannedDependency {
   groupId: string;
@@ -11,6 +13,7 @@ export interface ScannedDependency {
   version: string | null;
   configuration: string;
   source: string;
+  module?: string;
 }
 
 export interface ScanResult {
@@ -18,29 +21,41 @@ export interface ScanResult {
   dependencies: ScannedDependency[];
 }
 
+const GRADLE_BUILD_FILES = ["build.gradle.kts", "build.gradle"] as const;
+const GRADLE_SETTINGS_FILES = ["settings.gradle.kts", "settings.gradle"] as const;
+
+// Cap recursion depth for Maven aggregator chains so a circular / malformed
+// <modules> tree cannot lock the scanner up.
+const MAX_MODULE_DEPTH = 5;
+
 function resolveCatalogRef(ref: string, catalog: Map<string, CatalogEntry>): CatalogEntry | undefined {
   const dashed = ref.replace(/\./g, "-");
   return catalog.get(dashed) ?? catalog.get(ref);
 }
 
-export function scanDependencies(projectRoot: string): ScanResult {
-  const deps: ScannedDependency[] = [];
-  const gradleFiles = ["build.gradle.kts", "build.gradle"];
-  let buildSystem: ScanResult["buildSystem"] = "unknown";
+function readCatalog(projectRoot: string): Map<string, CatalogEntry> {
+  const catalogPath = join(projectRoot, "gradle", "libs.versions.toml");
+  if (!existsSync(catalogPath)) return new Map();
+  return parseVersionCatalog(readFileSync(catalogPath, "utf-8"));
+}
 
-  for (const file of gradleFiles) {
-    const path = join(projectRoot, file);
+// Scans a single module directory. The `label` is propagated as ScannedDependency.module —
+// undefined for the root project, ":foo" / ":foo:bar" for Gradle subprojects, and the relative
+// directory name (possibly nested as "core/sub") for Maven modules. The shared `catalog`
+// (libs.versions.toml) belongs to the root and is reused across all Gradle subprojects.
+function scanSingleModule(
+  modulePath: string,
+  label: string | undefined,
+  catalog: Map<string, CatalogEntry>,
+): ScannedDependency[] {
+  const deps: ScannedDependency[] = [];
+
+  for (const file of GRADLE_BUILD_FILES) {
+    const path = join(modulePath, file);
     if (!existsSync(path)) continue;
-    buildSystem = "gradle";
 
     const content = readFileSync(path, "utf-8");
     const gradleDeps = parseGradleDependencies(content, file);
-
-    const catalogPath = join(projectRoot, "gradle", "libs.versions.toml");
-    let catalog = new Map<string, CatalogEntry>();
-    if (existsSync(catalogPath)) {
-      catalog = parseVersionCatalog(readFileSync(catalogPath, "utf-8"));
-    }
 
     for (const dep of gradleDeps) {
       if (dep.catalogRef) {
@@ -52,6 +67,7 @@ export function scanDependencies(projectRoot: string): ScanResult {
             version: entry.version,
             configuration: dep.configuration,
             source: "libs.versions.toml",
+            module: label,
           });
         }
       } else if (dep.groupId && dep.artifactId) {
@@ -61,20 +77,94 @@ export function scanDependencies(projectRoot: string): ScanResult {
           version: dep.version,
           configuration: dep.configuration,
           source: file,
+          module: label,
         });
       }
     }
-    break;
+    return deps;
   }
 
-  if (buildSystem === "unknown") {
-    const pomPath = join(projectRoot, "pom.xml");
-    if (existsSync(pomPath)) {
-      buildSystem = "maven";
-      const content = readFileSync(pomPath, "utf-8");
-      deps.push(...parseMavenDependencies(content));
+  const pomPath = join(modulePath, "pom.xml");
+  if (existsSync(pomPath)) {
+    const content = readFileSync(pomPath, "utf-8");
+    for (const dep of parseMavenDependencies(content)) {
+      deps.push({ ...dep, module: label });
     }
   }
 
-  return { buildSystem, dependencies: deps };
+  return deps;
+}
+
+function detectBuildSystem(projectRoot: string): ScanResult["buildSystem"] {
+  for (const file of [...GRADLE_BUILD_FILES, ...GRADLE_SETTINGS_FILES]) {
+    if (existsSync(join(projectRoot, file))) return "gradle";
+  }
+  if (existsSync(join(projectRoot, "pom.xml"))) return "maven";
+  return "unknown";
+}
+
+export function scanDependencies(projectRoot: string): ScanResult {
+  const catalog = readCatalog(projectRoot);
+  const buildSystem = detectBuildSystem(projectRoot);
+  const dependencies = scanSingleModule(projectRoot, undefined, catalog);
+  return { buildSystem, dependencies };
+}
+
+export function scanProjectWithSubmodules(projectRoot: string): ScanResult {
+  const buildSystem = detectBuildSystem(projectRoot);
+  const catalog = readCatalog(projectRoot);
+  const dependencies: ScannedDependency[] = [];
+
+  if (buildSystem === "gradle") {
+    const settingsContent = readGradleSettings(projectRoot);
+    if (settingsContent) {
+      const modules = parseSettingsGradleModules(settingsContent);
+      for (const modulePath of modules) {
+        const dir = gradleModulePathToDir(projectRoot, modulePath);
+        dependencies.push(...scanSingleModule(dir, modulePath, catalog));
+      }
+    }
+    // Root build.gradle[.kts] is still scanned — multi-module Gradle projects often keep
+    // platform / convention dependencies at the root.
+    dependencies.push(...scanSingleModule(projectRoot, undefined, catalog));
+  } else if (buildSystem === "maven") {
+    scanMavenRecursive(projectRoot, undefined, dependencies, 0);
+  }
+
+  return { buildSystem, dependencies };
+}
+
+function readGradleSettings(projectRoot: string): string | null {
+  for (const file of GRADLE_SETTINGS_FILES) {
+    const path = join(projectRoot, file);
+    if (existsSync(path)) return readFileSync(path, "utf-8");
+  }
+  return null;
+}
+
+// Gradle module path ":foo:bar" → projectRoot/foo/bar (default layout). Layout overrides
+// via project(":foo").projectDir = ... are not supported — rare and a non-goal for v1.
+function gradleModulePathToDir(projectRoot: string, modulePath: string): string {
+  const parts = modulePath.replace(/^:/, "").split(":").filter(Boolean);
+  return join(projectRoot, ...parts);
+}
+
+function scanMavenRecursive(
+  modulePath: string,
+  label: string | undefined,
+  acc: ScannedDependency[],
+  depth: number,
+): void {
+  acc.push(...scanSingleModule(modulePath, label, new Map()));
+  if (depth >= MAX_MODULE_DEPTH) return;
+
+  const pomPath = join(modulePath, "pom.xml");
+  if (!existsSync(pomPath)) return;
+
+  const submodules = parseMavenModules(readFileSync(pomPath, "utf-8"));
+  for (const sub of submodules) {
+    const childPath = join(modulePath, sub);
+    const childLabel = label == null ? sub : `${label}/${sub}`;
+    scanMavenRecursive(childPath, childLabel, acc, depth + 1);
+  }
 }
