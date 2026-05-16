@@ -271,7 +271,12 @@ Check:
 2. Any obvious alternatives missed?
 3. Do risks cover both technical and product concerns?
 4. Is the recommendation well-supported by evidence?
-5. Are open questions the right ones — nothing critical missing?
+5. Does the "Known Unknowns" section list only external factual gaps that no party in the
+   chat session could resolve right now (vendor SLA, unpublished pricing, future-dated
+   GA, etc.) — and contain NO questions directed at the user, NO "TBD — ask user"
+   placeholders, NO rhetorical asks? Any user-resolvable trade-off must have been
+   surfaced in Phase 5.1 chat dialogue via `AskUserQuestion` and folded into the
+   recommendation, not parked in the report.
 6. Does the recommendation align with practical constraints (time, team skills, maintenance)?
 
 List gaps with severity (critical / major / minor).
