@@ -1,6 +1,6 @@
 ---
 name: migration
-description: "Use for migrating one technology to another in Android/Kotlin/KMP/JVM projects with behavioral parity — Databinding to ViewBinding, Dagger/Hilt to Metro DI, RxJava to Coroutines, KAPT to KSP, Java to Kotlin, Gson to kotlinx.serialization, and similar tech swaps. Triggers: \"migrate X to Y\", \"replace X with Y\", \"swap X for Y\", \"drop X in favor of Y\", \"move off X\", \"decommission X\". Covers studying FROM/TO technologies and their build artifacts, mapping use-sites, fixing current behavior across three planes (code tests + test cases + manual scenarios), agreeing strategy with the user, implementing via one of four approaches (Branch by Abstraction, Strangler Fig, Duplicate-then-delete, Utility refactor), verifying on a real device, and cleaning up the old stack fully. Do NOT use for: Android XML View to Jetpack Compose (use migrate-to-compose), enabling KMP on an Android project (use kmp-migration), bug fixes (use plan mode), or pure library version bumps without API changes (use maven-mcp:check-deps)."
+description: "Use for migrating one technology to another in Android/Kotlin/KMP/JVM projects with behavioral parity — Databinding to ViewBinding, Dagger/Hilt to Metro DI, RxJava to Coroutines, KAPT to KSP, Java to Kotlin, Gson to kotlinx.serialization, and similar tech swaps. Triggers: \"migrate X to Y\", \"replace X with Y\", \"swap X for Y\", \"drop X in favor of Y\", \"move off X\", \"decommission X\". Covers studying FROM/TO technologies and their build artifacts, mapping use-sites, fixing current behavior across three planes (code tests + test cases + manual scenarios), agreeing strategy with the user, implementing via one of four approaches (Branch by Abstraction, Strangler Fig, Duplicate-then-delete, Utility refactor), verifying on a real device, and cleaning up the old stack fully. Do NOT use for: Android XML View to Jetpack Compose (use migrate-to-compose), enabling KMP on an Android project (use kmp-migration), bug fixes (use plan mode), or pure library version bumps without API changes."
 ---
 
 # Migration
@@ -48,9 +48,9 @@ Produce `./swarm-report/<slug>-tech-snapshot.md` covering both FROM and TO:
 - **Side effects** — build time impact, generated R-classes, lint integration, IDE plugin requirements, KSP1 vs KSP2 compatibility, AGP version requirements.
 - **Interop facilities** — does the TO technology offer an explicit interop layer with FROM (Metro has Dagger interop; Coroutines have RxJava bridges; Compose has `AndroidView`/`ComposeView`)? This is the foundation for any incremental approach.
 
-Verify each fact against authoritative sources (official docs, the library's GitHub README, `ksrc` for installed dependencies). Do not rely on training-data memory — APIs and build behavior change.
+Verify each fact against authoritative sources — official documentation, the library's own GitHub README, the source code of installed dependencies. Do not rely on training-data memory — APIs and build behavior change.
 
-For Android-specific migrations, prefer `android docs search` for official guidance. For Kotlin/JVM libraries, use `ksrc` to read the actual installed source. See `references/approaches.md` for a list of common FROM/TO pairs and where to find their docs.
+If the project ships JVM/Kotlin dependencies in a Gradle cache, a source-reading tool (such as `ksrc` if installed) is preferred over web fetches because it sees the exact installed version. For Android platform migrations, an official Android docs search tool (such as the `android` CLI if installed) gives curated guidance; otherwise fall back to web search against `developer.android.com`. See `references/approaches.md` for a list of common FROM/TO pairs and where to find their docs.
 
 ---
 
@@ -140,7 +140,7 @@ Produce `./swarm-report/<slug>-device-verify.md`:
 
 The phase ends only when every TC and scenario is either passing or explicitly accepted as an intentional change.
 
-For Android device automation, the `android` CLI (Google's agent-oriented tool) is the primary mechanism for screen capture, layout dump, and APK deploy. See `~/.claude/rules/android-cli.md`. For exploratory QA against a running app, call the `developer-workflow:manual-tester` agent directly via the Task tool — do not invoke `/acceptance` from this skill.
+For Android device automation, an agent-oriented Android CLI (such as Google's `android` tool if installed) covers screen capture, layout dump, and APK deploy with one interface; without it, fall back to `adb` directly (`adb shell screencap`, `adb shell uiautomator dump`, `adb install`). For exploratory QA against a running app, call the `developer-workflow:manual-tester` agent directly via the Task tool — do not invoke `/acceptance` from this skill.
 
 ---
 

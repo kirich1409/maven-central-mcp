@@ -11,8 +11,10 @@ Walk this top to bottom for the specific migration. Each item must end up in one
 **Check.** Search the entire repo for FROM imports.
 
 ```bash
-# Example: Databinding cleanup
-grep -rn "import android.databinding" --include="*.kt" --include="*.java" \
+# Example: Databinding cleanup (matches both pre-AndroidX and AndroidX packages).
+# The trailing `.` is the search root — omitting it leaves grep reading from stdin and hanging.
+grep -rn -E "import (android\.databinding|androidx\.databinding)" \
+  --include="*.kt" --include="*.java" . \
   | grep -v ":legacy:"  # exclude explicitly-frozen modules
 ```
 
@@ -32,16 +34,24 @@ grep -E "(databinding|com.google.dagger|io.reactivex)" gradle/libs.versions.toml
 
 ### 3. `build.gradle*` plugin declarations removed
 
-**Check.** Search Gradle files for activation flags and plugin applications.
+**Check.** Search Gradle files for the FROM activation flags and plugin applications specifically — not for the TO plugin (the TO plugin is supposed to stay).
+
+Substitute the regex for the actual FROM technology of the current migration:
 
 ```bash
-grep -rn -E "(dataBinding\s*=\s*true|kotlin-kapt|com.google.devtools.ksp|io.reactivex.rxjava3)" \
-  --include="*.gradle*" .
+# Databinding -> ViewBinding: look for the FROM activation flag.
+grep -rn -E "dataBinding\s*=\s*true" --include="*.gradle*" .
+
+# KAPT -> KSP (when no other processors need KAPT): look for the FROM plugin.
+grep -rn -E "kotlin\(\"kapt\"\)|kotlin-kapt" --include="*.gradle*" .
+
+# RxJava -> Coroutines: look for the FROM dependency coordinates.
+grep -rn -E "io\.reactivex\.rxjava3" --include="*.gradle*" .
 ```
 
 For Databinding → ViewBinding: remove `dataBinding = true`, keep `viewBinding = true`.
-For KAPT → KSP (full): remove `kotlin("kapt")` plugin if no other processors require KAPT.
-For Dagger → Metro: remove dagger-compiler dependency and KAPT/KSP plugin invocations specific to it.
+For KAPT → KSP (full): remove `kotlin("kapt")` plugin if no other processors require KAPT. The KSP plugin (`com.google.devtools.ksp`) is the TO and must remain.
+For Dagger → Metro: remove dagger-compiler dependency and the KAPT (or KSP) invocations that exist solely for Dagger; keep KAPT/KSP if other processors still need them.
 
 **Allowable exceptions.** If another active migration still needs the same plugin (e.g., other modules have not migrated KAPT yet), leave the plugin and note the cross-migration dependency in `<slug>-cleanup-checklist.md`.
 

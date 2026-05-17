@@ -182,6 +182,6 @@ When studying FROM and TO in Phase 1, prefer authoritative sources. Training-dat
 | AGP major bump with breaking changes | Utility refactor + targeted BBA for breakages | https://developer.android.com/build/agp-upgrade-assistant, release notes for the AGP version |
 
 For each migration, also check:
-- The library's own GitHub release notes for the FROM and TO versions.
-- `maven-mcp:dependency-changes <from> <to>` for an automatic changelog summary.
-- `maven-mcp:check-deps-vulnerabilities` on both versions — a vulnerability in either is a separate decision input.
+- The library's own GitHub release notes for the FROM and TO versions, focusing on breaking changes between them.
+- A dependency-changelog lookup capability, if one is installed, can summarize the diff between two versions automatically; otherwise read the release notes manually.
+- A vulnerability scan on the FROM dependency in the current project — a known CVE in FROM is a separate decision input. If a vulnerability is also publicly known to be fixed in TO, that strengthens the case for the migration. Use whatever dependency-vulnerability scanner is installed (or the ecosystem default: `npm audit`, `pip-audit`, `cargo audit`, the OSV CLI).

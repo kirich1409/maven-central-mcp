@@ -72,7 +72,8 @@ Does TO offer a bridge with FROM?
 
 - Official doc: ...
 - GitHub: ...
-- Verified via: ksrc / android docs / Context7 / WebFetch
+- Verified via: <official docs / installed dependency source / release notes / authoritative web source>
+- Reference source category for this entry: <one of: official documentation, installed dependency source, GitHub release notes, library README, third-party article (rare — name and justify)>
 ```
 
 ---

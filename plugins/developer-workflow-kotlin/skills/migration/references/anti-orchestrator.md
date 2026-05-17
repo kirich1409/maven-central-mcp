@@ -72,18 +72,23 @@ fun `no new code depends on legacy databinding`() {
 
 ### Gradle dependency constraints
 
-For module-level boundaries: prevent any module outside `:legacy:*` from depending on the FROM library directly.
+For module-level boundaries: actively fail the build if a module outside `:legacy:*` depends on the FROM library. A plain Gradle version constraint does not block a dependency — it only narrows version resolution; conflict resolution can still pick whatever the consumer requested. Use one of the mechanisms that actually fails the build instead:
 
 ```kotlin
-// build.gradle.kts of a feature module
-dependencies {
-    constraints {
-        implementation("com.google.dagger:dagger-android:0.0.0") {
-            because("Migrating to Metro. New code must not use Dagger.")
+// build.gradle.kts of a feature module — resolution strategy that hard-fails on the legacy artifact.
+configurations.all {
+    resolutionStrategy.eachDependency {
+        if (requested.group == "com.google.dagger") {
+            throw GradleException(
+                "Module ${project.path} must not depend on Dagger directly. " +
+                "Migrating to Metro — see migration plan in swarm-report/."
+            )
         }
     }
 }
 ```
+
+Or, for repository-wide policy that does not need to live in every module, a Konsist or `ArchUnit` test (running in `:test` of a dedicated `:rules` module) is more discoverable and runs in CI.
 
 These are recommendations to the user, not skill-enforced rules. The skill points at them; the user adopts them.
 
