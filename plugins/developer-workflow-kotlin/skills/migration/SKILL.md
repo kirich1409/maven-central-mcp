@@ -146,7 +146,7 @@ For Android device automation, an agent-oriented Android CLI (such as Google's `
 
 Remove the FROM technology fully. Until this phase completes, the migration is not done — coexistence is technical debt, not a milestone.
 
-Walk the ten-item checklist in `references/cleanup.md` top to bottom; each item ends in done / N/A with reason / deferred with sunset date.
+Walk the ten-item checklist in `references/cleanup.md` top to bottom; each item ends in done / N/A with reason / deferred with sunset date and tracker link.
 
 Cleanup uses an engineer agent for code edits; review the deletions with `developer-workflow-experts:architecture-expert` if the migration was horizontal (DI, async, build) — these have the highest risk of leaving invisible coupling.
 
