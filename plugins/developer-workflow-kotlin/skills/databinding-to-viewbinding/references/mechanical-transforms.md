@@ -19,13 +19,13 @@ all attributes of that child exactly; do not add or remove any. If the child had
 `<slug>-variables-map.md` during Discovery; nothing about them remains in XML.
 
 **Replace one-way `@{…}` attribute values.** For each attribute carrying a one-way expression:
-- If the attribute has a natural static default (`android:text` → `""`; `android:contentDescription`
-  → `""`; `android:enabled` → `"true"`): substitute the default and add a `tools:` namespace hint
-  preserving the expression for documentation purposes, e.g.
-  `tools:text="@{vm.name}"` alongside `android:text=""`.
-- If the attribute is purely binding-driven (e.g. `app:imageUrl`, `android:visibility` driven
-  entirely by a live value): **remove the attribute**. The host-Kotlin replacement supplies it
-  at runtime.
+replace the `@{…}` value with the static default the attribute accepted before binding ran —
+typically an empty string for `android:text`, `"true"` for `android:enabled`, `""` for
+`android:contentDescription`. If the attribute had no static fallback (e.g. `app:imageUrl`,
+`android:visibility` driven entirely by a live value): **remove the attribute**. The
+host-Kotlin replacement supplies it at runtime. Do not add `tools:` aliases or any other
+namespaces — the rule is to keep the post-transform XML attribute-equivalent to the
+pre-binding state.
 
 **`@={…}` attribute values.** Not mechanical. Flag at Discovery time; route to `escalation-patterns.md §two-way`.
 

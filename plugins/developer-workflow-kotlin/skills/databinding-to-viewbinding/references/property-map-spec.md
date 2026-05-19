@@ -30,6 +30,7 @@ identifier used throughout the session (e.g. `databinding-to-viewbinding`).
 | `binding_kind` | enum | `one_way` / `two_way` / `listener_lambda` / `event_callback` |
 | `expression_raw` | string | The literal `@{…}` or `@={…}` text from the layout |
 | `expression_type` | Kotlin type | Resolved Kotlin type from `expression-resolution.md` step 4; nullability marked with `?` |
+| `expression_fragment` | Kotlin snippet | Kotlin snippet representing the expression's value, output of `expression-resolution.md`; intermediate input to adapter-resolution's replacement-template builder |
 | `adapter_origin` | enum | `project-local` / `monorepo:<gradle-path>` / `binary:<group>:<artifact>:<version>` / `implicit-setter` / `unresolved` |
 | `adapter_symbol` | FQN | FQN of the resolved `@BindingAdapter` method or implicit setter |
 | `replacement_fragment` | Kotlin snippet | Host-Kotlin call built by the replacement-template builder in `adapter-resolution.md` |
@@ -89,11 +90,11 @@ by `adapter_origin` in the property map.
 
 Three rows from a hypothetical `feature/profile/res/layout/fragment_profile.xml`.
 
-| layout | view_id | view_type | attribute | binding_kind | expression_raw | expression_type | adapter_origin | adapter_symbol | replacement_fragment | bucket | notes |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| feature/profile/res/layout/fragment_profile.xml | name_label | TextView | android:text | one_way | `@{viewModel.user.name}` | `String` | implicit-setter | `android.widget.TextView#setText` | `binding.nameLabel.text = viewModel.user.name` | mechanical | — |
-| feature/profile/res/layout/fragment_profile.xml | avatar | ImageView | app:imageUrl | one_way | `@{viewModel.user.avatarUri ?? "default"}` | `String` | binary:androidx.databinding:databinding-adapters:8.3.2 | `androidx.databinding.adapters.ImageViewBindingAdapter#setImageUrl` | `ImageViewBindingAdapter.setImageUrl(binding.avatar, viewModel.user.avatarUri ?: "default")` [1] | mechanical | — |
-| feature/profile/res/layout/fragment_profile.xml | notifications_switch | SwitchMaterial | android:onCheckedChanged | two_way | `@={viewModel.notificationsEnabled}` | `Boolean` | — | — | — | escalate | Two-way binding — apply `escalation-patterns.md §Two-way` |
+| layout | view_id | view_type | attribute | binding_kind | expression_raw | expression_type | expression_fragment | adapter_origin | adapter_symbol | replacement_fragment | bucket | notes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| feature/profile/res/layout/fragment_profile.xml | name_label | TextView | android:text | one_way | `@{viewModel.user.name}` | `String` | `viewModel.user.name` | implicit-setter | `android.widget.TextView#setText` | `binding.nameLabel.text = viewModel.user.name` | mechanical | — |
+| feature/profile/res/layout/fragment_profile.xml | avatar | ImageView | app:imageUrl | one_way | `@{viewModel.user.avatarUri ?? "default"}` | `String` | `viewModel.user.avatarUri ?: "default"` | binary:androidx.databinding:databinding-adapters:8.3.2 | `androidx.databinding.adapters.ImageViewBindingAdapter#setImageUrl` | `ImageViewBindingAdapter.setImageUrl(binding.avatar, viewModel.user.avatarUri ?: "default")` [1] | mechanical | — |
+| feature/profile/res/layout/fragment_profile.xml | notifications_switch | SwitchMaterial | android:onCheckedChanged | two_way | `@={viewModel.notificationsEnabled}` | `Boolean` | — | — | — | — | escalate | Two-way binding — apply `escalation-patterns.md §Two-way` |
 
 **Footnotes:**
 
@@ -124,8 +125,8 @@ discovery pass creates a separate corrected artifact — it does not edit the ap
 
 ## Cross-references
 
-- `expression-resolution.md` — produces `expression_raw`, `expression_type`, and `replacement_fragment`
-- `adapter-resolution.md` — produces `adapter_origin`, `adapter_symbol`, and finalizes `replacement_fragment`
+- `expression-resolution.md` — produces `expression_raw`, `expression_type`, and `expression_fragment`
+- `adapter-resolution.md` — consumes `expression_fragment`, produces `adapter_origin`, `adapter_symbol`, and the final `replacement_fragment`
 - `binding-features-matrix.md` — defines the bucket taxonomy and per-feature escalation thresholds
 - `mechanical-transforms.md` — consumes `replacement_fragment` to weave Kotlin into the host file
 - `escalation-patterns.md` — recipes for each `escalate` bucket entry, including two-way bindings

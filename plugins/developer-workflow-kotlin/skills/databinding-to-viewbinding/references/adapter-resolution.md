@@ -264,8 +264,9 @@ For each resolved binding, the skill writes one entry to `./swarm-report/<slug>-
 
 ## Cross-references
 
-- `expression-resolution.md` — how `expression_type` is determined for each `@{…}` expression
-  before this algorithm runs.
+- `expression-resolution.md` — how `expression_type` and `expression_fragment` are determined
+  for each `@{…}` expression before this algorithm runs; `expression_fragment` is the input to
+  the replacement-template builder, which wraps it into the final `replacement_fragment` call.
 - `property-map-spec.md` — exact format of the output written to `<slug>-property-map.md`.
 - `mechanical-transforms.md` — how the replacement template fragment is woven into the host
   Kotlin file during the Conversion phase.

@@ -3,9 +3,11 @@
 This reference defines the supported DataBinding expression grammar (the content inside
 `@{...}` and `@={...}` attributes) and the identifier-resolution algorithm used during
 Discovery. It produces two fields consumed by downstream references: `expression_type` —
-the Kotlin type of the expression's result — and `replacement_fragment` — a ready-to-weave
-Kotlin snippet. `adapter-resolution.md` uses `expression_type` to select the correct
-`@BindingAdapter` overload; `property-map-spec.md` records both fields in the property map.
+the Kotlin type of the expression's result — and `expression_fragment` — the literal Kotlin
+snippet representing the expression's value (e.g. `viewModel.user.name` or
+`if (a) b else c`). `adapter-resolution.md` uses `expression_type` to select the correct
+`@BindingAdapter` overload and consumes `expression_fragment` as input to its
+replacement-template builder; `property-map-spec.md` records both fields in the property map.
 
 ---
 
@@ -62,7 +64,7 @@ default_value   = expr "," "default=" default_val
 | DataBinding             | Kotlin                                                 |
 |-------------------------|--------------------------------------------------------|
 | `@string/foo`           | `context.getString(R.string.foo)`                      |
-| `@dimen/padding`        | `context.resources.getDimension(R.dimen.padding)`      |
+| `@dimen/padding`        | `context.resources.getDimensionPixelSize(R.dimen.padding)` for Int px receivers (most common — padding, sizes); `context.resources.getDimension(R.dimen.padding)` for Float px receivers (e.g. `setTextSize`); adapter resolution picks per the target setter's parameter type |
 | `@color/primary`        | `ContextCompat.getColor(context, R.color.primary)`     |
 | `@drawable/ic_x`        | `ContextCompat.getDrawable(context, R.drawable.ic_x)`  |
 | `@integer/n`            | `context.resources.getInteger(R.integer.n)`            |
@@ -76,7 +78,7 @@ type (Activity, Fragment, or adapter) discovered in Discovery step 4.
 ## Identifier resolution algorithm
 
 For each raw `@{...}` content string the algorithm produces:
-`{expression_class, resolved_symbol, expression_type, replacement_fragment}`.
+`{expression_class, resolved_symbol, expression_type, expression_fragment}`.
 
 **Step 1 — Parse.** Match against the grammar above. On failure, record
 `expression_class = unresolvable_grammar` and escalate. Do not attempt partial resolution.
@@ -127,7 +129,7 @@ For each raw `@{...}` content string the algorithm produces:
 
 If any type is unresolvable, record `expression_type = unresolved` and escalate.
 
-**Step 5 — Produce `replacement_fragment`.** Translate the typed parse tree to Kotlin:
+**Step 5 — Produce `expression_fragment`.** Translate the typed parse tree to Kotlin:
 
 | Input                                | Kotlin fragment                                        |
 |--------------------------------------|--------------------------------------------------------|
@@ -148,7 +150,7 @@ If any type is unresolvable, record `expression_type = unresolved` and escalate.
 
 ## Escalation rules
 
-Record `bucket = escalate` in the property map; do not emit a replacement fragment:
+Record `bucket = escalate` in the property map; do not emit an expression fragment:
 
 - **Two-way `@={...}`** — any expression in a two-way binding. See `escalation-patterns.md`
   for `@InverseBindingAdapter` handling.
@@ -187,14 +189,14 @@ runtime behavior. Expression resolution therefore runs first during Discovery �
 `android:text="@{viewModel.user.name}"`:
 `viewModel` from `<variable type="com.example.UserViewModel"/>`, `.user: User` and
 `.name: String` resolved via `ast-index symbol`. Result: `expression_class = property_chain`,
-`expression_type = String`, `replacement_fragment = viewModel.user.name`.
+`expression_type = String`, `expression_fragment = viewModel.user.name`.
 
 **Example 2 — null coalescing with resource ref.**
 `android:hint="@{viewModel.placeholder ?? @string/default_hint}"`:
 `viewModel.placeholder: String?` from `<variable>`, `@string/default_hint` resolves to
 `String`. LUB is `String`. Result: `expression_class = null_coalescing`,
 `expression_type = String`,
-`replacement_fragment = viewModel.placeholder ?: context.getString(R.string.default_hint)`.
+`expression_fragment = viewModel.placeholder ?: context.getString(R.string.default_hint)`.
 
 **Example 3 — lambda listener.**
 `android:onClick="@{(v) -> viewModel.onItemClick(item)}"`:
@@ -202,24 +204,25 @@ runtime behavior. Expression resolution therefore runs first during Discovery �
 `ast-index symbol`, return type `Unit`. Attribute `android:onClick` expects
 `View.OnClickListener` (SAM), single-arg lambda matches. Result: `expression_class = lambda`,
 `expression_type = View.OnClickListener`,
-`replacement_fragment = setOnClickListener { v -> viewModel.onItemClick(item) }`.
+`expression_fragment = setOnClickListener { v -> viewModel.onItemClick(item) }`.
 The `v` parameter is retained to match the SAM signature; host may simplify to `{ _ -> ... }`.
 
 **Example 4 — safeUnbox.**
 `app:badgeCount="@{safeUnbox(viewModel.unreadCount)}"`:
 `viewModel.unreadCount: Int?` (nullable `Integer` from Java ViewModel). `safeUnbox(Int?)`
 yields primitive `Int`. Result: `expression_class = safe_unbox`, `expression_type = Int`,
-`replacement_fragment = viewModel.unreadCount ?: 0`. The `?: 0` is mandatory — DataBinding's
+`expression_fragment = viewModel.unreadCount ?: 0`. The `?: 0` is mandatory — DataBinding's
 `safeUnbox` guarantees a non-null `int`; omitting the fallback changes null behavior.
 
 ---
 
 ## Cross-references
 
-- `adapter-resolution.md` — consumes `expression_type` and `replacement_fragment`; runs
+- `adapter-resolution.md` — consumes `expression_type` and `expression_fragment`; runs
   immediately after expression resolution for each binding in the property map.
 - `property-map-spec.md` — defines the exact fields where `expression_class`,
-  `expression_type`, `raw_expression`, and `replacement_fragment` are recorded.
+  `expression_type`, `raw_expression`, `expression_fragment`, and `replacement_fragment`
+  are recorded.
 - `escalation-patterns.md` — full recipes for two-way binding, `BR.*` references, and
   `@InverseBindingAdapter` wiring listed in §Escalation rules.
 - `mechanical-transforms.md` — uses `replacement_fragment` to weave Kotlin code into the
