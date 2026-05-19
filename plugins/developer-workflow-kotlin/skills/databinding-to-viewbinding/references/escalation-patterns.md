@@ -38,7 +38,7 @@ presented to the user explicitly via the prompt template in
 **Underlying semantic.** DataBinding generates a listener (widget→variable) and an observer
 (variable→widget) with loop suppression. ViewBinding has neither.
 
-**Option A — manual listener + coroutine collect (recommended).**
+**Option A — manual listener + coroutine collect (recommended).** (Fragment-scoped; for Activity replace `viewLifecycleOwner` with `this`.)
 
 ```kotlin
 var suppressUpdate = false
