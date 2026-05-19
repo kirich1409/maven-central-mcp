@@ -122,11 +122,12 @@ licence blocks duplication, or the adapter requires DataBinding runtime infrastr
 
 ---
 
-## Placement options for `convert-to-extension` and `duplicate-from-sources`
+## Placement options for `convert-to-extension`, `duplicate-from-sources`, and helper-extraction candidates
 
-For every adapter going through `convert-to-extension` or `duplicate-from-sources`, the skill
-stops and presents placement choices to the user before any file is written or rewritten. There
-is no silent default.
+Two cleanup options (`convert-to-extension`, `duplicate-from-sources`) AND every helper-extraction
+candidate from `mechanical-transforms.md "Helper extraction for repeated patterns"` route through
+this prompt. For each, the skill stops and presents placement choices to the user before any file
+is written or rewritten. There is no silent default.
 
 **Candidate-discovery procedure.** The skill builds the candidate list by:
 - Counting in-scope modules that use the adapter (from the property map's `adapter_origin` and
@@ -138,11 +139,11 @@ is no silent default.
 - The "new module" option is shown only if the user explicitly chose `--allow-new-module` (or
   equivalent) at scope intake; otherwise it is omitted entirely.
 
-**Per-adapter prompt template:**
+**Prompt template (adapter disposal and helper-extraction candidates):**
 
 ```
-Adapter: <FQN of original method>
-Disposal: convert-to-extension | duplicate-from-sources
+Adapter / Helper: <FQN of original method, or helper description (e.g. "two-way EditText with TextWatcher suppress guard")>
+Reason: <disposal (convert-to-extension | duplicate-from-sources) | helper-extraction>
 Used by: <count> in-scope screens across <list of module paths>
 
 Placement options:
@@ -153,10 +154,11 @@ Placement options:
 5. Custom path                           (you provide)
 ```
 
-**Ranking.** In-module wins when the adapter is used by exactly one in-scope module. A shared
-module wins when two or more in-scope modules use the adapter and one shared parent is already
-reachable from all of them. A new module is offered only as the last option and never as a
-default.
+**Ranking.** In-module wins when the adapter or helper is consumed by exactly one in-scope
+module. A shared module wins when two or more in-scope modules are consumers and one shared
+parent is already reachable from all of them. Reach is determined the same way for disposal
+and helper-extraction candidates. A new module is offered only as the last option and never as
+a default.
 
 **After the user picks.** The decision is recorded in `<slug>-adapter-sources.md` under the
 `cleanup_status` column as the chosen placement path (e.g., `convert-to-extension → :core:ui`,

@@ -187,7 +187,20 @@ For each in-scope layout, in order. Steps 2–4 describe per-row bucket handling
    Fragment, and ViewHolder inflate patterns; `_binding = null` rule; DataBinding-only call
    removal; per-binding replacement assembly using the approved `replacement_fragment`.
 
-7. After the screen completes, the user runs `/check` if desired. A `/check` failure on a
+7. **Inline-first for repeated patterns.** When a mechanical or escalation pattern (e.g., the
+   two-way TextWatcher shape, the `repeatOnLifecycle` collector block) recurs across multiple
+   screens, the engineer writes it inline each time during per-screen conversion. Extraction into
+   a shared helper comes after all in-scope screens are converted (see step 8 below).
+
+8. After all in-scope screens are converted, the engineer reviews the written code for structurally
+   similar multi-line blocks that appear across ≥ 2 distinct host classes. Each candidate group is
+   recorded in `./swarm-report/<slug>-reused-helpers.md`. The skill then presents a batched
+   placement prompt for each group per `references/gradle-and-lint-gate.md "Placement options"`.
+   After the user picks, the engineer extracts the inline blocks into the chosen location and
+   rewrites call sites. Groups whose consumers all reside in a single host class are resolved by
+   a private inline helper in that class — no placement prompt is needed.
+
+9. After the screen completes, the user runs `/check` if desired. A `/check` failure on a
    specific row loops back to step 2 for that row. This skill does not invoke `/check`.
 
 ## Phase 5 — Per-module cleanup
@@ -251,6 +264,9 @@ All artifacts live in `./swarm-report/`. Mandatory artifacts are marked **(M)**.
 
 **Phase 3 — USER GATE**
 - `<slug>-property-map.md` appended with approval footer **(M)**
+
+**Phase 4 — Conversion (helper extraction)**
+- `<slug>-reused-helpers.md` — repeated multi-line pattern candidates with placement decisions (optional; created when ≥ 1 candidate group exists)
 
 **Phase 5 — Cleanup**
 - `<slug>-cleanup-status.md` — residual scan and disposal decisions per module **(M)**

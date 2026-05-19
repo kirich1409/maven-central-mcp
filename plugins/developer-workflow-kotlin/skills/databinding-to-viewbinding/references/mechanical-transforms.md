@@ -215,6 +215,30 @@ applies the batch for that screen.
 
 ---
 
+## Helper extraction for repeated patterns
+
+When the same multi-line code shape appears in ≥ 2 property-map rows across distinct host
+classes, it qualifies as a helper-extraction candidate. Structural similarity is the criterion —
+identical control flow with varying identifiers (different `binding.fieldName` values, different
+ViewModel property names) still counts. Single-host-class repetitions are resolved by a private
+inline helper in that host class; no global placement decision is needed.
+
+**Inline-first principle.** During conversion, the engineer writes every pattern inline in the
+host class — including subsequent occurrences of an already-seen shape. This keeps `/check`
+green at each screen boundary. Extraction happens after all in-scope screens are converted.
+
+**Extraction step (before Phase 5).** After conversion of all in-scope screens, the engineer
+reviews the written code, groups structurally similar multi-line blocks that appear across ≥ 2
+distinct host classes, and records each group in `./swarm-report/<slug>-reused-helpers.md`.
+The skill then presents a placement prompt for each candidate group per the template in
+`gradle-and-lint-gate.md "Placement options"`. After the user picks, the engineer extracts the
+inline blocks into the chosen location and rewrites all call sites to use the helper.
+
+**No premature abstraction.** Single-occurrence patterns stay inline. The skill does not invent
+helpers proactively.
+
+---
+
 ## Cross-references
 
 `property-map-spec.md` · `adapter-resolution.md` · `expression-resolution.md` ·
