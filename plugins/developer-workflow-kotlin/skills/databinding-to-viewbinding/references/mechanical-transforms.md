@@ -79,7 +79,7 @@ _binding = FragmentProfileBinding.inflate(inflater, container, false)
 return binding.root
 
 // ViewBinding — identical inflate call; no change needed here.
-// The lifecycle cleanup (§_binding null) is still required.
+// The lifecycle cleanup (§`_binding = null` rule) is still required.
 ```
 
 **RecyclerView ViewHolder.**

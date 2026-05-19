@@ -287,5 +287,6 @@ For each resolved binding, the skill writes one entry to `./swarm-report/<slug>-
 - `property-map-spec.md` — exact format of the output written to `<slug>-property-map.md`.
 - `mechanical-transforms.md` — how the replacement template fragment is woven into the host
   Kotlin file during the Conversion phase.
-- `escalation-patterns.md` — the full matrix of adapter origins versus cleanup options, two-way
-  binding escalation details, and `binary_only` library handling.
+- `escalation-patterns.md` — the full matrix of adapter origins versus cleanup options and two-way
+  binding escalation details. `binary_only` library handling is described inline above in
+  `§Failure modes` of this file.
