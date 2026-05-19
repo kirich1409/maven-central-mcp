@@ -48,7 +48,8 @@ Three intake shapes are accepted, per `references/scope-discovery.md` §2:
 - **Layout list.** The user names specific layout files or a directory. Only those layouts and
   their host classes are in scope.
 - **All in-tree.** No explicit scope. The skill discovers every module with `dataBinding = true`
-  in the project tree.
+  in the project tree. For repositories with many DataBinding modules, prefer module-by-module
+  scope over a single all-in-tree migration to keep the USER GATE summary tractable.
 
 Before discovery begins, the skill echoes the resolved scope back to the user (module paths,
 layout count estimate, and any excluded modules). This is informational — not the USER GATE.
@@ -146,6 +147,8 @@ Cross-reference: `references/property-map-spec.md` §USER-GATE-handoff.
 ## Phase 4 — Conversion (per screen)
 
 For each in-scope layout, in order. Steps 2–4 describe per-row bucket handling; steps 5–6 describe layout-wide and host-class transforms; they execute concurrently per screen, not sequentially.
+
+**Resuming after a pause.** The approved `<slug>-property-map.md` is the durable state — no phase re-runs are needed as long as it has not changed. Conversion is per-screen and idempotent: re-running the engineer brief on an already-converted screen is a no-op because the layout transforms (`<layout>` removal, `<data>` removal) will simply be absent and the engineer will reject them as already done. To resume, re-read the property map, identify the next layout whose host code still imports DataBinding APIs or whose XML still contains `<layout>`, and continue from that screen.
 
 1. The `developer-workflow-kotlin:kotlin-engineer` agent (sonnet) receives a brief naming the
    layout file, the relevant rows from `<slug>-property-map.md` and `<slug>-variables-map.md`,
