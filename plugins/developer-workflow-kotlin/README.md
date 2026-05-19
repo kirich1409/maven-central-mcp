@@ -20,6 +20,7 @@ Shared reference material in `agents/references/`:
 | `kmp-migration` | Android module → Kotlin Multiplatform — source set restructuring, iOS exposure |
 | `migrate-to-compose` | View-based UI → Jetpack Compose, one screen at a time, with visual baseline |
 | `snapshot` | Capture current behavior of code targets (logic / ui / api) as `behavior-spec.md` before any migration or refactor |
+| `databinding-to-viewbinding` | Migrate Android DataBinding to ViewBinding screen-by-screen within a user-provided scope. Manual invocation only. |
 
 ## Dependencies
 
