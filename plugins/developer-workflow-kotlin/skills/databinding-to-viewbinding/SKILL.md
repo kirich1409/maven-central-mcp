@@ -232,7 +232,7 @@ inside this skill.
 
 - `/check` — run the full quality gate over the converted scope before committing. The user
   invokes this directly.
-- `developer-workflow-kotlin:snapshot` — characterize visual behaviour before/after if
+- `developer-workflow-kotlin:snapshot` — characterize visual behavior before/after if
   additional UI regression gates are desired. The user runs it manually.
 - `developer-workflow:write-tests` — add regression coverage for `partial`-bucket rows where
   the caveat warrants an automated check. The user invokes it manually.

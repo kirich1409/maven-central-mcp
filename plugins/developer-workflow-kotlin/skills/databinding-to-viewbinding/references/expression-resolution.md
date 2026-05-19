@@ -31,7 +31,7 @@ comparison      = arithmetic (rel_op arithmetic)*           ; MECHANICAL
 arithmetic      = unary (arith_op unary)*     ; MECHANICAL — Integer null semantics below
 unary           = ("!" | "-") unary | atom
 atom            = string_template | resource_ref | static_ref
-                | safe_unbox | method_call | property_chain | literal | "(" expr ")"
+                | safe_unbox | method_call | property_chain | literal | lambda | "(" expr ")"
 
 property_chain  = identifier ("." identifier)*   ; MECHANICAL -> same chain in Kotlin
                   ; PARTIAL if any segment is nullable: may need smart-cast at host site
@@ -211,9 +211,11 @@ runtime behavior. Expression resolution therefore runs first during Discovery �
 `viewModel` and `item: Item` from `<variable>`, `onItemClick(Item)` resolved via
 `ast-index symbol`, return type `Unit`. Attribute `android:onClick` expects
 `View.OnClickListener` (SAM), single-arg lambda matches. Result: `expression_class = lambda`,
-`expression_type = View.OnClickListener`,
-`expression_fragment = setOnClickListener { v -> viewModel.onItemClick(item) }`.
-The `v` parameter is retained to match the SAM signature; host may simplify to `{ _ -> ... }`.
+`expression_type = (View) -> Unit`,
+`expression_fragment = { v -> viewModel.onItemClick(item) }`.
+Adapter-resolution wraps this with the implicit-setter `setOnClickListener(...)` to produce the
+final `replacement_fragment`. The `v` parameter is retained to match the SAM signature; host may
+simplify to `{ _ -> ... }`.
 
 **Example 4 — safeUnbox.**
 `app:badgeCount="@{safeUnbox(viewModel.unreadCount)}"`:

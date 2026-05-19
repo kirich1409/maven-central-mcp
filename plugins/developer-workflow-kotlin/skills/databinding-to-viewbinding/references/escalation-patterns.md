@@ -197,7 +197,7 @@ attribute bridgeable by `@BindingConversion`, with no specificity winner (per
 `adapter-resolution.md §Overload selection`).
 
 Decision: inspect the candidates listed in the property-map `notes` column, select the overload
-matching the intended runtime behaviour, and record the choice in `notes`. The skill then
+matching the intended runtime behavior, and record the choice in `notes`. The skill then
 proceeds as if that overload were the unique match.
 
 ---

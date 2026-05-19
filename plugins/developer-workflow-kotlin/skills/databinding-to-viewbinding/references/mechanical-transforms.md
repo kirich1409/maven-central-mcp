@@ -40,8 +40,10 @@ beyond what the binding removal requires.
 
 ## Include transforms {#include}
 
-`<include>` elements with no `bind:` variables: keep the element as-is; remove any `bind:`
-attributes that are present (they will be gone after the `<data>` block is deleted). ViewBinding
+`<include>` elements with no `bind:` variables: keep the element as-is. Removing the `<data>`
+block does not automatically remove `bind:*` attributes that DataBinding placed on `<include>`
+tags — the XML cleanup step must explicitly strip every `bind:<varName>="@{...}"` attribute from
+`<include>` elements when migrating the parent layout. ViewBinding
 generates a typed nested-binding field on the parent named after the `android:id` of the
 `<include>`. Access the included layout's views via `binding.includedLayoutId.someChildViewId`.
 

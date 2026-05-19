@@ -74,17 +74,20 @@ user changes a dependency version mid-migration, the index can be regenerated on
 
 **Failure modes.**
 
-If `ksrc` is unavailable or the Gradle cache is unpopulated, the skill surfaces: "Cannot build
-adapter catalog — verify ksrc is installed and `databinding-adapters:<version>` is present in
-the Gradle cache." It does not attempt to guess adapter behavior from heuristics. The user is
-offered two options: wait until the cache is populated and retry, or stop the migration scope.
+Default behavior on infrastructure failure (`ksrc` unavailable, Gradle cache cold, network
+error) — **pause Discovery** and surface the failure to the user with a clear error message
+("Cannot build adapter catalog — verify ksrc is installed and
+`databinding-adapters:<version>` is present in the Gradle cache"). Do NOT silently mark adapters
+as `unresolved`, because that would conflate a true semantic gap ("this binding cannot be
+resolved against the source code") with a tooling outage. The user is offered two options: wait
+until the cache is populated and retry, or stop the migration scope.
 
-Alternative — **reduced mode**: if the user accepts partial coverage, mark all unresolvable
-binary adapter rows with `adapter_origin = unresolved`, `bucket = escalate`, and continue
-Discovery. The USER GATE will surface these rows so the user decides per-row whether to escalate
-via library upgrade, manual conversion, or keep DataBinding for that screen. Stop is reserved
-for: (a) project-local/monorepo adapter resolution failures (which `ksrc` does not cover anyway
-— those rely on `ast-index`), or (b) the user explicitly chooses to abort.
+Reduced mode — **opt-in only.** If the user explicitly accepts partial coverage when prompted,
+mark unresolvable binary adapter rows with `adapter_origin = unresolved`, `bucket = escalate`,
+and continue Discovery. The USER GATE will surface these rows so the user decides per-row
+whether to escalate via library upgrade, manual conversion, or keep DataBinding for that screen.
+Stop is reserved for: (a) project-local/monorepo adapter resolution failures (which `ksrc` does
+not cover anyway — those rely on `ast-index`), or (b) the user explicitly chooses to abort.
 
 If the source jar is absent for a specific artifact version (rare for older builds not yet fully
 indexed on Google Maven), the skill offers to temporarily lift the version to the nearest one

@@ -9,14 +9,14 @@ from `adapter-resolution.md`. When signals from different sources conflict, the 
 ## Bucket definitions
 
 **mechanical** — deterministic conversion: the skill writes the replacement with no human
-judgment required. The output is a bit-for-bit behavioural equivalent of the original binding
+judgment required. The output is a bit-for-bit behavioral equivalent of the original binding
 expression. The result is verified by `/check` (build + lint). No review caveat is added to
 the property map `notes` column. Examples: replacing `executePendingBindings()` with nothing,
 replacing `DataBindingUtil.setContentView(…)` with the typed `XxxBinding.inflate(…)` call,
 removing `lifecycleOwner = …` from the binding object.
 
 **partial** — the skill writes a default replacement but flags it for human (or follow-up agent)
-confirmation. DataBinding's runtime behaviour may differ subtly from the literal Kotlin
+confirmation. DataBinding's runtime behavior may differ subtly from the literal Kotlin
 equivalent. The `notes` column carries the specific caveat text so the reviewer knows exactly
 what to verify. A `partial` row does NOT block the screen from advancing to Phase 5 — it ships
 with an inline caveat comment in host code alongside the default replacement. Review of `partial`
