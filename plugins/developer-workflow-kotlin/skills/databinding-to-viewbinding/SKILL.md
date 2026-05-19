@@ -85,8 +85,8 @@ and multi-host layouts. Cross-reference: `references/scope-discovery.md` §Host 
 **Custom `@BindingAdapter` discovery.** Use `ast-index` to find all `@BindingAdapter`,
 `@InverseBindingAdapter`, `@BindingConversion`, and `@BindingMethods` annotations declared
 in the project source tree and across monorepo modules. Record FQN, attribute name, parameter
-types, and source file. Output: `./swarm-report/<slug>-custom-adapters.md` (draft; upgraded to
-`<slug>-adapter-sources.md` after the gate). For adapters in binary dependencies — including
+types, and source file. Output: `./swarm-report/<slug>-custom-adapters.md` (draft; the adapter-resolution
+sub-phase enriches and finalises it as `<slug>-adapter-sources.md`, all before the USER GATE). For adapters in binary dependencies — including
 `androidx.databinding:databinding-adapters` — use `ksrc` against the version pinned in the
 project to pull the actual source signatures at runtime. Cross-references:
 `references/scope-discovery.md` §Custom `@BindingAdapter` discovery, `references/adapter-resolution.md` §Runtime adapter discovery via ksrc.
@@ -114,8 +114,8 @@ only for `<include>` layout references (string patterns, not symbols).
 - `<slug>-property-map.md` — seeded and fully resolved property map (mandatory)
 - `<slug>-variables-map.md` — `<variable>` declarations with `replacement_strategy` empty (mandatory)
 - `<slug>-adapter-sources.md` — created when Discovery finds at least one custom `@BindingAdapter`
-  (any origin: project-local, monorepo, or binary). Replaces the seed file `custom-adapters.md`
-  after the gate.
+  (any origin: project-local, monorepo, or binary). The adapter-resolution sub-phase enriches and
+  finalises it from the seed file `custom-adapters.md`, all before the USER GATE.
 
 Cross-references: `references/property-map-spec.md` (full column schemas),
 `references/scope-discovery.md` §Binding enumeration and property-map seeding, §Tool routing.

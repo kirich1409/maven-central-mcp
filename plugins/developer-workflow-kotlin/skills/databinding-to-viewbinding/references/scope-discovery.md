@@ -176,8 +176,9 @@ at this phase — discovery is read-only and produces no code changes.
   flag form, layout count).
 - `./swarm-report/<slug>-discover-layouts.md` — layout inventory (per-layout: has data block,
   binding count, variable count, include refs).
-- `./swarm-report/<slug>-custom-adapters.md` — custom adapter inventory (draft; upgraded to
-  `<slug>-adapter-sources.md` post-gate).
+- `./swarm-report/<slug>-custom-adapters.md` — custom adapter inventory (draft; the
+  adapter-resolution sub-phase enriches and finalises it as `<slug>-adapter-sources.md`,
+  all before the USER GATE).
 - `./swarm-report/<slug>-property-map.md` — seeded by scope-discovery (with `expression_type`,
   `expression_fragment`, `adapter_origin`, `adapter_symbol`, `replacement_fragment`, and `bucket`
   columns empty at seed time); fully resolved by expression-resolution and adapter-resolution
