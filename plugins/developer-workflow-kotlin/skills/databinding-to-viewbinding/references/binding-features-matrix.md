@@ -71,8 +71,8 @@ expression, apply each and take the worst bucket (see Consensus Rule). The `Cros
 points to the reference that supplies the concrete conversion recipe or escalation detail.
 
 At Conversion time the skill re-reads the approved property map, groups rows by bucket, and
-processes `mechanical` rows first. `partial` rows are processed next and the caveat from `notes`
-is surfaced to the user before writing. `escalate` rows are skipped — they wait for the user's
+processes `mechanical` rows first. `partial` rows are processed and the caveat from `notes` is surfaced to the user as an inline
+comment alongside the default replacement — the row does not block the screen. `escalate` rows are skipped — they wait for the user's
 recipe selection via `escalation-patterns.md`.
 
 ## Consensus rule

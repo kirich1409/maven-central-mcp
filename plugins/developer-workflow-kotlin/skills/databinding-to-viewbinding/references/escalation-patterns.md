@@ -16,7 +16,7 @@ options`; this recipe maps origin to the recommended option.
 | Origin | Recommended option |
 |---|---|
 | `project-local`, sole user is this module | `convert-to-extension` |
-| `project-local`, used by multiple modules | `static-call` + move to shared module (see `gradle-and-lint-gate.md §Placement options`) |
+| `project-local`, used by multiple modules | `static-call` (keep the function in its current file; relocation to a shared module is a separate decision modeled as `duplicate-from-sources` and uses the placement prompt in `gradle-and-lint-gate.md §Placement options`) |
 | `monorepo`, 1–2 using modules | `duplicate-from-sources` — user approval + licence required |
 | `monorepo`, many using modules | `keep-as-regular-dep` — call the function directly |
 | `binary` library | `keep-as-regular-dep`; `duplicate-from-sources` only if explicitly dropping the dep |

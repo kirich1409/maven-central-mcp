@@ -125,7 +125,8 @@ licence blocks duplication, or the adapter requires DataBinding runtime infrastr
 ## Placement options for `convert-to-extension` and `duplicate-from-sources`
 
 The two disposal options (`convert-to-extension` and `duplicate-from-sources`) for `@BindingAdapter`
-sources route through this prompt. For each adapter, the skill stops and presents placement choices
+sources route through this prompt. `static-call` does not invoke this prompt — the function stays
+in its current file; relocation is a separate `duplicate-from-sources` step. For each adapter, the skill stops and presents placement choices
 to the user before any file is written or rewritten. There is no silent default.
 
 **Candidate-discovery procedure.** The skill builds the candidate list by:
