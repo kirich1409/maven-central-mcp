@@ -84,6 +84,20 @@ that ships sources, or to treat all unresolved adapters in the scope as `binary_
 bytecode but cannot inspect the implementation — the conservative path is to escalate rather
 than synthesize a replacement blind.
 
+**Infrastructure failure vs. semantic failure.** The two failure categories must not be
+conflated. A *semantic failure* means the adapter genuinely cannot be matched against project
+sources, the monorepo, or the binary classpath — the result is `adapter_origin = unresolved`
+and the row escalates per `escalation-patterns.md §Unresolved adapter or expression`.
+An *infrastructure failure* means `ksrc` cannot reach the Gradle cache or the dependency has
+not been downloaded yet — the adapter may be perfectly resolvable once the tooling is available.
+Infrastructure failure modes: network unavailable, Gradle cache missing the dependency, source
+jar absent, `ksrc` binary not installed. For infrastructure failures, do NOT mark affected
+rows as `unresolved`; instead, surface the dependency coordinates (`groupId:artifactId:version`)
+to the user, pause discovery for that origin, and ask the user to remediate (run a Gradle sync,
+install missing source jars, etc.). After remediation, re-run adapter discovery for the affected
+origin only. Infrastructure failures are not routed to `escalation-patterns.md
+§Unresolved adapter or expression`.
+
 ---
 
 ## Matching algorithm

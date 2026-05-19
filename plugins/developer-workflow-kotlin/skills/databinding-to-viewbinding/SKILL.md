@@ -150,7 +150,11 @@ For each in-scope layout, in order. Steps 2–4 describe per-row bucket handling
 1. The `developer-workflow-kotlin:kotlin-engineer` agent (sonnet) receives a brief naming the
    layout file, the relevant rows from `<slug>-property-map.md` and `<slug>-variables-map.md`,
    and must-read references: `references/mechanical-transforms.md` and
-   `references/escalation-patterns.md`.
+   `references/escalation-patterns.md`. The brief instructs the engineer per bucket:
+   `mechanical` rows — write the replacement immediately; `partial` rows — write the default
+   replacement AND attach a one-line `// review: <caveat>` comment beside the host-code change;
+   `escalate` rows — do NOT write code, emit one question block per row in the per-screen status
+   output referencing the recipe from `references/escalation-patterns.md`.
 
 2. **`mechanical` rows.** The engineer applies every transform defined in
    `references/mechanical-transforms.md`: remove the `<layout>` wrapper and `<data>` block
@@ -222,7 +226,10 @@ inside this skill.
   The user invokes it directly.
 - `developer-workflow-kotlin:migrate-to-compose` — natural follow-up when the user wants to
   move further. This skill leaves screens in pure-ViewBinding state, which is a valid
-  Compose-migration starting point.
+  Compose-migration starting point. Note: screens that replaced `Observable*` with `LiveData`
+  (per `references/escalation-patterns.md §Observable decommission`) may require a follow-up
+  `LiveData → StateFlow` migration before or during Compose conversion; this is normal
+  Compose-migration scope, not regression.
 
 ## Artifacts checklist
 

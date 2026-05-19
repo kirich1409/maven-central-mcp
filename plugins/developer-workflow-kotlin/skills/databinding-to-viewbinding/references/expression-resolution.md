@@ -93,7 +93,11 @@ For each raw `@{...}` content string the algorithm produces:
 
 3. **Project-local symbols via ast-index** — for identifiers not covered above, run
    `ast-index symbol "<name>"` or `ast-index class "<name>"`. Covers top-level functions,
-   companion object members, and enum constants referenced without an import alias.
+   companion object members, and enum constants referenced without an import alias. If
+   ast-index reports "Index not found", this is an infrastructure failure (index not
+   initialized), not a semantic failure — do not escalate the row; instead prompt the user
+   to initialize ast-index, then retry. Only escalate when ast-index is initialized and
+   returns no result for an actual symbol.
 
 4. **Binary library symbols via ksrc** — when an `<import>` names a class from a binary
    dependency (e.g., `<import type="androidx.core.view.ViewCompat"/>`), resolve the class

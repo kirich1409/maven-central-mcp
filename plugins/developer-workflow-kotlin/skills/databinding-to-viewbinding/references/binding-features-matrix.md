@@ -18,10 +18,12 @@ removing `lifecycleOwner = …` from the binding object.
 **partial** — the skill writes a default replacement but flags it for human (or follow-up agent)
 confirmation. DataBinding's runtime behaviour may differ subtly from the literal Kotlin
 equivalent. The `notes` column carries the specific caveat text so the reviewer knows exactly
-what to verify. The property map row is committed but the screen is not marked clean until the
-user acknowledges the caveat. Examples: a `LiveData` variable whose lifecycle attachment point
-moves from the binding object to an explicit `observe` call; a `bind:` variable on an `<include>`
-that must now be wired by the host explicitly.
+what to verify. A `partial` row does NOT block the screen from advancing to Phase 5 — it ships
+with an inline caveat comment in host code alongside the default replacement. Review of `partial`
+rows is the user's responsibility during ordinary code review; it is not a skill-managed gate.
+Examples: a `LiveData` variable whose lifecycle attachment point moves from the binding object to
+an explicit `observe` call; a `bind:` variable on an `<include>` that must now be wired by the
+host explicitly.
 
 **escalate** — the skill stops on this binding and records the case in the property map without
 emitting a replacement fragment. No host-code write happens for this row. The user or
