@@ -97,7 +97,7 @@ The table below maps adapter origin (from `adapter-resolution.md`) to applicable
 | Origin | Applicable options |
 |---|---|
 | project-local (in scope) | `convert-to-extension`, `static-call`, `duplicate-from-sources`, `escalate` |
-| project-local (out of scope) | leave file as-is (function stays callable without annotation), `static-call`, `escalate` |
+| project-local or monorepo adapter still consumed by non-migrated DataBinding layouts | `keep-as-regular-dep` — the `@BindingAdapter` annotation MUST stay; removing it breaks the binding for layouts outside the current migration scope. Plain-Kotlin callsites in already-migrated screens use the same function directly. Cleanup pass converts implicit invocations only after all DataBinding layouts in the entire codebase have been migrated. Alternative: convert call sites in migrated screens to extension functions and keep both call paths (extension + annotated function) coexisting — see `§Extension placement`. |
 | monorepo (other Gradle module) | `keep-as-regular-dep`, `duplicate-from-sources`, `escalate` |
 | binary library | `keep-as-regular-dep`, `duplicate-from-sources`, `escalate` |
 | implicit-setter | n/a — no adapter to dispose of |

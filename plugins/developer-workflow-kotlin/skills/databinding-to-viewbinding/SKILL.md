@@ -71,9 +71,13 @@ expression + adapter resolution, all before the USER GATE. Five subactivities:
 version and whether `viewBinding = true` is already present. Output:
 `./swarm-report/<slug>-discover-modules.md`. Cross-reference: `references/scope-discovery.md` §Module discovery.
 
-**Layout discovery.** For each in-scope module, find all XML layouts with a `<layout>` root
-and a non-empty `<data>` block. Record presence of `@{`, `@=`, `bind:`, `<variable>`, and
-`<include>` elements. Output: `./swarm-report/<slug>-discover-layouts.md`.
+**Layout discovery.** For each in-scope module, find all XML layouts that opt into
+DataBinding — i.e. have `<layout>` as the root AND at least one of: a `<data>` block
+(variables/imports), any `@{...}`/`@={...}` expression on an attribute, or any `bind:<...>`
+namespace attribute. The non-empty-`<data>` requirement is incorrect — DataBinding layouts
+often inline `@{}` expressions without a separate `<data>` block. Record presence of `@{`,
+`@=`, `bind:`, `<variable>`, and `<include>` elements. Output:
+`./swarm-report/<slug>-discover-layouts.md`.
 Cross-reference: `references/scope-discovery.md` §Layout discovery.
 
 **Host code discovery.** For each in-scope layout, find every class that inflates it —
@@ -82,14 +86,17 @@ Activities, Fragments, custom Views, ViewHolders, and Adapters. Use `ast-index u
 and `DataBindingUtil.inflate` search for hosts using the utility class. Flag zero-host layouts
 and multi-host layouts. Cross-reference: `references/scope-discovery.md` §Host code discovery.
 
-**Custom `@BindingAdapter` discovery.** Use `ast-index` to find all `@BindingAdapter`,
-`@InverseBindingAdapter`, `@BindingConversion`, and `@BindingMethods` annotations declared
-in the project source tree and across monorepo modules. Record FQN, attribute name, parameter
-types, and source file. Output: `./swarm-report/<slug>-custom-adapters.md` (draft; the adapter-resolution
-sub-phase enriches and finalizes it as `<slug>-adapter-sources.md`, all before the USER GATE). For adapters in binary dependencies — including
-`androidx.databinding:databinding-adapters` — use `ksrc` against the version pinned in the
-project to pull the actual source signatures at runtime. Cross-references:
-`references/scope-discovery.md` §Custom `@BindingAdapter` discovery, `references/adapter-resolution.md` §Runtime adapter discovery via ksrc.
+**Custom `@BindingAdapter` discovery.** Project-local and monorepo adapter symbols
+enumerated via `ast-index`: find all `@BindingAdapter`, `@InverseBindingAdapter`,
+`@BindingConversion`, and `@BindingMethods` annotations declared in the project source tree
+and across monorepo modules. Record FQN, attribute name, parameter types, and source file.
+Output: `./swarm-report/<slug>-custom-adapters.md` (draft; the adapter-resolution sub-phase
+enriches and finalizes it as `<slug>-adapter-sources.md`, all before the USER GATE). Binary
+adapters (`androidx.databinding:databinding-adapters` and any third-party DataBinding-adapter
+libraries) are NOT discovered here — they are resolved later in the adapter-resolution
+sub-phase via `ksrc`. Cross-references:
+`references/scope-discovery.md` §Custom `@BindingAdapter` discovery,
+`references/adapter-resolution.md` §Runtime adapter discovery via ksrc.
 
 **Per-binding resolution pass.** For each binding expression row seeded into the property map,
 run expression resolution followed by adapter resolution:
