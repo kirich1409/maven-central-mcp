@@ -146,7 +146,7 @@ This gate is presented once. No re-prompting. Returning to Phase 2 after approva
 passing through this gate again. The immutable approved property map is the source of truth
 for Phases 4 and 5.
 
-Cross-reference: `references/property-map-spec.md` §USER-GATE-handoff.
+Cross-reference: `references/property-map-spec.md` §USER GATE handoff.
 
 ## Phase 4 — Conversion (per screen)
 
@@ -183,7 +183,7 @@ For each in-scope layout, in order. Steps 2–4 describe per-row bucket handling
    `partial`, not escalate — `escalation-patterns.md §LiveData wiring` carries the replacement
    scaffold and is not blocked.)
 
-5. **XML transforms.** Per `references/mechanical-transforms.md` §XML. Applied in a single
+5. **XML transforms.** Per `references/mechanical-transforms.md` §XML layout transforms. Applied in a single
    ordered pass: remove `<layout>`, delete `<data>`, replace or remove `@{…}` attribute values,
    handle `<include>` elements, clean up `bind:` namespace prefixes.
 

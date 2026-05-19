@@ -17,21 +17,30 @@ Bucket labels per production: **MECHANICAL** (deterministic conversion), **PARTI
 (converted with an explicit caveat the user must approve), **ESCALATE** (skill stops the
 screen, human or agent decides per `escalation-patterns.md`).
 
+**Parsing note.** All productions below describe the **inner expression** parsed _after_
+the `@{...}` or `@={...}` wrappers have been stripped. The wrappers themselves are covered
+by the top-level `one_way` / `two_way` rules; nothing below them re-introduces `@{` or `}`.
+`backtick_template`'s `${...}` interpolation slots therefore expect the same inner-expression
+form — a value expression — not a wrapped outer `@{...}` form.
+
 ```
 expression      = one_way | two_way
-one_way         = "@{" (expr | expr "," "default=" default_value) "}"
-two_way         = "@={" expr "}"              ; ESCALATE — always, no exceptions
+one_way         = "@{" inner_expression "}"
+                | "@{" inner_expression "," "default=" default_value "}"
+two_way         = "@={" inner_expression "}"  ; ESCALATE — always, no exceptions
 
-expr            = null_coalescing
+inner_expression = null_coalescing
+
 null_coalescing = ternary ["??" ternary]      ; MECHANICAL -> Kotlin ?:
-ternary         = logic ["?" expr ":" expr]   ; MECHANICAL (depth <= 2) -> if/else
+ternary         = logic ["?" inner_expression ":" inner_expression]
+                                              ; MECHANICAL (depth <= 2) -> if/else
                                               ; ESCALATE at depth > 2 — see §Escalation
 logic           = comparison (("&&" | "||") comparison)*   ; MECHANICAL
 comparison      = arithmetic (rel_op arithmetic)*           ; MECHANICAL
 arithmetic      = unary (arith_op unary)*     ; MECHANICAL — Integer null semantics below
 unary           = ("!" | "-") unary | atom
 atom            = string_template | resource_ref | static_ref
-                | safe_unbox | method_call | property_chain | literal | lambda | "(" expr ")"
+                | safe_unbox | method_call | property_chain | literal | lambda | "(" inner_expression ")"
 
 property_chain  = identifier ("." identifier)*   ; MECHANICAL -> same chain in Kotlin
                   ; PARTIAL if any segment is nullable: may need smart-cast at host site
@@ -40,30 +49,33 @@ method_call     = property_chain "(" [arg_list] ")"
                   ; MECHANICAL if overload resolves unambiguously
                   ; ESCALATE on overload ambiguity or unresolvable receiver
 
-lambda          = "(" [param_list] ")" "->" expr
+lambda          = "(" [param_list] ")" "->" inner_expression
                   ; MECHANICAL for 0-arg and 1-arg lambdas matching the SAM interface
                   ; PARTIAL for multi-arg lambdas — verify SAM type at call site
 
 string_template = backtick_template | string_concat_expr
                   ; MECHANICAL -> Kotlin string template "Hello, ${name}"
 
-backtick_template ::= '`' { STRING_CHAR | '${' expression '}' } '`'
+backtick_template ::= '`' { STRING_CHAR | '${' inner_expression '}' } '`'
                   ; DataBinding string literal using back-tick delimiters; resolves to String
+                  ; '${...}' slots interpolate inner-expression values, not @{...} wrappers
 
-string_concat_expr = expr "+" expr            ; both operands have type String (or one is
-                  ; a String and the other is coerced) — MECHANICAL -> Kotlin "${a}${b}"
-                  ; or "a" + b.toString(); DataBinding "+" is overloaded for numeric add
-                  ; and string concatenation; keep the operand types to distinguish
+string_concat_expr = inner_expression "+" inner_expression
+                  ; both operands have type String (or one is a String and the other is
+                  ; coerced) — MECHANICAL -> Kotlin "${a}${b}" or "a" + b.toString()
+                  ; DataBinding "+" is overloaded for numeric add and string concatenation;
+                  ; keep the operand types to distinguish
 
-resource_ref    = "@{" "@" res_type "/" res_name "}"   ; MECHANICAL (table below)
-static_ref      = identifier "." identifier             ; resolved via <import>
+resource_ref    = "@" res_type "/" res_name    ; MECHANICAL (table below)
+                  ; Note: no surrounding @{...} — those are stripped by one_way / two_way
+static_ref      = identifier "." identifier   ; resolved via <import>
                   ; MECHANICAL if <import> resolves via ast-index; ESCALATE otherwise
 
-safe_unbox      = "safeUnbox(" expr ")"
+safe_unbox      = "safeUnbox(" inner_expression ")"
                   ; MECHANICAL -> expr ?: zero_for_primitive
                   ; Int -> 0, Long -> 0L, Boolean -> false, Float -> 0f, Double -> 0.0
 
-default_value   = expr                        ; the fallback expression after "default="
+default_value   = inner_expression            ; the fallback expression after "default="
                   ; MECHANICAL -> expr ?: <resolved default>
 ```
 

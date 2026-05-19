@@ -182,7 +182,7 @@ cleanup pass:
 | Column | Content |
 |---|---|
 | `module` | Gradle module path (`:app`, `:feature:login`, …) |
-| `residuals_count` | Number of residual artefacts found in the last scan |
+| `residuals_count` | Number of residual artifacts found in the last scan |
 | `databinding_flag` | `removed` or `kept-due-to-residuals` |
 | `kapt_status` | `removed`, `kept-due-to-<processor>`, or `n/a` |
 | `disposal_decisions` | Count per option applied (e.g. `convert-to-extension: 2, keep-as-regular-dep: 1`) |

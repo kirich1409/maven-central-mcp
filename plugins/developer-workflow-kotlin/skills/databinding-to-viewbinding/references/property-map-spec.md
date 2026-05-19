@@ -15,7 +15,7 @@ identifier used throughout the session (e.g. `databinding-to-viewbinding`).
 |---|---|---|
 | `<slug>-property-map.md` | Always | One row per `@{…}` / `@={…}` binding occurrence across every layout in scope. Primary artifact. |
 | `<slug>-variables-map.md` | Always | One row per layout × `<variable>` declaration — drives host-Kotlin wiring replacements. |
-| `<slug>-adapter-sources.md` | When scope-discovery finds at least one custom `@BindingAdapter` (any origin: `project-local`, `monorepo:<gradle-path>`, or `binary:<group>:<artifact>:<version>`) | One row per resolved `@BindingAdapter` symbol; cross-referenced by the property map. Implicit-setter and unresolved entries are not duplicated here — they live in the property map only. |
+| `<slug>-adapter-sources.md` | When Discovery finds at least one custom `@BindingAdapter` (any origin: `project-local`, `monorepo:<gradle-path>`, or `binary:<group>:<artifact>:<version>`) | One row per resolved `@BindingAdapter` symbol; cross-referenced by the property map. Implicit-setter and unresolved entries are not duplicated here — they live in the property map only. |
 
 ---
 
@@ -70,7 +70,7 @@ over `mechanical`; otherwise `mechanical`. When a single XML attribute resolves 
 
 ## `<slug>-adapter-sources.md` — row schema
 
-Created when scope-discovery finds at least one custom `@BindingAdapter` (any origin: `project-local`, `monorepo:<gradle-path>`, or `binary:<group>:<artifact>:<version>`). The file holds one row per resolved `@BindingAdapter` symbol; implicit-setter and unresolved entries are not duplicated here — they live in the property map only. Cross-referenced by `adapter_origin` in the property map.
+Created when Discovery finds at least one custom `@BindingAdapter` (any origin: `project-local`, `monorepo:<gradle-path>`, or `binary:<group>:<artifact>:<version>`). The file holds one row per resolved `@BindingAdapter` symbol; implicit-setter and unresolved entries are not duplicated here — they live in the property map only. Cross-referenced by `adapter_origin` in the property map.
 
 | Column | Type | Description |
 |---|---|---|
