@@ -98,6 +98,18 @@ viewModel.userLiveData.observe(viewLifecycleOwner) { binding.name.text = it.name
 For screens with many reactive bindings, group multiple `collect` calls in one
 `repeatOnLifecycle` block.
 
+**Kotlin/Java generics interop — extension functions on Java-defined generic types.**
+`LiveData<T>` is defined in Java and carries no nullability annotation on its type parameter.
+As a result, an extension declared as `fun <T> LiveData<T>.x(...)` matches both `LiveData<UserUi>`
+and `LiveData<UserUi?>` at the call site — the Kotlin type checker treats both as
+bridge-compatible with the unannotated Java form. The same applies to other Java-defined generic
+types that appear in DataBinding migrations: `MutableLiveData<T>`, `Observer<T>`, RxJava
+`Observable<T>` / `Single<T>` / `Flowable<T>`, Guava `ListenableFuture<T>`, AndroidX `Callback<T>`.
+Kotlin-defined containers (`StateFlow<T>`, `Flow<T>`, `Channel<T>`) do not carry this property —
+an extension on `StateFlow<T>` will not match `StateFlow<T?>`. Practical implication: when writing
+a LiveData extension helper, declare it on `LiveData<T>` (not `LiveData<T?>`) and it will apply
+to both nullable and non-nullable type-argument use-sites, keeping the signature simpler.
+
 ---
 
 ## Observable decommission

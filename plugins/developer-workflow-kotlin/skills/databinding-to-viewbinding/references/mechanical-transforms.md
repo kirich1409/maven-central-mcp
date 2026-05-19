@@ -155,6 +155,8 @@ By `adapter_origin`:
 
 ## Per-overload templates
 
+When generating an extension on a Java-defined generic type (LiveData, Observer, RxJava `Observable`/`Single`, etc.), see `escalation-patterns.md §LiveData wiring` — final note for the Kotlin/Java generics interop rule on nullable type arguments.
+
 Common patterns from `adapter-resolution.md` overload selection:
 
 ```kotlin
