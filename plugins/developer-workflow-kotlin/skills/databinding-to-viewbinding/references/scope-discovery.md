@@ -157,7 +157,7 @@ Use `Glob` + direct `Read` for small file counts (a few dozen layouts or build f
 to `Explore` (haiku) for any cross-module scan, monorepo-wide adapter search, or when more
 than ~50 files need to be read in a single pass. Use `ast-index` for symbol-level lookups
 (class/method/field discovery, reference walks — host class usages, legacy inflation calls, and
-`@BindingAdapter` search). When `ast-index` is not initialised for the project, fall back to
+`@BindingAdapter` search). When `ast-index` is not initialized for the project, fall back to
 `Grep` with explicit notes that precision is reduced — e.g., a bare `@BindingAdapter` regex may
 catch occurrences inside comments or string literals. The Discovery output should flag rows where
 the adapter resolution was Grep-based with `notes = "grep-resolved"` so the USER GATE can warn

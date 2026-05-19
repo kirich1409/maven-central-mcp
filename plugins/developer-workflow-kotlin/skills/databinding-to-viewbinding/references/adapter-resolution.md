@@ -134,6 +134,11 @@ The search proceeds in priority order. The first match terminates the search.
    search the rest of the build for `@BindingAdapter` whose attribute string matches. The Explore
    agent uses `ast-index` across all modules.
 
+**ast-index unavailable fallback.** When `ast-index` is not initialized, fall back to `Grep`
+for project-local and monorepo `@BindingAdapter` symbol lookup. Tag those rows with
+`notes = "grep-resolved"` so the USER GATE flags reduced precision — see `scope-discovery.md`
+§Tool routing for the canonical fallback policy.
+
 3. **Binary library.** If no monorepo match, consult the runtime-discovered index from
    `./swarm-report/<slug>-adapter-sources.md`. This covers `databinding-adapters` and any other
    adapter-bearing artifact indexed during Discovery startup.

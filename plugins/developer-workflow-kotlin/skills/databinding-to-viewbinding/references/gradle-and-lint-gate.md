@@ -109,7 +109,7 @@ previously pulled transitively by AGP and will disappear after `dataBinding = fa
 
 **`duplicate-from-sources`** — copy the used adapter functions into a project-local file under
 a new package; the original library dependency may then be dropped. Only after explicit user
-approval with licence confirmation; undetermined licence falls through to `escalate`.
+approval with license confirmation; undetermined license falls through to `escalate`.
 
 **`convert-to-extension`** — project-local sources only. Rewrite the `@BindingAdapter` method
 as a Kotlin extension function on the target `View` subtype; drop the annotation, keep the body.
@@ -118,7 +118,7 @@ as a Kotlin extension function on the target `View` subtype; drop the annotation
 `object` member; drop the annotation. Callers invoke it directly rather than as an extension.
 
 **`escalate`** — see `escalation-patterns.md`. Always used when the source is unresolved, the
-licence blocks duplication, or the adapter requires DataBinding runtime infrastructure.
+license blocks duplication, or the adapter requires DataBinding runtime infrastructure.
 
 ---
 

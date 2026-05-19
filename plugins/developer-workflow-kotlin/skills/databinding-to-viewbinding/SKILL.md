@@ -41,7 +41,7 @@ a phase, stop — that is the orchestrator anti-pattern.
 
 ## Phase 1 — Scope intake
 
-Three intake shapes are accepted, per `references/scope-discovery.md` §2:
+Three intake shapes are accepted, per `references/scope-discovery.md` §Scope intake:
 
 - **Module list.** The user names one or more Gradle module paths (`:app`, `:feature:login`).
   All `dataBinding = true` modules within that list are in scope.
@@ -69,18 +69,18 @@ expression + adapter resolution, all before the USER GATE. Five subactivities:
 **Module discovery.** Enumerate every Gradle module in scope; verify `dataBinding = true`
 (or legacy `dataBinding { enabled = true }`) in its `buildFeatures` block; note the AGP
 version and whether `viewBinding = true` is already present. Output:
-`./swarm-report/<slug>-discover-modules.md`. Cross-reference: `references/scope-discovery.md` §3.
+`./swarm-report/<slug>-discover-modules.md`. Cross-reference: `references/scope-discovery.md` §Module discovery.
 
 **Layout discovery.** For each in-scope module, find all XML layouts with a `<layout>` root
 and a non-empty `<data>` block. Record presence of `@{`, `@=`, `bind:`, `<variable>`, and
 `<include>` elements. Output: `./swarm-report/<slug>-discover-layouts.md`.
-Cross-reference: `references/scope-discovery.md` §4.
+Cross-reference: `references/scope-discovery.md` §Layout discovery.
 
 **Host code discovery.** For each in-scope layout, find every class that inflates it —
 Activities, Fragments, custom Views, ViewHolders, and Adapters. Use `ast-index usages
 <GeneratedBindingName>` as the primary lookup; supplement with `DataBindingUtil.setContentView`
 and `DataBindingUtil.inflate` search for hosts using the utility class. Flag zero-host layouts
-and multi-host layouts. Cross-reference: `references/scope-discovery.md` §5.
+and multi-host layouts. Cross-reference: `references/scope-discovery.md` §Host code discovery.
 
 **Custom `@BindingAdapter` discovery.** Use `ast-index` to find all `@BindingAdapter`,
 `@InverseBindingAdapter`, `@BindingConversion`, and `@BindingMethods` annotations declared
@@ -89,7 +89,7 @@ types, and source file. Output: `./swarm-report/<slug>-custom-adapters.md` (draf
 `<slug>-adapter-sources.md` after the gate). For adapters in binary dependencies — including
 `androidx.databinding:databinding-adapters` — use `ksrc` against the version pinned in the
 project to pull the actual source signatures at runtime. Cross-references:
-`references/scope-discovery.md` §6, `references/adapter-resolution.md` §3.
+`references/scope-discovery.md` §Custom `@BindingAdapter` discovery, `references/adapter-resolution.md` §Runtime adapter discovery via ksrc.
 
 **Per-binding resolution pass.** For each binding expression row seeded into the property map,
 run expression resolution followed by adapter resolution:
@@ -118,7 +118,7 @@ only for `<include>` layout references (string patterns, not symbols).
   after the gate.
 
 Cross-references: `references/property-map-spec.md` (full column schemas),
-`references/scope-discovery.md` §8–§9.
+`references/scope-discovery.md` §Binding enumeration and property-map seeding, §Tool routing.
 
 ## Phase 3 — USER GATE
 
@@ -187,7 +187,7 @@ For each in-scope layout, in order. Steps 2–4 describe per-row bucket handling
    ordered pass: remove `<layout>`, delete `<data>`, replace or remove `@{…}` attribute values,
    handle `<include>` elements, clean up `bind:` namespace prefixes.
 
-6. **Host-class transforms.** Per `references/mechanical-transforms.md` §3–§5. Activity,
+6. **Host-class transforms.** Per `references/mechanical-transforms.md` §Host-class inflate transforms, §`_binding = null` rule, §DataBinding-only call removal. Activity,
    Fragment, and ViewHolder inflate patterns; `_binding = null` rule; DataBinding-only call
    removal; per-binding replacement assembly using the approved `replacement_fragment`.
 

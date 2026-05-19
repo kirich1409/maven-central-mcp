@@ -15,7 +15,7 @@ identifier used throughout the session (e.g. `databinding-to-viewbinding`).
 |---|---|---|
 | `<slug>-property-map.md` | Always | One row per `@{…}` / `@={…}` binding occurrence across every layout in scope. Primary artifact. |
 | `<slug>-variables-map.md` | Always | One row per layout × `<variable>` declaration — drives host-Kotlin wiring replacements. |
-| `<slug>-adapter-sources.md` | When adapter resolution produces at least one row | One row per resolved `@BindingAdapter` symbol; cross-referenced by the property map. Not exclusive to binary adapters — the `origin` enum covers `project-local`, `monorepo:<gradle-path>`, and `binary:<group>:<artifact>:<version>`. |
+| `<slug>-adapter-sources.md` | When scope-discovery finds at least one custom `@BindingAdapter` (any origin: `project-local`, `monorepo:<gradle-path>`, or `binary:<group>:<artifact>:<version>`) | One row per resolved `@BindingAdapter` symbol; cross-referenced by the property map. Implicit-setter and unresolved entries are not duplicated here — they live in the property map only. |
 
 ---
 
@@ -70,8 +70,7 @@ over `mechanical`; otherwise `mechanical`. When a single XML attribute resolves 
 
 ## `<slug>-adapter-sources.md` — row schema
 
-Created when adapter resolution produces at least one row. Cross-referenced by `adapter_origin`
-in the property map.
+Created when scope-discovery finds at least one custom `@BindingAdapter` (any origin: `project-local`, `monorepo:<gradle-path>`, or `binary:<group>:<artifact>:<version>`). The file holds one row per resolved `@BindingAdapter` symbol; implicit-setter and unresolved entries are not duplicated here — they live in the property map only. Cross-referenced by `adapter_origin` in the property map.
 
 | Column | Type | Description |
 |---|---|---|
