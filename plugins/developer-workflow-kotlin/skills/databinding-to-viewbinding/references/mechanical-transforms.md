@@ -23,11 +23,13 @@ replace the `@{…}` value with the static default the attribute accepted before
 typically an empty string for `android:text`, `"true"` for `android:enabled`, `""` for
 `android:contentDescription`. If the attribute had no static fallback (e.g. `app:imageUrl`,
 `android:visibility` driven entirely by a live value): **remove the attribute**. The
-host-Kotlin replacement supplies it at runtime. Do not add `tools:` aliases or any other
-namespaces — the rule is to keep the post-transform XML attribute-equivalent to the
-pre-binding state.
+host-Kotlin replacement supplies it at runtime. Only add `tools:` preview attributes if the
+resulting root element already declares `xmlns:tools="http://schemas.android.com/tools"`.
+Otherwise omit — adding the namespace would expand the diff beyond the binding removal. For all
+other namespaces, preserve attributes exactly; do not add or remove any namespace declarations
+beyond what the binding removal requires.
 
-**`@={…}` attribute values.** Not mechanical. Flag at Discovery time; route to `escalation-patterns.md §two-way`.
+**`@={…}` attribute values.** Not mechanical. Flag at Discovery time; route to `escalation-patterns.md §Two-way`.
 
 **Namespace cleanup.**
 - Replace every `bind:` namespace prefix with `app:`. When a `bind:` and `app:` copy of the

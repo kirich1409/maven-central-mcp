@@ -1,10 +1,12 @@
 # Adapter Resolution
 
 This reference defines the adapter matching algorithm and the replacement-template builder used
-during the Discovery and Conversion phases of the DataBinding-to-ViewBinding migration. It
-specifies how the skill determines which `@BindingAdapter` method DataBinding's annotation
-processor would pick for a given XML attribute and expression type, and how that resolved adapter
-is translated into a host-Kotlin call.
+during the Discovery phase of the DataBinding-to-ViewBinding migration. This phase runs as the
+final sub-phase of Discovery (after expression-resolution, before USER GATE). It builds a `ksrc`
+index of `@BindingAdapter` source jars at the start of the run. It specifies how the skill
+determines which `@BindingAdapter` method DataBinding's annotation processor would pick for a
+given XML attribute and expression type, and how that resolved adapter is translated into a
+host-Kotlin call.
 
 ---
 
@@ -76,6 +78,13 @@ If `ksrc` is unavailable or the Gradle cache is unpopulated, the skill surfaces:
 adapter catalog — verify ksrc is installed and `databinding-adapters:<version>` is present in
 the Gradle cache." It does not attempt to guess adapter behavior from heuristics. The user is
 offered two options: wait until the cache is populated and retry, or stop the migration scope.
+
+Alternative — **reduced mode**: if the user accepts partial coverage, mark all unresolvable
+binary adapter rows with `adapter_origin = unresolved`, `bucket = escalate`, and continue
+Discovery. The USER GATE will surface these rows so the user decides per-row whether to escalate
+via library upgrade, manual conversion, or keep DataBinding for that screen. Stop is reserved
+for: (a) project-local/monorepo adapter resolution failures (which `ksrc` does not cover anyway
+— those rely on `ast-index`), or (b) the user explicitly chooses to abort.
 
 If the source jar is absent for a specific artifact version (rare for older builds not yet fully
 indexed on Google Maven), the skill offers to temporarily lift the version to the nearest one

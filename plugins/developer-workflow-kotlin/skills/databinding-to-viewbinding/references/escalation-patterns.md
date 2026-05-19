@@ -204,7 +204,7 @@ proceeds as if that overload were the unique match.
 
 ## Unresolved adapter or expression
 
-**Condition.** Adapter resolution exhausted all source tiers (per `adapter-resolution.md §Output`),
+**Condition.** Adapter resolution exhausted all source tiers (per `adapter-resolution.md §Output of this phase`),
 or expression resolution failed to resolve an identifier (per
 `expression-resolution.md §Escalation rules`).
 

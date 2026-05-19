@@ -15,7 +15,7 @@ identifier used throughout the session (e.g. `databinding-to-viewbinding`).
 |---|---|---|
 | `<slug>-property-map.md` | Always | One row per `@{…}` / `@={…}` binding occurrence across every layout in scope. Primary artifact. |
 | `<slug>-variables-map.md` | Always | One row per layout × `<variable>` declaration — drives host-Kotlin wiring replacements. |
-| `<slug>-adapter-sources.md` | When adapter resolution ran and found non-trivial entries | One row per resolved `@BindingAdapter` symbol; cross-referenced by the property map. |
+| `<slug>-adapter-sources.md` | When adapter resolution produces at least one row | One row per resolved `@BindingAdapter` symbol; cross-referenced by the property map. Not exclusive to binary adapters — the `origin` enum covers `project-local`, `monorepo:<gradle-path>`, and `binary:<group>:<artifact>:<version>`. |
 
 ---
 
@@ -68,10 +68,10 @@ over `mechanical`; otherwise `mechanical`. When a single XML attribute resolves 
 
 ---
 
-## `<slug>-adapter-sources.md` — row schema (optional)
+## `<slug>-adapter-sources.md` — row schema
 
-Created only when adapter resolution actually ran and indexed entries from `ksrc`. Cross-referenced
-by `adapter_origin` in the property map.
+Created when adapter resolution produces at least one row. Cross-referenced by `adapter_origin`
+in the property map.
 
 | Column | Type | Description |
 |---|---|---|
@@ -83,6 +83,7 @@ by `adapter_origin` in the property map.
 | `overload_group` | label | Short label grouping overloads on the same attribute set for deterministic cross-overload selection |
 | `references_in_scope` | integer | Count of property-map rows that reference this adapter |
 | `cleanup_status` | enum | `keep-as-regular-dep` / `duplicate-from-sources` / `convert-to-extension` / `static-call` / `escalate`; empty during Discovery, filled during Cleanup |
+| `placement_target` | string | Gradle module path (e.g. `:core:ui`) or `in-place` if the adapter is kept in the consuming module; empty during Discovery, filled when `cleanup_status` is `convert-to-extension` or `duplicate-from-sources` |
 
 ---
 

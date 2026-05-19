@@ -160,10 +160,11 @@ shared module wins when two or more in-scope modules are consumers and one share
 already reachable from all of them. A new module is offered only as the last option and never
 as a default.
 
-**After the user picks.** The decision is recorded in `<slug>-adapter-sources.md` under the
-`cleanup_status` column as the chosen placement path (e.g., `convert-to-extension → :core:ui`,
-`duplicate-from-sources → :feature:profile`). The engineer agent writes the file at that
-location.
+**After the user picks.** The decision is recorded in `<slug>-adapter-sources.md` under two
+columns: `cleanup_status` (the chosen disposal option, e.g. `convert-to-extension`) and
+`placement_target` (the Gradle module path, e.g. `:core:ui`, or `in-place` if kept in the
+consuming module). Example row: `cleanup_status = converted, placement_target = :core:ui`.
+The engineer agent writes the file at the location named by `placement_target`.
 
 **Batch prompting.** When multiple adapters share an identical candidate analysis (same consumer
 set, same reachable shared modules), the skill MAY group them: "Adapters A, B, C share the same

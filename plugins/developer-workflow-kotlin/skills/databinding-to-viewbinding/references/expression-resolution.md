@@ -19,7 +19,7 @@ screen, human or agent decides per `escalation-patterns.md`).
 
 ```
 expression      = one_way | two_way
-one_way         = "@{" expr ["," "default=" default_val] "}"
+one_way         = "@{" (expr | expr "," "default=" default_value) "}"
 two_way         = "@={" expr "}"              ; ESCALATE — always, no exceptions
 
 expr            = null_coalescing
@@ -47,6 +47,14 @@ lambda          = "(" [param_list] ")" "->" expr
 string_template = backtick_template | string_concat_expr
                   ; MECHANICAL -> Kotlin string template "Hello, ${name}"
 
+backtick_template ::= '`' { STRING_CHAR | '${' expression '}' } '`'
+                  ; DataBinding string literal using back-tick delimiters; resolves to String
+
+string_concat_expr = expr "+" expr            ; both operands have type String (or one is
+                  ; a String and the other is coerced) — MECHANICAL -> Kotlin "${a}${b}"
+                  ; or "a" + b.toString(); DataBinding "+" is overloaded for numeric add
+                  ; and string concatenation; keep the operand types to distinguish
+
 resource_ref    = "@{" "@" res_type "/" res_name "}"   ; MECHANICAL (table below)
 static_ref      = identifier "." identifier             ; resolved via <import>
                   ; MECHANICAL if <import> resolves via ast-index; ESCALATE otherwise
@@ -55,7 +63,7 @@ safe_unbox      = "safeUnbox(" expr ")"
                   ; MECHANICAL -> expr ?: zero_for_primitive
                   ; Int -> 0, Long -> 0L, Boolean -> false, Float -> 0f, Double -> 0.0
 
-default_value   = expr "," "default=" default_val
+default_value   = expr                        ; the fallback expression after "default="
                   ; MECHANICAL -> expr ?: <resolved default>
 ```
 
@@ -168,7 +176,7 @@ Record `bucket = escalate` in the property map; do not emit an expression fragme
   chain. Rationale: three levels produce four paths that cannot be flattened to a readable
   `if/else if/else` without restructuring; the host author must decide the shape.
 - **Mixed supported/unsupported sub-expression** — if any sub-expression escalates, the
-  entire outer expression escalates. The `raw_expression` is preserved verbatim.
+  entire outer expression escalates. The `expression_raw` is preserved verbatim.
 
 ---
 
@@ -218,12 +226,13 @@ yields primitive `Int`. Result: `expression_class = safe_unbox`, `expression_typ
 
 ## Cross-references
 
-- `adapter-resolution.md` — consumes `expression_type` and `expression_fragment`; runs
-  immediately after expression resolution for each binding in the property map.
-- `property-map-spec.md` — defines the exact fields where `expression_class`,
-  `expression_type`, `raw_expression`, `expression_fragment`, and `replacement_fragment`
-  are recorded.
-- `escalation-patterns.md` — full recipes for two-way binding, `BR.*` references, and
-  `@InverseBindingAdapter` wiring listed in §Escalation rules.
-- `mechanical-transforms.md` — uses `replacement_fragment` to weave Kotlin code into the
-  host file during the Conversion phase.
+- `adapter-resolution.md` — consumes `expression_type` and `expression_fragment` produced
+  here; runs after expression resolution to select the `@BindingAdapter` overload and
+  produce the final `replacement_fragment`.
+- `property-map-spec.md` — defines the schema columns `expression_raw`, `expression_type`,
+  and `expression_fragment` (this file writes these) plus `adapter_origin`,
+  `adapter_symbol`, and `replacement_fragment` (written by adapter-resolution). The
+  intermediates `expression_class` and `resolved_symbol` are internal to expression
+  resolution and are not persisted in the map.
+- `mechanical-transforms.md` — uses the final `replacement_fragment` to weave Kotlin code
+  into the host file.

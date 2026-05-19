@@ -11,7 +11,7 @@ This skill migrates Android DataBinding to ViewBinding screen-by-screen within a
 scope. The workflow follows a strict ordering: discover all bindings and resolve their adapters
 first, present the full picture to the user via a single USER GATE, then execute mechanical
 conversions through an engineer agent while surfacing every escalation case explicitly.
-Behavioural parity is the contract for everything in the `mechanical` bucket. The `escalate`
+Behavioral parity is the contract for everything in the `mechanical` bucket. The `escalate`
 bucket requires explicit user or engineer decisions before any code is written for that row.
 
 The skill is intentionally narrow. It does not perform unrelated refactors, does not switch MVVM
@@ -61,7 +61,10 @@ Cross-reference: `references/scope-discovery.md`.
 ## Phase 2 — Discovery
 
 Discovery builds the complete picture of every DataBinding usage in scope. It runs once per
-scope, before any code is touched. Five subactivities:
+scope, before any code is touched. Discovery includes (in order): scope-intake → layout
+enumeration → host-code mapping → custom `@BindingAdapter` discovery → expression resolution →
+adapter resolution. The property map is **seeded** by scope-discovery and **fully resolved** by
+expression + adapter resolution, all before the USER GATE. Five subactivities:
 
 **Module discovery.** Enumerate every Gradle module in scope; verify `dataBinding = true`
 (or legacy `dataBinding { enabled = true }`) in its `buildFeatures` block; note the AGP
@@ -110,8 +113,9 @@ only for `<include>` layout references (string patterns, not symbols).
 - `<slug>-custom-adapters.md` — custom adapter draft (mandatory)
 - `<slug>-property-map.md` — seeded and fully resolved property map (mandatory)
 - `<slug>-variables-map.md` — `<variable>` declarations with `replacement_strategy` empty (mandatory)
-- `<slug>-adapter-sources.md` — resolved adapter sources with `ksrc` provenance (optional; emitted
-  when binary adapters are present)
+- `<slug>-adapter-sources.md` — created when Discovery finds at least one custom `@BindingAdapter`
+  (any origin: project-local, monorepo, or binary). Replaces the seed file `custom-adapters.md`
+  after the gate.
 
 Cross-references: `references/property-map-spec.md` (full column schemas),
 `references/scope-discovery.md` §8–§9.
@@ -122,7 +126,7 @@ The single mandatory blocking step. The skill presents the following summary to 
 
 - Total binding count and layout count in scope.
 - Count per bucket: `mechanical` / `partial` / `escalate`.
-- Count per `adapter_origin` (project-local, monorepo, binary-library, implicit-setter, unresolved).
+- Count per `adapter_origin` (project-local, monorepo, binary, implicit-setter, unresolved).
 - Full list of every `escalate` row — layout, attribute, and a one-line recipe pointer
   referencing `references/escalation-patterns.md` (e.g., `two-way §EditText.text`,
   `observable-decommission §ObservableField<T>`, `unresolved-adapter §my:customAttr`).
@@ -251,7 +255,7 @@ All artifacts live in `./swarm-report/`. Mandatory artifacts are marked **(M)**.
 - `<slug>-custom-adapters.md` — custom adapter draft **(M)**
 - `<slug>-property-map.md` — resolved property map **(M)**
 - `<slug>-variables-map.md` — variable declarations **(M)**
-- `<slug>-adapter-sources.md` — resolved adapter sources (optional; when adapter resolution ran and found non-trivial entries)
+- `<slug>-adapter-sources.md` — resolved adapter sources (created when Discovery finds at least one custom `@BindingAdapter`)
 
 **Phase 3 — USER GATE**
 - `<slug>-property-map.md` appended with approval footer **(M)**

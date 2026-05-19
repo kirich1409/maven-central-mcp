@@ -118,8 +118,12 @@ Collect results into `./swarm-report/<slug>-custom-adapters.md` (draft at this s
 cleanup decisions migrate to `<slug>-adapter-sources.md` after the USER GATE). Columns:
 origin_module / method_fqn / attribute_strings / signature / in_scope_usage_count.
 
-Do not invoke `ksrc` here. Runtime adapter resolution via `ksrc` is a separate phase
-described in `adapter-resolution.md` that runs after Discovery.
+Scope-discovery seeds the property map with `layout`/`view_id`/`view_type`/`attribute`/
+`binding_kind`/`expression_raw`/`adapter_origin` placeholder. The remaining columns
+(`expression_type`, `expression_fragment`, `adapter_symbol`, `replacement_fragment`, `bucket`)
+are filled in by expression-resolution and adapter-resolution, which run as the next two
+sub-phases of Discovery (still before the USER GATE). Do not invoke `ksrc` during the
+`@BindingAdapter` discovery step — `ksrc` is invoked in the adapter-resolution sub-phase.
 
 ---
 
@@ -151,12 +155,17 @@ passes. Rows are sorted by layout path, then by source-line order within the lay
 
 Use `Glob` + direct `Read` for small file counts (a few dozen layouts or build files). Delegate
 to `Explore` (haiku) for any cross-module scan, monorepo-wide adapter search, or when more
-than ~50 files need to be read in a single pass. Use `ast-index` for all symbol-level lookups —
-host class usages, legacy inflation calls, and `@BindingAdapter` search. Use targeted `Grep`
-only for `<include>` layout references, which are string patterns rather than symbol lookups.
+than ~50 files need to be read in a single pass. Use `ast-index` for symbol-level lookups
+(class/method/field discovery, reference walks — host class usages, legacy inflation calls, and
+`@BindingAdapter` search). When `ast-index` is not initialised for the project, fall back to
+`Grep` with explicit notes that precision is reduced — e.g., a bare `@BindingAdapter` regex may
+catch occurrences inside comments or string literals. The Discovery output should flag rows where
+the adapter resolution was Grep-based with `notes = "grep-resolved"` so the USER GATE can warn
+the user. Use targeted `Grep` without fallback notes only for `<include>` layout references,
+which are string patterns rather than symbol lookups.
 
-`ksrc` is not used during scope discovery — it enters only during the adapter resolution phase
-described in `adapter-resolution.md`. `developer-workflow-kotlin:kotlin-engineer` is not used
+`ksrc` is not used during the scope-discovery sub-phase — it enters during the adapter-resolution
+sub-phase that follows (still within Discovery, before the USER GATE). `developer-workflow-kotlin:kotlin-engineer` is not used
 at this phase — discovery is read-only and produces no code changes.
 
 ---
@@ -169,8 +178,10 @@ at this phase — discovery is read-only and produces no code changes.
   binding count, variable count, include refs).
 - `./swarm-report/<slug>-custom-adapters.md` — custom adapter inventory (draft; upgraded to
   `<slug>-adapter-sources.md` post-gate).
-- `./swarm-report/<slug>-property-map.md` — seeded property map; `expression_type`,
-  `adapter_origin`, `adapter_symbol`, `replacement_fragment`, and `bucket` columns empty.
+- `./swarm-report/<slug>-property-map.md` — seeded by scope-discovery (with `expression_type`,
+  `expression_fragment`, `adapter_origin`, `adapter_symbol`, `replacement_fragment`, and `bucket`
+  columns empty at seed time); fully resolved by expression-resolution and adapter-resolution
+  sub-phases before the USER GATE.
 - `./swarm-report/<slug>-variables-map.md` — variable declarations; `replacement_strategy`
   column empty.
 
